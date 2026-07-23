@@ -10,7 +10,7 @@ const DEBOUNCE_MS = 200;
 
 export function usePipelineWorker() {
   const source = useDiagramStore((s) => s.source);
-  const setLayout = useDiagramStore((s) => s.setLayout);
+  const applyResult = useDiagramStore((s) => s.applyResult);
   const setErrors = useDiagramStore((s) => s.setErrors);
   const setPending = useDiagramStore((s) => s.setPending);
 
@@ -31,13 +31,13 @@ export function usePipelineWorker() {
 
     worker.onmessage = (event: MessageEvent<PipelineResponse>) => {
       const res = event.data;
-      if (res.id !== latestSentId.current) return; // stale response, drop it
+      if (res.id !== latestSentId.current) return;
 
       const view = useDiagramStore.getState().editorView;
 
       if (res.ok) {
-        setLayout(res.nodes, res.edges);
-        if (view) pushDiagnostics(view, []); // clear squiggles on success
+        applyResult(res.result);
+        if (view) pushDiagnostics(view, []);
       } else {
         setErrors(res.errors);
         if (view) {
@@ -46,7 +46,7 @@ export function usePipelineWorker() {
         }
       }
     };
-  }, [worker, setLayout, setErrors]);
+  }, [worker, applyResult, setErrors]);
 
   useEffect(() => {
     if (!worker) return;
