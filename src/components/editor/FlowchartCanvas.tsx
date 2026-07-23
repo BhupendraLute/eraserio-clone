@@ -34,6 +34,12 @@ export function FlowchartCanvas() {
    const { transform, svgRef, handlers, zoomIn, zoomOut, fitToContent } =
       usePanZoom();
 
+   const setSvgElement = useDiagramStore((s) => s.setSvgElement);
+   useEffect(() => {
+      setSvgElement(svgRef.current);
+      return () => setSvgElement(null);
+   }, [svgRef, setSvgElement]);
+
    const hasAutoFitted = useRef(false);
    useEffect(() => {
       if (!hasAutoFitted.current && nodes.length > 0) {

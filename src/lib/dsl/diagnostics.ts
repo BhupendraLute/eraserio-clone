@@ -13,7 +13,7 @@ export function pipelineErrorsToDiagnostics(
     return {
       from: line.from,
       to: line.to,
-      severity: 'error',
+      severity: e.severity, // 'error' | 'warning', maps directly to CodeMirror's own type
       message: `${e.stage}: ${e.message}`,
     };
   });
