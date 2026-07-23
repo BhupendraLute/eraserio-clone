@@ -3,6 +3,7 @@ import type { DiagramAST } from '../dsl/ast';
 import type { LaidOutNode, LaidOutEdge } from './types';
 import { measureTextWidth } from './text-measure';
 import { wrapLabel } from './wrap-text';
+import { resolveIconName, ICON_SIZE, ICON_GAP } from '../render/node-style';
 import {
   NODE_FONT,
   NODE_PADDING_X,
@@ -18,10 +19,17 @@ interface NodeSizing {
   width: number;
   height: number;
   lines: string[];
+  hasIcon: boolean;
 }
 
-function sizeForLabel(label: string): NodeSizing {
-  const innerMaxWidth = NODE_MAX_WIDTH - NODE_PADDING_X;
+function sizeForLabel(label: string, iconAttr: string | undefined): NodeSizing {
+  const hasIcon = resolveIconName(iconAttr) !== null;
+  const iconSpace = hasIcon ? ICON_SIZE + ICON_GAP : 0;
+
+  // Text has less room to wrap into when an icon eats into the node's
+  // width — subtract it before wrapping so lines don't run under/over
+  // the icon.
+  const innerMaxWidth = NODE_MAX_WIDTH - NODE_PADDING_X - iconSpace;
 
   let lines = wrapLabel(label, NODE_FONT, innerMaxWidth);
 
@@ -32,13 +40,16 @@ function sizeForLabel(label: string): NodeSizing {
   }
 
   const widestLine = Math.max(...lines.map((l) => measureTextWidth(l, NODE_FONT)));
-  const width = Math.min(NODE_MAX_WIDTH, Math.max(NODE_MIN_WIDTH, widestLine + NODE_PADDING_X));
+  const width = Math.min(
+    NODE_MAX_WIDTH,
+    Math.max(NODE_MIN_WIDTH, widestLine + NODE_PADDING_X + iconSpace)
+  );
   const height = Math.max(
     NODE_MIN_HEIGHT,
     lines.length * NODE_LINE_HEIGHT + NODE_PADDING_Y * 2
   );
 
-  return { width, height, lines };
+  return { width, height, lines, hasIcon };
 }
 
 export function dagreLayout(ast: DiagramAST): { nodes: LaidOutNode[]; edges: LaidOutEdge[] } {
@@ -49,7 +60,7 @@ export function dagreLayout(ast: DiagramAST): { nodes: LaidOutNode[]; edges: Lai
   const sizingByNodeId = new Map<string, NodeSizing>();
 
   for (const node of ast.nodes) {
-    const sizing = sizeForLabel(node.label);
+    const sizing = sizeForLabel(node.label, node.attrs.icon);
     sizingByNodeId.set(node.id, sizing);
     g.setNode(node.id, { width: sizing.width, height: sizing.height });
   }

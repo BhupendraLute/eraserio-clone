@@ -6,6 +6,8 @@ import type { LaidOutEdge, LaidOutNode } from '@/lib/layout/types';
 import { measureTextWidth } from '@/lib/layout/text-measure';
 import { usePanZoom } from '@/lib/hooks/usePanZoom';
 import { straightEdgePath, midpointOfPath } from '@/lib/render/edge-geometry';
+import { resolveIconName, resolveNodeColor, ICON_SIZE, ICON_GAP } from '@/lib/render/node-style';
+import { NodeIcon } from '@/components/editor/NodeIcon';
 import { Button } from '@/components/ui/button';
 import { Plus, Minus, Maximize } from 'lucide-react';
 import {
@@ -154,6 +156,20 @@ function NodeView({ node, scale, onDrag, onResetPosition }: NodeViewProps) {
     onResetPosition(node.id);
   };
 
+  const iconName = resolveIconName(node.attrs.icon);
+  const color = resolveNodeColor(node.attrs.color);
+  const hasIcon = iconName !== null;
+
+  // Text block shifts right to make room for the icon, and the whole
+  // label+icon group is centered together within the node.
+  const iconSpace = hasIcon ? ICON_SIZE + ICON_GAP : 0;
+  const contentCenterX = node.x + node.width / 2;
+  const textCenterX = contentCenterX + iconSpace / 2;
+  const iconX = textCenterX - (Math.max(...node.lines.map((l) => measureTextWidth(l, '13px ui-sans-serif'))) / 2) - iconSpace + ICON_GAP / 2;
+
+  const blockHeight = node.lines.length * NODE_LINE_HEIGHT;
+  const iconY = node.y + node.height / 2 - ICON_SIZE / 2;
+
   return (
     <g
       onPointerDown={handlePointerDown}
@@ -169,15 +185,34 @@ function NodeView({ node, scale, onDrag, onResetPosition }: NodeViewProps) {
         height={node.height}
         rx={8}
         fill="var(--background)"
-        stroke="currentColor"
-        className="text-border"
+        stroke={color?.border ?? 'currentColor'}
+        strokeWidth={color ? 2 : 1}
+        className={color ? undefined : 'text-border'}
       />
-      <text x={node.x + node.width / 2} textAnchor="middle" fontSize={13} fill="currentColor">
+      {hasIcon && iconName && (
+        <NodeIcon
+          name={iconName}
+          x={node.x + NODE_PADDING_X_HALF(node)}
+          y={iconY}
+          size={ICON_SIZE}
+          color={color?.accent}
+        />
+      )}
+      <text
+        x={hasIcon ? textCenterX : contentCenterX}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize={13}
+        fill="currentColor"
+      >
         {node.lines.map((line, i) => {
-          const blockHeight = node.lines.length * NODE_LINE_HEIGHT;
           const startY = node.y + node.height / 2 - blockHeight / 2 + NODE_LINE_HEIGHT / 2;
           return (
-            <tspan key={i} x={node.x + node.width / 2} y={startY + i * NODE_LINE_HEIGHT}>
+            <tspan
+              key={i}
+              x={hasIcon ? textCenterX : contentCenterX}
+              y={startY + i * NODE_LINE_HEIGHT}
+            >
               {line}
             </tspan>
           );
@@ -185,6 +220,13 @@ function NodeView({ node, scale, onDrag, onResetPosition }: NodeViewProps) {
       </text>
     </g>
   );
+}
+
+// Icon sits at a fixed inset from the node's left edge, vertically
+// centered — simpler and more robust than trying to perfectly center
+// icon+text as one measured unit.
+function NODE_PADDING_X_HALF(node: LaidOutNode): number {
+  return 12;
 }
 
 interface EdgeViewProps {
