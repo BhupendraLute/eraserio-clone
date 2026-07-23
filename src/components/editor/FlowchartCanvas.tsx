@@ -5,7 +5,13 @@ import { useDiagramStore } from "@/lib/store/diagram-store";
 import type { LaidOutEdge, LaidOutNode } from "@/lib/layout/types";
 import { measureTextWidth } from "@/lib/layout/text-measure";
 import { usePanZoom } from "@/lib/hooks/usePanZoom";
-import { straightEdgePath, midpointOfPath } from "@/lib/render/edge-geometry";
+import {
+   straightEdgePath,
+   midpointOfPath,
+   selfLoopPath,
+   sameRankEdgePath,
+   isDegenerateRoute,
+} from "@/lib/render/edge-geometry";
 import {
    resolveIconName,
    resolveNodeColor,
@@ -289,10 +295,7 @@ interface EdgeViewProps {
 }
 
 function EdgeView({ edge, isDynamic, sourceNode, targetNode }: EdgeViewProps) {
-   const points =
-      isDynamic && sourceNode && targetNode
-         ? straightEdgePath(sourceNode, targetNode)
-         : edge.points;
+   const points = resolveEdgePoints(edge, isDynamic, sourceNode, targetNode);
 
    if (points.length < 2) return null;
 
@@ -339,6 +342,36 @@ function EdgeView({ edge, isDynamic, sourceNode, targetNode }: EdgeViewProps) {
          )}
       </g>
    );
+}
+
+function resolveEdgePoints(
+   edge: LaidOutEdge,
+   isDynamic: boolean,
+   sourceNode?: LaidOutNode,
+   targetNode?: LaidOutNode,
+): { x: number; y: number }[] {
+   // Self-loop: source and target are the same node.
+   if (sourceNode && targetNode && sourceNode.id === targetNode.id) {
+      return selfLoopPath(sourceNode);
+   }
+
+   // Manually dragged node: straight line, as before.
+   if (isDynamic && sourceNode && targetNode) {
+      return straightEdgePath(sourceNode, targetNode);
+   }
+
+   // Dagre's routed path is usable — trust it.
+   if (!isDegenerateRoute(edge.points)) {
+      return edge.points;
+   }
+
+   // Dagre gave us a degenerate/too-short route (typically a same-rank
+   // sibling edge) — fall back to a manually-routed arc below both nodes.
+   if (sourceNode && targetNode) {
+      return sameRankEdgePath(sourceNode, targetNode);
+   }
+
+   return edge.points;
 }
 
 function pointsToSmoothPath(points: { x: number; y: number }[]): string {
