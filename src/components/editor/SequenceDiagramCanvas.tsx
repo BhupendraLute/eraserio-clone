@@ -16,6 +16,12 @@ export function SequenceDiagramCanvas() {
    const { transform, svgRef, handlers, zoomIn, zoomOut, fitBounds } =
       usePanZoom();
 
+   const setSvgElement = useDiagramStore((s) => s.setSvgElement);
+   useEffect(() => {
+      setSvgElement(svgRef.current);
+      return () => setSvgElement(null);
+   }, [svgRef, setSvgElement]);
+
    const width = useDiagramStore((s) => s.sequenceWidth);
 
    const hasAutoFitted = useRef(false);

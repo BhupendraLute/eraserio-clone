@@ -21,19 +21,23 @@ export interface PipelineSuccess {
   id: number;
   ok: true;
   result: PipelineDiagramResult;
+  diagnostics: PipelineError[]; // non-blocking warnings only
 }
 
 export interface PipelineFailure {
   id: number;
   ok: false;
-  errors: PipelineError[];
+  errors: PipelineError[]; // includes any warnings alongside the blocking error(s)
 }
+
+export type PipelineSeverity = 'error' | 'warning';
 
 export interface PipelineError {
   stage: 'lex' | 'parse' | 'validate' | 'layout';
   message: string;
   line?: number;
   column?: number;
+  severity: PipelineSeverity;
 }
 
 export type PipelineResponse = PipelineSuccess | PipelineFailure;
@@ -44,19 +48,25 @@ self.onmessage = (event: MessageEvent<PipelineRequest>) => {
   try {
     const lexResult = tokenize(source);
     if (lexResult.errors.length > 0) {
-      return respond(id, toErrors('lex', lexResult.errors));
+      return respond(id, toErrors('lex', lexResult.errors, 'error'));
     }
 
     const parseResult = parse(lexResult.tokens);
     if (parseResult.errors.length > 0) {
-      return respond(id, toErrors('parse', parseResult.errors));
+      return respond(id, toErrors('parse', parseResult.errors, 'error'));
     }
 
     const ast: DiagramAST = cstToAst(parseResult.cst);
 
     const validationErrors: ValidationError[] = validate(ast);
-    if (validationErrors.length > 0) {
-      return respond(id, toErrors('validate', validationErrors));
+    const blocking = validationErrors.filter((e) => e.severity === 'error');
+    const warnings = validationErrors.filter((e) => e.severity === 'warning');
+
+    if (blocking.length > 0) {
+      // Surface both blocking errors and any warnings together, so the
+      // user sees everything at once rather than fixing errors one
+      // pass at a time only to discover warnings afterward.
+      return respond(id, toValidationErrors('validate', validationErrors));
     }
 
     let result: PipelineDiagramResult;
@@ -68,11 +78,16 @@ self.onmessage = (event: MessageEvent<PipelineRequest>) => {
       result = { kind: 'flowchart', nodes, edges };
     }
 
-    const success: PipelineSuccess = { id, ok: true, result };
+    const success: PipelineSuccess = {
+      id,
+      ok: true,
+      result,
+      diagnostics: toValidationErrors('validate', warnings),
+    };
     (self as unknown as Worker).postMessage(success);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown pipeline error';
-    respond(id, [{ stage: 'layout', message }]);
+    respond(id, [{ stage: 'layout', message, severity: 'error' }]);
   }
 };
 
@@ -83,7 +98,12 @@ function respond(id: number, errors: PipelineError[]) {
 
 function toErrors(
   stage: PipelineError['stage'],
-  raw: Array<{ message: string; line?: number; column?: number }>
+  raw: Array<{ message: string; line?: number; column?: number }>,
+  severity: PipelineSeverity
 ): PipelineError[] {
-  return raw.map((e) => ({ stage, message: e.message, line: e.line, column: e.column }));
+  return raw.map((e) => ({ stage, message: e.message, line: e.line, column: e.column, severity }));
+}
+
+function toValidationErrors(stage: PipelineError['stage'], raw: ValidationError[]): PipelineError[] {
+  return raw.map((e) => ({ stage, message: e.message, line: e.line, severity: e.severity }));
 }
