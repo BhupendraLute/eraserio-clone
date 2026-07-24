@@ -7,6 +7,7 @@ import { sequenceLayout } from '@/lib/layout/sequence-layout';
 import type { DiagramAST } from '@/lib/dsl/ast';
 import type { LaidOutNode, LaidOutEdge } from '@/lib/layout/types';
 import type { SequenceLayoutResult } from '@/lib/layout/sequence-types';
+import { humanizeParseError } from '@/lib/dsl/error-messages';
 
 export interface PipelineRequest {
   id: number;
@@ -51,9 +52,13 @@ self.onmessage = (event: MessageEvent<PipelineRequest>) => {
       return respond(id, toErrors('lex', lexResult.errors, 'error'));
     }
 
-    const parseResult = parse(lexResult.tokens);
+   const parseResult = parse(lexResult.tokens);
     if (parseResult.errors.length > 0) {
-      return respond(id, toErrors('parse', parseResult.errors, 'error'));
+      const humanized = parseResult.errors.map((err) => {
+        const { message, line } = humanizeParseError(err);
+        return { stage: 'parse' as const, message, line, severity: 'error' as const };
+      });
+      return respond(id, humanized);
     }
 
     const ast: DiagramAST = cstToAst(parseResult.cst);
