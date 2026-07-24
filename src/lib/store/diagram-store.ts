@@ -14,6 +14,7 @@ interface NodeOverride {
 
 interface DiagramState {
    source: string;
+   currentDiagramId: string | null;
    diagramKind: "flowchart" | "sequence" | null;
 
    nodes: LaidOutNode[];
@@ -33,7 +34,8 @@ interface DiagramState {
    svgElement: SVGSVGElement | null;
    setSvgElement: (el: SVGSVGElement | null) => void;
 
-   setSource: (source: string) => void;
+     setSource: (source: string) => void;
+  loadDiagram: (id: string, source: string) => void;
    applyResult: (
       result: PipelineDiagramResult,
       diagnostics: PipelineError[],
@@ -59,6 +61,7 @@ Auth Service > Database: check session
 
 export const useDiagramStore = create<DiagramState>((set) => ({
    source: DEFAULT_SOURCE,
+   currentDiagramId: null,
    diagramKind: null,
 
    nodes: [],
@@ -77,6 +80,24 @@ export const useDiagramStore = create<DiagramState>((set) => ({
    svgElement: null,
 
    setSource: (source) => set({ source }),
+
+  // Switches the editor to a different diagram from the registry —
+  // resets everything that's specific to the previously-open diagram
+  // (manual node positions, errors) so state doesn't bleed across
+  // unrelated diagrams.
+  loadDiagram: (id, source) =>
+    set({
+      currentDiagramId: id,
+      source,
+      nodeOverrides: {},
+      nodes: [],
+      rawNodes: [],
+      edges: [],
+      sequenceActors: [],
+      sequenceMessages: [],
+      errors: [],
+      status: 'idle',
+    }),
 
    applyResult: (result, diagnostics) =>
       set((state) => {
