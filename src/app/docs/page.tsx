@@ -4,14 +4,16 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { DiagramEmbed } from '@/components/docs/diagram-embed-extension';
+import { SlashCommandExtension } from '@/components/docs/slash-command-extension';
 import { DocToolbar } from '@/components/docs/DocToolbar';
 
 export default function DocsPage() {
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Placeholder.configure({ placeholder: "Start writing, or insert a diagram…" }),
+      Placeholder.configure({ placeholder: "Start writing, or type '/' for commands…" }),
       DiagramEmbed,
+      SlashCommandExtension,
     ],
     content: '<h2>Untitled document</h2><p></p>',
     immediatelyRender: false,
