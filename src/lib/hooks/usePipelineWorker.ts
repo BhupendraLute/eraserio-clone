@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useDiagramStore } from "@/lib/store/diagram-store";
+import { useDiagramRegistry } from "@/lib/store/diagram-registry";
 import { pushDiagnostics } from "@/lib/dsl/codemirror-lint";
 import { pipelineErrorsToDiagnostics } from "@/lib/dsl/diagnostics";
 import type {
@@ -66,6 +67,14 @@ export function usePipelineWorker() {
 
    useEffect(() => {
       if (!worker) return;
+
+      // Keep the registry's stored source in sync as the user types, so
+      // any doc embed referencing this diagram id always resolves to
+      // current content, not a stale snapshot from when it was opened.
+      const currentDiagramId = useDiagramStore.getState().currentDiagramId;
+      if (currentDiagramId) {
+         useDiagramRegistry.getState().updateSource(currentDiagramId, source);
+      }
 
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
 
