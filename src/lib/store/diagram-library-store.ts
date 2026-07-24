@@ -1,31 +1,53 @@
-import { create } from 'zustand';
+import { useMemo } from 'react';
+import { useDiagramRegistry, DiagramRecord } from './diagram-registry';
 
-export interface SavedDiagram {
-  id: string;
-  name: string;
-  source: string;
-}
+export type SavedDiagram = DiagramRecord;
 
 interface DiagramLibraryState {
   diagrams: SavedDiagram[];
-  saveDiagram: (name: string, source: string) => string; // returns new id
+  saveDiagram: (name: string, source: string) => string;
   getDiagram: (id: string) => SavedDiagram | undefined;
   updateDiagramSource: (id: string, source: string) => void;
 }
 
-export const useDiagramLibraryStore = create<DiagramLibraryState>((set, get) => ({
-  diagrams: [],
+export function useDiagramLibraryStore<T>(
+  selector: (state: DiagramLibraryState) => T
+): T {
+  const order = useDiagramRegistry((s) => s.order);
+  const diagramsMap = useDiagramRegistry((s) => s.diagrams);
 
-  saveDiagram: (name, source) => {
-    const id = crypto.randomUUID();
-    set((state) => ({ diagrams: [...state.diagrams, { id, name, source }] }));
-    return id;
-  },
+  const saveDiagram = useDiagramRegistry((s) => s.saveDiagram);
+  const getDiagram = useDiagramRegistry((s) => s.getDiagram);
+  const updateDiagramSource = useDiagramRegistry((s) => s.updateSource);
 
-  getDiagram: (id) => get().diagrams.find((d) => d.id === id),
+  const diagramsList = useMemo(
+    () => order.map((id) => diagramsMap[id]).filter((d): d is DiagramRecord => Boolean(d)),
+    [order, diagramsMap]
+  );
 
-  updateDiagramSource: (id, source) =>
-    set((state) => ({
-      diagrams: state.diagrams.map((d) => (d.id === id ? { ...d, source } : d)),
-    })),
-}));
+  const libraryState = useMemo(
+    () => ({
+      diagrams: diagramsList,
+      saveDiagram,
+      getDiagram,
+      updateDiagramSource,
+    }),
+    [diagramsList, saveDiagram, getDiagram, updateDiagramSource]
+  );
+
+  return selector(libraryState);
+}
+
+useDiagramLibraryStore.getState = (): DiagramLibraryState => {
+  const regState = useDiagramRegistry.getState();
+  const diagramsList = regState.order
+    .map((id) => regState.diagrams[id])
+    .filter((d): d is DiagramRecord => Boolean(d));
+
+  return {
+    diagrams: diagramsList,
+    saveDiagram: regState.saveDiagram,
+    getDiagram: regState.getDiagram,
+    updateDiagramSource: regState.updateSource,
+  };
+};

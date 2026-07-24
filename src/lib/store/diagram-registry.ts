@@ -16,6 +16,8 @@ interface DiagramRegistryState {
   updateSource: (id: string, source: string) => void;
   deleteDiagram: (id: string) => void;
   setActiveDiagram: (id: string) => void;
+  saveDiagram: (name: string, source: string) => string;
+  getDiagram: (id: string) => DiagramRecord | undefined;
 }
 
 function generateId(): string {
@@ -77,6 +79,19 @@ export const useDiagramRegistry = create<DiagramRegistryState>((set, get) => ({
     }),
 
   setActiveDiagram: (id) => set({ activeDiagramId: id }),
+
+  saveDiagram: (name, source) => {
+    const activeId = get().activeDiagramId;
+    if (activeId && get().diagrams[activeId]) {
+      get().renameDiagram(activeId, name);
+      get().updateSource(activeId, source);
+      return activeId;
+    } else {
+      return get().createDiagram(name, source);
+    }
+  },
+
+  getDiagram: (id) => get().diagrams[id],
 }));
 
 // Convenience selector for the currently active diagram's full record.

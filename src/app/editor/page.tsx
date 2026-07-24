@@ -6,8 +6,9 @@ import { usePipelineWorker } from "@/lib/hooks/usePipelineWorker";
 import { useDiagramStore } from "@/lib/store/diagram-store";
 import { ExportMenu } from "@/components/editor/ExportMenu";
 import { DiagramSidebar } from "@/components/editor/DiagramSidebar";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useDiagramLibraryStore } from "@/lib/store/diagram-library-store";
+import { useDiagramRegistry, useActiveDiagram } from "@/lib/store/diagram-registry";
 import {
    Dialog,
    DialogContent,
@@ -24,17 +25,33 @@ export default function EditorPage() {
 
    const status = useDiagramStore((s) => s.status);
    const errors = useDiagramStore((s) => s.errors);
-
    const source = useDiagramStore((s) => s.source);
+   const currentDiagramId = useDiagramStore((s) => s.currentDiagramId);
+   const loadDiagram = useDiagramStore((s) => s.loadDiagram);
+
+   const activeDiagram = useActiveDiagram();
+   const activeDiagramId = useDiagramRegistry((s) => s.activeDiagramId);
    const saveDiagram = useDiagramLibraryStore((s) => s.saveDiagram);
+
    const [saveOpen, setSaveOpen] = useState(false);
    const [diagramName, setDiagramName] = useState("");
+
+   // Ensure the active diagram from registry is loaded into the editor state on initial mount
+   useEffect(() => {
+      if (activeDiagram && currentDiagramId !== activeDiagram.id) {
+         loadDiagram(activeDiagram.id, activeDiagram.source);
+      }
+   }, [activeDiagram, currentDiagramId, loadDiagram]);
+
+   const handleOpenSaveDialog = () => {
+      setDiagramName(activeDiagram?.name || "");
+      setSaveOpen(true);
+   };
 
    const handleSave = () => {
       if (!diagramName.trim()) return;
       saveDiagram(diagramName.trim(), source);
       setSaveOpen(false);
-      setDiagramName("");
    };
 
    return (
@@ -42,7 +59,9 @@ export default function EditorPage() {
          <DiagramSidebar />
          <div className="flex h-screen flex-1 flex-col">
             <header className="flex h-12 shrink-0 items-center justify-between border-b px-4">
-               <span className="text-sm font-medium">Diagram editor</span>
+               <span className="text-sm font-medium truncate max-w-xs">
+                  {activeDiagram?.name || "Diagram editor"}
+               </span>
                <div className="flex items-center gap-3">
                   <span className="text-xs text-muted-foreground">
                      {status === "pending" && "Parsing…"}
@@ -62,7 +81,7 @@ export default function EditorPage() {
                   <Button
                      variant="outline"
                      size="sm"
-                     onClick={() => setSaveOpen(true)}
+                     onClick={handleOpenSaveDialog}
                   >
                      <Save className="mr-2 h-4 w-4" />
                      Save to library
