@@ -5,7 +5,7 @@ export interface LaidOutNode extends NodeDecl {
   y: number;
   width: number;
   height: number;
-  lines: string[]; // pre-wrapped label lines, computed once during layout
+  lines: string[];
 }
 
 export interface LaidOutEdge {
@@ -13,8 +13,4 @@ export interface LaidOutEdge {
   to: string;
   label?: string;
   points: { x: number; y: number }[];
-}
-
-export interface LayoutEngine {
-  layout(ast: import('../dsl/ast').DiagramAST): { nodes: LaidOutNode[]; edges: LaidOutEdge[] };
 }

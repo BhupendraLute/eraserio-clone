@@ -6,21 +6,22 @@ import type {
   WhiteboardElement,
   ResizeHandle,
   Point,
+  PortDirection,
 } from '@/lib/whiteboard/whiteboard-types';
-import { WHITEBOARD_COLORS } from '@/lib/whiteboard/whiteboard-types';
+import { WHITEBOARD_COLORS, isConnectorElement, getElementBounds, getShapePorts } from '@/lib/whiteboard/whiteboard-types';
 import {
   findNearestShapePort,
   getOptimalPortPair,
-  generateUniqueId,
   getOppositePort,
-  getElementBounds,
   ShapePortSnap,
 } from '@/lib/whiteboard/orthogonal-routing';
+import { generateId } from '@/lib/utils';
 import type { PanZoomState } from '@/lib/hooks/usePanZoom';
 import type { LaidOutNode } from '@/lib/layout/types';
 
 interface UseWhiteboardInteractionsProps {
   transform: PanZoomState;
+  setTransform: React.Dispatch<React.SetStateAction<PanZoomState>>;
   svgRef: React.RefObject<SVGSVGElement | null>;
   reset: () => void;
   fitToContent: (nodes: LaidOutNode[]) => void;
@@ -34,6 +35,7 @@ interface UseWhiteboardInteractionsProps {
 
 export function useWhiteboardInteractions({
   transform,
+  setTransform,
   svgRef,
   reset,
   fitToContent,
@@ -44,6 +46,7 @@ export function useWhiteboardInteractions({
   const activeTool = useWhiteboardStore((s) => s.activeTool);
   const activeColor = useWhiteboardStore((s) => s.activeColor);
   const activeStrokeWidth = useWhiteboardStore((s) => s.activeStrokeWidth);
+  const activeLineStyle = useWhiteboardStore((s) => s.activeLineStyle);
 
   const setActiveTool = useWhiteboardStore((s) => s.setActiveTool);
   const addElement = useWhiteboardStore((s) => s.addElement);
@@ -54,12 +57,18 @@ export function useWhiteboardInteractions({
   const resizeElement = useWhiteboardStore((s) => s.resizeElement);
   const spawnConnectedNode = useWhiteboardStore((s) => s.spawnConnectedNode);
   const reconnectArrowEndpoint = useWhiteboardStore((s) => s.reconnectArrowEndpoint);
+  const duplicateSelected = useWhiteboardStore((s) => s.duplicateSelected);
+  const copyToClipboard = useWhiteboardStore((s) => s.copyToClipboard);
+  const pasteFromClipboard = useWhiteboardStore((s) => s.pasteFromClipboard);
+  const groupSelected = useWhiteboardStore((s) => s.groupSelected);
+  const ungroupSelected = useWhiteboardStore((s) => s.ungroupSelected);
+  const undo = useWhiteboardStore((s) => s.undo);
+  const redo = useWhiteboardStore((s) => s.redo);
 
   const [isSpacePressed, setIsSpacePressed] = useState(false);
   const isPanningRef = useRef(false);
   const panStartRef = useRef<{ pointerX: number; pointerY: number; startX: number; startY: number } | null>(null);
 
-  // Interaction State
   const [drawingState, setDrawingState] = useState<{
     start: Point;
     current: Point;
@@ -69,6 +78,7 @@ export function useWhiteboardInteractions({
   const [dragState, setDragState] = useState<{
     isDragging: boolean;
     lastPos: Point;
+    startPositions?: Map<string, Point>;
   }>({ isDragging: false, lastPos: { x: 0, y: 0 } });
 
   const [resizeState, setResizeState] = useState<{
@@ -83,17 +93,15 @@ export function useWhiteboardInteractions({
     current: Point;
   } | null>(null);
 
-  // Draggable Arrow Endpoint State
   const [endpointDragState, setEndpointDragState] = useState<{
     arrowId: string;
     endpoint: 'start' | 'end';
     currentPos: Point;
   } | null>(null);
 
-  // Quick-Connect Dragging State
   const [quickConnectDragState, setQuickConnectDragState] = useState<{
     sourceId: string;
-    fromPort: 'top' | 'bottom' | 'left' | 'right';
+    fromPort: PortDirection;
     startPos: Point;
     currentPos: Point;
   } | null>(null);
@@ -107,6 +115,8 @@ export function useWhiteboardInteractions({
   const [activeFontFamily, setActiveFontFamily] = useState('Inter, sans-serif');
   const [activeFontSize, setActiveFontSize] = useState(14);
 
+  const [editingElementId, setEditingElementId] = useState<string | null>(null);
+
   // Spacebar pan mode listener
   useEffect(() => {
     const handleKeyDownWindow = (e: KeyboardEvent) => {
@@ -116,13 +126,9 @@ export function useWhiteboardInteractions({
         setIsSpacePressed(true);
       }
     };
-
     const handleKeyUpWindow = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        setIsSpacePressed(false);
-      }
+      if (e.code === 'Space') setIsSpacePressed(false);
     };
-
     window.addEventListener('keydown', handleKeyDownWindow);
     window.addEventListener('keyup', handleKeyUpWindow);
     return () => {
@@ -131,7 +137,111 @@ export function useWhiteboardInteractions({
     };
   }, [isSpacePressed]);
 
-  // Convert client cursor coords to world canvas coordinates (accounting for zoom scale and pan translation)
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const tag = target.tagName?.toLowerCase();
+      const isInputFocused = ['input', 'textarea', 'select'].includes(tag) || target.isContentEditable;
+
+      // Ctrl/Cmd + key shortcuts (work even when input is focused for clipboard)
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key.toLowerCase()) {
+          case 'c':
+            if (!isInputFocused && selectedIds.length > 0) {
+              e.preventDefault();
+              copyToClipboard();
+            }
+            return;
+          case 'v':
+            if (!isInputFocused) {
+              e.preventDefault();
+              pasteFromClipboard();
+            }
+            return;
+          case 'd':
+            e.preventDefault();
+            duplicateSelected();
+            return;
+          case 'z':
+            e.preventDefault();
+            if (e.shiftKey) redo(); else undo();
+            return;
+          case 'y':
+            e.preventDefault();
+            redo();
+            return;
+          case 'g':
+            e.preventDefault();
+            if (e.shiftKey) ungroupSelected(); else groupSelected();
+            return;
+          case 'a':
+            if (!isInputFocused) {
+              e.preventDefault();
+              setSelectedIds(elements.map((el) => el.id));
+            }
+            return;
+        }
+        return;
+      }
+
+      if (isInputFocused) return;
+
+      // Tool shortcuts
+      switch (e.key.toLowerCase()) {
+        case 'v': setActiveTool('select'); return;
+        case 'r': setActiveTool('rectangle'); return;
+        case 'o': setActiveTool('circle'); return;
+        case 'd': setActiveTool('diamond'); return;
+        case 'y': setActiveTool('cylinder'); return;
+        case 'a': setActiveTool('arrow'); return;
+        case 'l': setActiveTool('line'); return;
+        case 'p': setActiveTool('pencil'); return;
+        case 't': setActiveTool('text'); return;
+        case 'n': setActiveTool('sticky'); return;
+        case 'f': setActiveTool('frame'); return;
+        case 'c': setActiveTool('comment'); return;
+        case 'e': setActiveTool('eraser'); return;
+        case 'b': setActiveTool('badge'); return;
+        case 'delete':
+        case 'backspace':
+          if (selectedIds.length > 0) {
+            e.preventDefault();
+            deleteElements(selectedIds);
+          }
+          return;
+        case 'escape':
+          clearSelection();
+          setActiveTool('select');
+          setEditingElementId(null);
+          return;
+      }
+
+      // Tab: spawn connected node
+      if (e.key === 'Tab' && selectedIds.length === 1) {
+        const selectedEl = elements.find((el) => el.id === selectedIds[0]);
+        if (selectedEl && !isConnectorElement(selectedEl) && selectedEl.type !== 'pencil') {
+          e.preventDefault();
+          spawnConnectedNode(selectedIds[0], 'right');
+        }
+      }
+
+      // Arrow keys: nudge selected elements
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        if (selectedIds.length > 0) {
+          e.preventDefault();
+          const step = e.shiftKey ? 72 : 12;
+          const dx = e.key === 'ArrowRight' ? step : e.key === 'ArrowLeft' ? -step : 0;
+          const dy = e.key === 'ArrowDown' ? step : e.key === 'ArrowUp' ? -step : 0;
+          moveSelectedElements(dx, dy);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedIds, elements, setActiveTool, deleteElements, clearSelection, duplicateSelected, copyToClipboard, pasteFromClipboard, groupSelected, ungroupSelected, undo, redo, moveSelectedElements, spawnConnectedNode, setSelectedIds]);
+
   const getCanvasCoords = useCallback(
     (e: React.PointerEvent | React.MouseEvent): Point => {
       if (!svgRef.current) return { x: 0, y: 0 };
@@ -146,46 +256,7 @@ export function useWhiteboardInteractions({
     [svgRef, transform]
   );
 
-  // Keyboard shortcut listener for node flow spawning
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (selectedIds.length !== 1) return;
-      const target = e.target as HTMLElement;
-      if (['input', 'textarea', 'select'].includes(target.tagName.toLowerCase())) return;
-
-      const selectedId = selectedIds[0];
-      const selectedEl = elements.find((el) => el.id === selectedId);
-      if (!selectedEl || selectedEl.type === 'arrow' || selectedEl.type === 'line' || selectedEl.type === 'pencil') {
-        return;
-      }
-
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        spawnConnectedNode(selectedId, 'right');
-      } else if (e.ctrlKey && e.key === 'ArrowRight') {
-        e.preventDefault();
-        spawnConnectedNode(selectedId, 'right');
-      } else if (e.ctrlKey && e.key === 'ArrowDown') {
-        e.preventDefault();
-        spawnConnectedNode(selectedId, 'bottom');
-      } else if (e.ctrlKey && e.key === 'ArrowLeft') {
-        e.preventDefault();
-        spawnConnectedNode(selectedId, 'left');
-      } else if (e.ctrlKey && e.key === 'ArrowUp') {
-        e.preventDefault();
-        spawnConnectedNode(selectedId, 'top');
-      }
-    },
-    [selectedIds, elements, spawnConnectedNode]
-  );
-
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
-
   const handlePointerDown = (e: React.PointerEvent) => {
-    // Pan Mode via Spacebar or Middle Mouse Button
     if (e.button === 1 || isSpacePressed) {
       e.preventDefault();
       isPanningRef.current = true;
@@ -200,63 +271,43 @@ export function useWhiteboardInteractions({
     }
 
     const targetTag = (e.target as HTMLElement).tagName?.toLowerCase();
-    if (
-      e.target !== svgRef.current &&
-      targetTag !== 'svg' &&
-      targetTag !== 'rect'
-    ) {
-      return;
-    }
+    if (e.target !== svgRef.current && targetTag !== 'svg' && targetTag !== 'rect') return;
 
     const coords = getCanvasCoords(e);
 
     if (activeTool === 'select') {
       setSelectionBox({ start: coords, current: coords });
       clearSelection();
+      setEditingElementId(null);
       return;
     }
 
-    if (
-      [
-        'rectangle',
-        'circle',
-        'diamond',
-        'cylinder',
-        'arrow',
-        'line',
-        'sticky',
-        'pencil',
-        'text',
-        'frame',
-        'cloud',
-      ].includes(activeTool)
-    ) {
-      setDrawingState({
-        start: coords,
-        current: coords,
-        points: [coords],
-      });
+    if (['rectangle', 'circle', 'diamond', 'cylinder', 'arrow', 'line', 'sticky', 'pencil', 'text', 'frame', 'cloud', 'comment'].includes(activeTool)) {
+      setDrawingState({ start: coords, current: coords, points: [coords] });
     }
   };
 
   const selectedElements = elements.filter((el) => selectedIds.includes(el.id));
   const hasSelection = selectedElements.length > 0;
   const singleSelectedShape =
-    selectedElements.length === 1 &&
-    !['arrow', 'line', 'pencil'].includes(selectedElements[0].type)
+    selectedElements.length === 1 && !isConnectorElement(selectedElements[0]) && selectedElements[0].type !== 'pencil'
       ? selectedElements[0]
       : null;
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    // Handle Canvas Panning
     if (isPanningRef.current && panStartRef.current) {
-      panZoomHandlers.onPointerMove(e as any);
+      const dx = e.clientX - panStartRef.current.pointerX;
+      const dy = e.clientY - panStartRef.current.pointerY;
+      setTransform((prev) => ({
+        ...prev,
+        x: panStartRef.current!.startX + dx,
+        y: panStartRef.current!.startY + dy,
+      }));
       return;
     }
 
     const coords = getCanvasCoords(e);
 
-    // Endpoint dragging candidate snap
     if (endpointDragState) {
       const snap = findNearestShapePort(coords, elements);
       setActiveSnap(snap);
@@ -264,7 +315,6 @@ export function useWhiteboardInteractions({
       return;
     }
 
-    // Quick Connect handle drag candidate snap
     if (quickConnectDragState) {
       const snap = findNearestShapePort(coords, elements, quickConnectDragState.sourceId);
       setActiveSnap(snap);
@@ -274,19 +324,16 @@ export function useWhiteboardInteractions({
 
     if (selectionBox) {
       setSelectionBox((prev) => (prev ? { ...prev, current: coords } : null));
-
       const minX = Math.min(selectionBox.start.x, coords.x);
       const maxX = Math.max(selectionBox.start.x, coords.x);
       const minY = Math.min(selectionBox.start.y, coords.y);
       const maxY = Math.max(selectionBox.start.y, coords.y);
-
       const enclosedIds = elements
         .filter((el) => {
           const bounds = getElementBounds(el);
           return bounds.x >= minX && bounds.x + bounds.width <= maxX && bounds.y >= minY && bounds.y + bounds.height <= maxY;
         })
         .map((el) => el.id);
-
       setSelectedIds(enclosedIds);
       return;
     }
@@ -315,23 +362,15 @@ export function useWhiteboardInteractions({
         setActiveSnap(snap);
       }
       setDrawingState((prev) =>
-        prev
-          ? {
-              ...prev,
-              current: coords,
-              points: [...prev.points, coords],
-            }
-          : null
+        prev ? { ...prev, current: coords, points: [...prev.points, coords] } : null
       );
       return;
     }
 
-    // Clear stale snap ring when not performing an arrow creation/drag operation
     if (!endpointDragState && !quickConnectDragState) {
       if (activeSnap) setActiveSnap(null);
     }
 
-    // Dynamic port hover detection for selected shape
     if (singleSelectedShape) {
       const el = singleSelectedShape;
       const ports = [
@@ -340,24 +379,13 @@ export function useWhiteboardInteractions({
         { dir: 'bottom' as const, x: el.x + el.width / 2, y: el.y + el.height },
         { dir: 'left' as const, x: el.x, y: el.y + el.height / 2 },
       ];
-
       let closestDir: 'top' | 'right' | 'bottom' | 'left' = 'right';
       let minD = Infinity;
-
       ports.forEach((p) => {
         const d = Math.hypot(coords.x - p.x, coords.y - p.y);
-        if (d < minD) {
-          minD = d;
-          closestDir = p.dir;
-        }
+        if (d < minD) { minD = d; closestDir = p.dir; }
       });
-
-      const isNearShape =
-        coords.x >= el.x - 40 &&
-        coords.x <= el.x + el.width + 40 &&
-        coords.y >= el.y - 40 &&
-        coords.y <= el.y + el.height + 40;
-
+      const isNearShape = coords.x >= el.x - 40 && coords.x <= el.x + el.width + 40 && coords.y >= el.y - 40 && coords.y <= el.y + el.height + 40;
       if (isNearShape || minD < 60) {
         setHoveredPort({ elementId: el.id, dir: closestDir });
       } else {
@@ -372,123 +400,70 @@ export function useWhiteboardInteractions({
     if (isPanningRef.current) {
       isPanningRef.current = false;
       panStartRef.current = null;
-      try {
-        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-      } catch {
-        // ignore capture release errors
-      }
+      try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { }
       return;
     }
 
     const coords = getCanvasCoords(e);
 
-    // Finish Endpoint Dragging
     if (endpointDragState) {
       const snap = findNearestShapePort(coords, elements);
       const targetPos = snap ? { x: snap.x, y: snap.y } : coords;
-      reconnectArrowEndpoint(
-        endpointDragState.arrowId,
-        endpointDragState.endpoint,
-        targetPos,
-        snap?.elementId,
-        snap?.port
-      );
+      reconnectArrowEndpoint(endpointDragState.arrowId, endpointDragState.endpoint, targetPos, snap?.elementId, snap?.port);
       setEndpointDragState(null);
       setActiveSnap(null);
       return;
     }
 
-    // Finish Quick Connect Dragging
     if (quickConnectDragState) {
       const snap = findNearestShapePort(coords, elements, quickConnectDragState.sourceId);
       const sourceEl = elements.find((el) => el.id === quickConnectDragState.sourceId);
-
       if (snap && sourceEl) {
-        // Connect source element to target element
-        const arrowId = generateUniqueId();
+        const arrowId = generateId();
         addElement({
-          id: arrowId,
-          type: 'arrow',
-          x: Math.min(quickConnectDragState.startPos.x, snap.x),
-          y: Math.min(quickConnectDragState.startPos.y, snap.y),
-          width: Math.abs(snap.x - quickConnectDragState.startPos.x) || 10,
-          height: Math.abs(snap.y - quickConnectDragState.startPos.y) || 10,
-          startX: quickConnectDragState.startPos.x,
-          startY: quickConnectDragState.startPos.y,
-          endX: snap.x,
-          endY: snap.y,
-          routingStyle: 'orthogonal',
-          fromElementId: quickConnectDragState.sourceId,
-          fromPort: quickConnectDragState.fromPort,
-          toElementId: snap.elementId,
-          toPort: snap.port,
-          strokeColor: sourceEl.strokeColor || '#3b82f6',
-          strokeWidth: sourceEl.strokeWidth || 2,
+          id: arrowId, type: 'arrow',
+          x: Math.min(quickConnectDragState.startPos.x, snap.x), y: Math.min(quickConnectDragState.startPos.y, snap.y),
+          width: Math.abs(snap.x - quickConnectDragState.startPos.x) || 10, height: Math.abs(snap.y - quickConnectDragState.startPos.y) || 10,
+          startX: quickConnectDragState.startPos.x, startY: quickConnectDragState.startPos.y,
+          endX: snap.x, endY: snap.y,
+          routingStyle: 'orthogonal', lineStyle: activeLineStyle,
+          fromElementId: quickConnectDragState.sourceId, fromPort: quickConnectDragState.fromPort,
+          toElementId: snap.elementId, toPort: snap.port,
+          strokeColor: sourceEl.strokeColor || '#3b82f6', strokeWidth: sourceEl.strokeWidth || 2,
         });
       } else if (sourceEl) {
-        // Spawn a new shape at drop position & connect arrow
-        const newShapeId = generateUniqueId();
-        const arrowId = generateUniqueId();
-
-        const newShape: WhiteboardElement = {
-          ...sourceEl,
-          id: newShapeId,
-          x: coords.x - sourceEl.width / 2,
-          y: coords.y - sourceEl.height / 2,
-        };
-
+        const newShapeId = generateId();
+        const arrowId = generateId();
+        const newShape: WhiteboardElement = { ...sourceEl, id: newShapeId, x: coords.x - sourceEl.width / 2, y: coords.y - sourceEl.height / 2 };
         const targetPort = getOppositePort(quickConnectDragState.fromPort);
         let targetPortPos = { x: newShape.x, y: newShape.y + newShape.height / 2 };
-        if (targetPort === 'top') {
-          targetPortPos = { x: newShape.x + newShape.width / 2, y: newShape.y };
-        } else if (targetPort === 'bottom') {
-          targetPortPos = { x: newShape.x + newShape.width / 2, y: newShape.y + newShape.height };
-        } else if (targetPort === 'right') {
-          targetPortPos = { x: newShape.x + newShape.width, y: newShape.y + newShape.height / 2 };
-        }
+        if (targetPort === 'top') targetPortPos = { x: newShape.x + newShape.width / 2, y: newShape.y };
+        else if (targetPort === 'bottom') targetPortPos = { x: newShape.x + newShape.width / 2, y: newShape.y + newShape.height };
+        else if (targetPort === 'right') targetPortPos = { x: newShape.x + newShape.width, y: newShape.y + newShape.height / 2 };
 
         const newArrow: WhiteboardElement = {
-          id: arrowId,
-          type: 'arrow',
-          x: Math.min(quickConnectDragState.startPos.x, targetPortPos.x),
-          y: Math.min(quickConnectDragState.startPos.y, targetPortPos.y),
-          width: Math.abs(targetPortPos.x - quickConnectDragState.startPos.x) || 10,
-          height: Math.abs(targetPortPos.y - quickConnectDragState.startPos.y) || 10,
-          startX: quickConnectDragState.startPos.x,
-          startY: quickConnectDragState.startPos.y,
-          endX: targetPortPos.x,
-          endY: targetPortPos.y,
-          routingStyle: 'orthogonal',
-          fromElementId: quickConnectDragState.sourceId,
-          fromPort: quickConnectDragState.fromPort,
-          toElementId: newShapeId,
-          toPort: targetPort,
-          strokeColor: sourceEl.strokeColor || '#3b82f6',
-          strokeWidth: sourceEl.strokeWidth || 2,
+          id: arrowId, type: 'arrow',
+          x: Math.min(quickConnectDragState.startPos.x, targetPortPos.x), y: Math.min(quickConnectDragState.startPos.y, targetPortPos.y),
+          width: Math.abs(targetPortPos.x - quickConnectDragState.startPos.x) || 10, height: Math.abs(targetPortPos.y - quickConnectDragState.startPos.y) || 10,
+          startX: quickConnectDragState.startPos.x, startY: quickConnectDragState.startPos.y,
+          endX: targetPortPos.x, endY: targetPortPos.y,
+          routingStyle: 'orthogonal', lineStyle: activeLineStyle,
+          fromElementId: quickConnectDragState.sourceId, fromPort: quickConnectDragState.fromPort,
+          toElementId: newShapeId, toPort: targetPort,
+          strokeColor: sourceEl.strokeColor || '#3b82f6', strokeWidth: sourceEl.strokeWidth || 2,
         };
-
         addElement(newShape);
         addElement(newArrow);
         setSelectedIds([newShapeId]);
       }
-
       setQuickConnectDragState(null);
       setActiveSnap(null);
       return;
     }
 
-    if (selectionBox) {
-      setSelectionBox(null);
-    }
-
-    if (resizeState) {
-      setResizeState(null);
-    }
-
-    if (dragState.isDragging) {
-      setDragState({ isDragging: false, lastPos: { x: 0, y: 0 } });
-    }
-
+    if (selectionBox) setSelectionBox(null);
+    if (resizeState) setResizeState(null);
+    if (dragState.isDragging) setDragState({ isDragging: false, lastPos: { x: 0, y: 0 } });
     if (!drawingState) return;
 
     const { start, current, points } = drawingState;
@@ -498,139 +473,65 @@ export function useWhiteboardInteractions({
     const height = Math.max(30, Math.abs(current.y - start.y));
 
     const colorStyle = WHITEBOARD_COLORS[activeColor];
-    const id = generateUniqueId();
+    const id = generateId();
 
     if (activeTool === 'rectangle') {
-      addElement({
-        id,
-        type: 'rectangle',
-        x: minX,
-        y: minY,
-        width,
-        height,
-        strokeColor: colorStyle.border,
-        fillColor: colorStyle.bg,
-        strokeWidth: activeStrokeWidth,
-      });
+      addElement({ id, type: 'rectangle', x: minX, y: minY, width, height, strokeColor: colorStyle.border, fillColor: colorStyle.bg, strokeWidth: activeStrokeWidth });
     } else if (activeTool === 'circle') {
-      addElement({
-        id,
-        type: 'circle',
-        x: minX,
-        y: minY,
-        width,
-        height,
-        strokeColor: colorStyle.border,
-        fillColor: colorStyle.bg,
-        strokeWidth: activeStrokeWidth,
-      });
+      addElement({ id, type: 'circle', x: minX, y: minY, width, height, strokeColor: colorStyle.border, fillColor: colorStyle.bg, strokeWidth: activeStrokeWidth });
     } else if (activeTool === 'diamond') {
-      addElement({
-        id,
-        type: 'diamond',
-        x: minX,
-        y: minY,
-        width,
-        height,
-        strokeColor: colorStyle.border,
-        fillColor: colorStyle.bg,
-        strokeWidth: activeStrokeWidth,
-      });
+      addElement({ id, type: 'diamond', x: minX, y: minY, width, height, strokeColor: colorStyle.border, fillColor: colorStyle.bg, strokeWidth: activeStrokeWidth });
     } else if (activeTool === 'cylinder') {
-      addElement({
-        id,
-        type: 'cylinder',
-        x: minX,
-        y: minY,
-        width,
-        height,
-        strokeColor: colorStyle.border,
-        fillColor: colorStyle.bg,
-        strokeWidth: activeStrokeWidth,
-      });
+      addElement({ id, type: 'cylinder', x: minX, y: minY, width, height, strokeColor: colorStyle.border, fillColor: colorStyle.bg, strokeWidth: activeStrokeWidth });
     } else if (activeTool === 'arrow' || activeTool === 'line') {
       const fromPortSnap = findNearestShapePort(start, elements);
       const toPortSnap = findNearestShapePort(current, elements);
-
       let startX = fromPortSnap ? fromPortSnap.x : start.x;
       let startY = fromPortSnap ? fromPortSnap.y : start.y;
       let endX = toPortSnap ? toPortSnap.x : current.x;
       let endY = toPortSnap ? toPortSnap.y : current.y;
-
       let fromPort: 'top' | 'bottom' | 'left' | 'right' = fromPortSnap?.port || 'bottom';
       let toPort: 'top' | 'bottom' | 'left' | 'right' = toPortSnap?.port || 'top';
-
       if (fromPortSnap && toPortSnap) {
         const fromEl = elements.find((el) => el.id === fromPortSnap.elementId);
         const toEl = elements.find((el) => el.id === toPortSnap.elementId);
         if (fromEl && toEl) {
           const optimal = getOptimalPortPair(fromEl, toEl);
-          startX = optimal.fromPos.x;
-          startY = optimal.fromPos.y;
-          endX = optimal.toPos.x;
-          endY = optimal.toPos.y;
-          fromPort = optimal.fromPort;
-          toPort = optimal.toPort;
+          startX = optimal.fromPos.x; startY = optimal.fromPos.y;
+          endX = optimal.toPos.x; endY = optimal.toPos.y;
+          fromPort = optimal.fromPort; toPort = optimal.toPort;
         }
       }
-
       addElement({
-        id,
-        type: activeTool,
-        x: Math.min(startX, endX),
-        y: Math.min(startY, endY),
-        width: Math.abs(endX - startX) || 10,
-        height: Math.abs(endY - startY) || 10,
-        startX,
-        startY,
-        endX,
-        endY,
-        routingStyle: 'orthogonal',
-        fromElementId: fromPortSnap?.elementId,
-        fromPort,
-        toElementId: toPortSnap?.elementId,
-        toPort,
-        strokeColor: colorStyle.border,
-        strokeWidth: activeStrokeWidth,
+        id, type: activeTool, x: Math.min(startX, endX), y: Math.min(startY, endY),
+        width: Math.abs(endX - startX) || 10, height: Math.abs(endY - startY) || 10,
+        startX, startY, endX, endY, routingStyle: 'orthogonal', lineStyle: activeLineStyle,
+        fromElementId: fromPortSnap?.elementId, fromPort,
+        toElementId: toPortSnap?.elementId, toPort,
+        strokeColor: colorStyle.border, strokeWidth: activeStrokeWidth,
       });
     } else if (activeTool === 'sticky') {
       addElement({
-        id,
-        type: 'sticky',
-        x: start.x,
-        y: start.y,
-        width: 180,
-        height: 180,
-        text: 'New Sticky Note',
-        color: activeColor,
-        strokeColor: colorStyle.border,
-        fillColor: colorStyle.bg,
-        strokeWidth: 1,
+        id, type: 'sticky', x: start.x, y: start.y, width: 180, height: 180,
+        text: 'New Sticky Note', color: activeColor,
+        strokeColor: colorStyle.border, fillColor: colorStyle.bg, strokeWidth: 1,
       });
     } else if (activeTool === 'pencil') {
       addElement({
-        id,
-        type: 'pencil',
-        x: minX,
-        y: minY,
-        width,
-        height,
-        points,
-        strokeColor: colorStyle.border,
-        strokeWidth: activeStrokeWidth,
+        id, type: 'pencil', x: minX, y: minY, width, height, points,
+        strokeColor: colorStyle.border, strokeWidth: activeStrokeWidth,
       });
     } else if (activeTool === 'text') {
       addElement({
-        id,
-        type: 'text',
-        x: start.x,
-        y: start.y,
-        width: 160,
-        height: 40,
-        text: 'Click to edit text',
-        fontSize: 16,
-        strokeColor: colorStyle.border,
-        strokeWidth: 1,
+        id, type: 'text', x: start.x, y: start.y, width: 160, height: 40,
+        text: 'Click to edit text', fontSize: 16,
+        strokeColor: colorStyle.border, strokeWidth: 1,
+      });
+    } else if (activeTool === 'comment') {
+      addElement({
+        id, type: 'comment', x: start.x - 16, y: start.y - 16, width: 200, height: 80,
+        text: 'Add a comment...', author: 'You', resolved: false,
+        color: activeColor, strokeColor: colorStyle.border, fillColor: colorStyle.bg, strokeWidth: 1,
       });
     }
 
@@ -658,6 +559,16 @@ export function useWhiteboardInteractions({
     }
   };
 
+  const handleElementDoubleClick = (e: React.MouseEvent, el: WhiteboardElement) => {
+    e.stopPropagation();
+    if (['text', 'sticky', 'frame', 'comment'].includes(el.type)) {
+      setEditingElementId(el.id);
+    } else if (['rectangle', 'circle', 'diamond', 'cylinder'].includes(el.type)) {
+      // Add/edit label on shape — create a child text element or enter edit mode
+      setEditingElementId(el.id);
+    }
+  };
+
   const handleElementPointerDown = (e: React.PointerEvent, el: WhiteboardElement) => {
     if (activeTool !== 'select') return;
     e.stopPropagation();
@@ -671,37 +582,31 @@ export function useWhiteboardInteractions({
     }
 
     const coords = getCanvasCoords(e);
-    setDragState({
-      isDragging: true,
-      lastPos: coords,
-    });
+    setDragState({ isDragging: true, lastPos: coords });
   };
 
   const handleResizeHandlePointerDown = (e: React.PointerEvent, handle: ResizeHandle, targetId: string) => {
     e.stopPropagation();
     const coords = getCanvasCoords(e);
-    setResizeState({
-      isResizing: true,
-      handle,
-      targetId,
-      lastPos: coords,
-    });
+    setResizeState({ isResizing: true, handle, targetId, lastPos: coords });
   };
 
   const handleFitContent = () => {
-    if (elements.length === 0) {
-      reset();
-      return;
-    }
+    if (elements.length === 0) { reset(); return; }
     const nodes = elements.map((el) => ({
-      id: el.id,
-      label: el.id,
-      x: el.x,
-      y: el.y,
-      width: el.width || 100,
-      height: el.height || 100,
-      lines: [],
-      attrs: {},
+      id: el.id, label: el.id, x: el.x, y: el.y,
+      width: el.width || 100, height: el.height || 100,
+      lines: [], attrs: {},
+    }));
+    fitToContent(nodes);
+  };
+
+  const handleFitSelection = () => {
+    if (selectedElements.length === 0) { handleFitContent(); return; }
+    const nodes = selectedElements.map((el) => ({
+      id: el.id, label: el.id, x: el.x, y: el.y,
+      width: el.width || 100, height: el.height || 100,
+      lines: [], attrs: {},
     }));
     fitToContent(nodes);
   };
@@ -731,13 +636,17 @@ export function useWhiteboardInteractions({
     hasSelection,
     singleSelectedShape,
     getCanvasCoords,
+    editingElementId,
+    setEditingElementId,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
     handleElementClick,
+    handleElementDoubleClick,
     handleElementPointerDown,
     handleResizeHandlePointerDown,
     handleFitContent,
+    handleFitSelection,
     spawnConnectedNode,
     deleteElements,
   };

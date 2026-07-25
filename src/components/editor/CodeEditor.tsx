@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { useDiagramStore } from '@/lib/store/diagram-store';
 import { useDiagramRegistry } from '@/lib/store/diagram-registry';
@@ -11,8 +12,14 @@ export function CodeEditor() {
   const setSource = useDiagramStore((s) => s.setSource);
   const setEditorView = useDiagramStore((s) => s.setEditorView);
 
+  const initialize = useDiagramRegistry((s) => s.initialize);
   const activeDiagramId = useDiagramRegistry((s) => s.activeDiagramId);
   const updateRegistrySource = useDiagramRegistry((s) => s.updateSource);
+
+  // Deferred initialization to avoid hydration mismatch with Date.now()/Math.random()
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
 
   const handleChange = (value: string) => {
     setSource(value);

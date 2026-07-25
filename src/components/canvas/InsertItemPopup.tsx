@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useWorkspaceStore } from '@/lib/store/workspace-store';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
+import { useClickOutside } from '@/lib/hooks/useClickOutside';
+import { generateId } from '@/lib/utils';
 import {
   Sparkles,
   GitBranch,
@@ -33,7 +35,7 @@ export function InsertItemPopup({
   const [search, setSearch] = useState('');
   const [iconSearch, setIconSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<'main' | 'shapes' | 'icons' | 'frames'>('main');
-  const popupRef = useRef<HTMLDivElement>(null);
+  const popupRef = useClickOutside<HTMLDivElement>(() => onOpenChange(false), open);
 
   const { data: filteredIcons = [], isLoading } = useIconSearch(iconSearch, 100);
 
@@ -43,21 +45,6 @@ export function InsertItemPopup({
   const addElement = useWhiteboardStore((s) => s.addElement);
   const setSelectedIds = useWhiteboardStore((s) => s.setSelectedIds);
   const activeColor = useWhiteboardStore((s) => s.activeColor);
-
-  // Auto-close when clicking outside container
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
-        onOpenChange(false);
-      }
-    };
-    if (open) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [open, onOpenChange]);
 
   if (!open) return null;
 
@@ -69,7 +56,7 @@ export function InsertItemPopup({
   const handleSelectIconDirect = (kind: string) => {
     // DIRECT CANVAS INSERTION
     const colorStyle = WHITEBOARD_COLORS[activeColor];
-    const id = `el-icon-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const id = generateId();
     
     const posX = 300 + (Math.random() * 40 - 20);
     const posY = 200 + (Math.random() * 40 - 20);

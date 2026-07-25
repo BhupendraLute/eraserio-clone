@@ -1,31 +1,29 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useWorkspaceStore, type WorkspaceTab } from '@/lib/store/workspace-store';
 import {
   PanelLeftClose,
   PanelLeftOpen,
-  GitBranch,
-  FileText,
   LayoutGrid,
-  Home,
+  Code2,
+  FileText,
   Plus,
   Folder,
   Settings,
-  Sparkles,
 } from 'lucide-react';
 
-const NAV_ITEMS = [
-  { href: '/editor', label: 'Diagram Editor', icon: GitBranch },
-  { href: '/docs', label: 'Markdown Docs', icon: FileText },
-  { href: '/whiteboard', label: 'Whiteboard', icon: LayoutGrid },
+const NAV_ITEMS: { tab: WorkspaceTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { tab: 'whiteboard', label: 'Whiteboard', icon: LayoutGrid },
+  { tab: 'code', label: 'Diagram-as-Code', icon: Code2 },
+  { tab: 'docs', label: 'Markdown Docs', icon: FileText },
 ];
 
 export function AppNav() {
-  const pathname = usePathname();
+  const activeTab = useWorkspaceStore((s) => s.activeTab);
+  const setActiveTab = useWorkspaceStore((s) => s.setActiveTab);
   const [collapsed, setCollapsed] = useState(true);
 
   return (
@@ -37,7 +35,7 @@ export function AppNav() {
     >
       {/* Top Header: Brand & Collapse Toggle */}
       <div className="flex h-11 shrink-0 items-center justify-between border-b px-2.5">
-        <Link href="/" className="flex items-center gap-2 overflow-hidden">
+        <div className="flex items-center gap-2 overflow-hidden">
           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 text-xs font-bold text-white shadow-sm">
             E
           </div>
@@ -46,7 +44,7 @@ export function AppNav() {
               Eraser Clone
             </span>
           )}
-        </Link>
+        </div>
 
         <Button
           variant="ghost"
@@ -73,13 +71,13 @@ export function AppNav() {
 
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          const isActive = activeTab === item.tab;
           return (
-            <Link
-              key={item.href}
-              href={item.href}
+            <button
+              key={item.tab}
+              onClick={() => setActiveTab(item.tab)}
               className={cn(
-                'flex h-8 items-center gap-2.5 rounded-lg px-2 text-xs font-medium transition-colors',
+                'flex h-8 w-full items-center gap-2.5 rounded-lg px-2 text-xs font-medium transition-colors',
                 isActive
                   ? 'bg-secondary text-foreground font-semibold'
                   : 'text-muted-foreground hover:bg-accent hover:text-foreground'
@@ -88,7 +86,7 @@ export function AppNav() {
             >
               <Icon className={cn('h-4 w-4 shrink-0', isActive ? 'text-primary' : 'text-muted-foreground')} />
               {!collapsed && <span className="truncate">{item.label}</span>}
-            </Link>
+            </button>
           );
         })}
 

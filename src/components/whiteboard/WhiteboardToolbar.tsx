@@ -4,17 +4,6 @@ import React, { useState } from 'react';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { Button } from '@/components/ui/button';
 import {
-  MousePointer,
-  Square,
-  Circle,
-  Diamond,
-  Database,
-  MoveRight,
-  Minus,
-  StickyNote,
-  Pencil,
-  Type,
-  Frame,
   Hash,
   Cloud,
   Eraser,
@@ -31,6 +20,7 @@ import {
 import { cn } from '@/lib/utils';
 import type { WhiteboardTool, WhiteboardColor } from '@/lib/whiteboard/whiteboard-types';
 import { WHITEBOARD_COLORS } from '@/lib/whiteboard/whiteboard-types';
+import { SHARED_TOOLS } from '@/lib/whiteboard/tool-definitions';
 import { CloudIconPicker } from './CloudIconPicker';
 
 export function WhiteboardToolbar() {
@@ -58,18 +48,7 @@ export function WhiteboardToolbar() {
 
   const [cloudPickerOpen, setCloudPickerOpen] = useState(false);
 
-  const mainTools: { tool: WhiteboardTool; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { tool: 'select', label: 'Select (Box Drag)', icon: MousePointer },
-    { tool: 'frame', label: 'Frame Container', icon: Frame },
-    { tool: 'rectangle', label: 'Rectangle', icon: Square },
-    { tool: 'circle', label: 'Circle', icon: Circle },
-    { tool: 'diamond', label: 'Decision Diamond', icon: Diamond },
-    { tool: 'cylinder', label: 'Database Cylinder', icon: Database },
-    { tool: 'arrow', label: 'Arrow Connector', icon: MoveRight },
-    { tool: 'line', label: 'Straight Line', icon: Minus },
-    { tool: 'sticky', label: 'Sticky Note', icon: StickyNote },
-    { tool: 'pencil', label: 'Freehand Pencil', icon: Pencil },
-    { tool: 'text', label: 'Text Notation', icon: Type },
+  const uniqueTools: { tool: WhiteboardTool; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { tool: 'badge', label: 'Step Badge (1,2,3)', icon: Hash },
     { tool: 'eraser', label: 'Eraser Tool', icon: Eraser },
     { tool: 'diagram', label: 'Diagram Embed', icon: GitBranch },
@@ -108,7 +87,24 @@ export function WhiteboardToolbar() {
 
         {/* Tools Palette */}
         <div className="flex items-center gap-0.5">
-          {mainTools.map((t) => {
+          {SHARED_TOOLS.map((t) => {
+            const Icon = t.icon;
+            const tooltip = t.shortcut ? `${t.label} (${t.shortcut})` : t.label;
+            return (
+              <Button
+                key={t.tool}
+                variant={activeTool === t.tool ? 'secondary' : 'ghost'}
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setActiveTool(t.tool)}
+                title={tooltip}
+              >
+                <Icon className="h-4 w-4" />
+              </Button>
+            );
+          })}
+
+          {uniqueTools.map((t) => {
             const Icon = t.icon;
             return (
               <Button

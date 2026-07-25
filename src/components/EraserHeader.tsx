@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWorkspaceStore } from '@/lib/store/workspace-store';
 import { Button } from '@/components/ui/button';
 import {
@@ -8,12 +8,15 @@ import {
   Share2,
   Search,
   MessageSquare,
-  HelpCircle,
   MoreHorizontal,
   ChevronDown,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 import type { WorkspaceViewMode } from '@/lib/store/workspace-store';
+import { ThemeToggle } from '@/components/whiteboard/ThemeToggle';
+import { CommandPalette } from '@/components/whiteboard/CommandPalette';
 
 export function EraserHeader() {
   const viewMode = useWorkspaceStore((s) => s.viewMode);
@@ -22,6 +25,20 @@ export function EraserHeader() {
   const setFileName = useWorkspaceStore((s) => s.setFileName);
   const aiChatOpen = useWorkspaceStore((s) => s.aiChatOpen);
   const toggleAiChat = useWorkspaceStore((s) => s.toggleAiChat);
+
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+
+  // Global Ctrl+K / Cmd+K handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const viewOptions: { mode: WorkspaceViewMode; label: string }[] = [
     { mode: 'document', label: 'Document' },
@@ -65,16 +82,18 @@ export function EraserHeader() {
         ))}
       </div>
 
-      {/* Right: Actions (Search, Share, AI Chat, Help) */}
+      {/* Right: Actions */}
       <div className="flex items-center gap-2">
-        {/* Ctrl+K Search */}
+        {/* Command Palette (Ctrl+K) */}
         <Button
           variant="outline"
           size="sm"
           className="h-7 text-xs text-muted-foreground gap-1.5 px-2"
+          onClick={() => setCommandPaletteOpen(true)}
         >
           <Search className="h-3 w-3" />
-          <span>Ctrl K</span>
+          <span className="hidden sm:inline">Commands</span>
+          <kbd className="rounded bg-muted px-1 py-0.5 text-[9px] font-medium">Ctrl+K</kbd>
         </Button>
 
         {/* Share Button */}
@@ -94,22 +113,25 @@ export function EraserHeader() {
           <span>AI Chat</span>
         </Button>
 
-        {/* Comments Button */}
-        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
-          <MessageSquare className="h-3.5 w-3.5" />
-        </Button>
+        {/* Theme Toggle */}
+        <ThemeToggle />
+
+        {/* Settings Link */}
+        <Link href="/settings">
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
+            <Settings className="h-3.5 w-3.5" />
+          </Button>
+        </Link>
 
         {/* Zoom Indicator */}
         <div className="flex items-center gap-0.5 text-xs text-muted-foreground font-medium px-1">
           <span>100%</span>
           <ChevronDown className="h-3 w-3" />
         </div>
-
-        {/* Help Button */}
-        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
-          <HelpCircle className="h-3.5 w-3.5" />
-        </Button>
       </div>
+
+      {/* Command Palette Modal */}
+      <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
     </header>
   );
 }

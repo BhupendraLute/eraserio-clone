@@ -1,13 +1,5 @@
-'use client';
-
-import { EraserHeader } from '@/components/EraserHeader';
-import { EraserWorkspace } from '@/components/workspace/EraserWorkspace';
+import { redirect } from 'next/navigation';
 
 export default function Home() {
-  return (
-    <div className="flex h-screen w-full flex-col overflow-hidden bg-background">
-      <EraserHeader />
-      <EraserWorkspace />
-    </div>
-  );
+  redirect('/whiteboard');
 }

@@ -1,21 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Public_Sans } from "next/font/google";
+import { Public_Sans } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { AppNav } from "@/components/AppNav";
 import { QueryProvider } from "@/components/providers/QueryProvider";
+import { ThemeProvider } from "next-themes";
 
 const publicSans = Public_Sans({ subsets: ["latin"], variable: "--font-sans" });
-
-const geistSans = Geist({
-   variable: "--font-geist-sans",
-   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-   variable: "--font-geist-mono",
-   subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
    title: "Eraser.io Clone",
@@ -30,22 +21,23 @@ export default function RootLayout({
    return (
       <html
          lang="en"
+         suppressHydrationWarning
          className={cn(
             "h-full",
             "antialiased",
-            geistSans.variable,
-            geistMono.variable,
             "font-sans",
             publicSans.variable,
          )}
       >
-         <body suppressHydrationWarning className="h-screen w-screen overflow-hidden flex flex-row bg-background">
-            <QueryProvider>
-               <AppNav />
-               <main className="flex flex-1 flex-col h-full w-full overflow-hidden">
-                  {children}
-               </main>
-            </QueryProvider>
+         <body className="h-screen w-screen overflow-hidden flex flex-row bg-background text-foreground">
+            <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+               <QueryProvider>
+                  <AppNav />
+                  <main className="flex flex-1 flex-col h-full w-full overflow-hidden">
+                     {children}
+                  </main>
+               </QueryProvider>
+            </ThemeProvider>
          </body>
       </html>
    );

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { generateId } from '@/lib/utils';
 
 export interface DiagramRecord {
   id: string;
@@ -11,6 +12,7 @@ interface DiagramRegistryState {
   order: string[]; // insertion order, for stable list display
   activeDiagramId: string | null;
 
+  initialize: () => void;
   createDiagram: (name: string, source: string) => string; // returns new id
   renameDiagram: (id: string, name: string) => void;
   updateSource: (id: string, source: string) => void;
@@ -18,10 +20,6 @@ interface DiagramRegistryState {
   setActiveDiagram: (id: string) => void;
   saveDiagram: (name: string, source: string) => string;
   getDiagram: (id: string) => DiagramRecord | undefined;
-}
-
-function generateId(): string {
-  return `diagram-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 const DEFAULT_SOURCE = `flowchart
@@ -36,17 +34,26 @@ API Gateway > Auth Service: validate token
 Auth Service > Database: check session
 `;
 
-const initialId = generateId();
-
 export const useDiagramRegistry = create<DiagramRegistryState>((set, get) => ({
-  diagrams: {
-    [initialId]: { id: initialId, name: 'Untitled diagram', source: DEFAULT_SOURCE },
+  diagrams: {},
+  order: [],
+  activeDiagramId: null,
+
+  initialize: () => {
+    const state = get();
+    if (Object.keys(state.diagrams).length > 0) return; // already initialized
+    const initialId = generateId('diagram');
+    set({
+      diagrams: {
+        [initialId]: { id: initialId, name: 'Untitled diagram', source: DEFAULT_SOURCE },
+      },
+      order: [initialId],
+      activeDiagramId: initialId,
+    });
   },
-  order: [initialId],
-  activeDiagramId: initialId,
 
   createDiagram: (name, source) => {
-    const id = generateId();
+    const id = generateId('diagram');
     set((state) => ({
       diagrams: { ...state.diagrams, [id]: { id, name, source } },
       order: [...state.order, id],

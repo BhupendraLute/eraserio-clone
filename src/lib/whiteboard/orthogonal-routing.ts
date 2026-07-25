@@ -1,8 +1,9 @@
-import type { WhiteboardElement } from './whiteboard-types';
+import type { WhiteboardElement, PortDirection, PortPosition } from './whiteboard-types';
+import { getShapePorts, isConnectorElement } from './whiteboard-types';
 
 export interface ShapePortSnap {
   elementId: string;
-  port: 'top' | 'bottom' | 'left' | 'right';
+  port: PortDirection;
   x: number;
   y: number;
 }
@@ -16,7 +17,7 @@ export function inferCardinalDirection(
   y1: number,
   x2: number,
   y2: number
-): 'top' | 'bottom' | 'left' | 'right' {
+): PortDirection {
   const dx = x2 - x1;
   const dy = y2 - y1;
   if (Math.abs(dx) >= Math.abs(dy)) {
@@ -26,7 +27,7 @@ export function inferCardinalDirection(
   }
 }
 
-export function getOppositePort(port: 'top' | 'bottom' | 'left' | 'right'): 'top' | 'bottom' | 'left' | 'right' {
+export function getOppositePort(port: PortDirection): PortDirection {
   switch (port) {
     case 'top':
       return 'bottom';
@@ -47,8 +48,8 @@ export function getDirectionalOrthogonalPathD(
   y1: number,
   x2: number,
   y2: number,
-  fromPort: 'top' | 'bottom' | 'left' | 'right' = 'bottom',
-  toPort: 'top' | 'bottom' | 'left' | 'right' = 'top',
+  fromPort: PortDirection = 'bottom',
+  toPort: PortDirection = 'top',
   cornerRadius: number = 12,
   stubLength: number = 24
 ): string {
@@ -160,19 +161,8 @@ export function getDirectionalOrthogonalPathD(
 }
 
 export function getOptimalPortPair(fromEl: WhiteboardElement, toEl: WhiteboardElement) {
-  const portsA: { port: 'top' | 'bottom' | 'left' | 'right'; x: number; y: number }[] = [
-    { port: 'top', x: fromEl.x + fromEl.width / 2, y: fromEl.y },
-    { port: 'bottom', x: fromEl.x + fromEl.width / 2, y: fromEl.y + fromEl.height },
-    { port: 'left', x: fromEl.x, y: fromEl.y + fromEl.height / 2 },
-    { port: 'right', x: fromEl.x + fromEl.width, y: fromEl.y + fromEl.height / 2 },
-  ];
-
-  const portsB: { port: 'top' | 'bottom' | 'left' | 'right'; x: number; y: number }[] = [
-    { port: 'top', x: toEl.x + toEl.width / 2, y: toEl.y },
-    { port: 'bottom', x: toEl.x + toEl.width / 2, y: toEl.y + toEl.height },
-    { port: 'left', x: toEl.x, y: toEl.y + toEl.height / 2 },
-    { port: 'right', x: toEl.x + toEl.width, y: toEl.y + toEl.height / 2 },
-  ];
+  const portsA = getShapePorts(fromEl);
+  const portsB = getShapePorts(toEl);
 
   let bestPair = {
     fromPort: portsA[1].port,
@@ -203,13 +193,8 @@ export function getOptimalPortPair(fromEl: WhiteboardElement, toEl: WhiteboardEl
 export function getOptimalSinglePort(
   el: WhiteboardElement,
   pt: { x: number; y: number }
-): { port: 'top' | 'bottom' | 'left' | 'right'; x: number; y: number } {
-  const ports: { port: 'top' | 'bottom' | 'left' | 'right'; x: number; y: number }[] = [
-    { port: 'top', x: el.x + el.width / 2, y: el.y },
-    { port: 'bottom', x: el.x + el.width / 2, y: el.y + el.height },
-    { port: 'left', x: el.x, y: el.y + el.height / 2 },
-    { port: 'right', x: el.x + el.width, y: el.y + el.height / 2 },
-  ];
+): PortPosition {
+  const ports = getShapePorts(el);
 
   let best = ports[0];
   let minDist = Infinity;
@@ -235,14 +220,9 @@ export function findNearestShapePort(
 
   elements.forEach((el) => {
     if (el.id === ignoreElementId) return;
-    if (el.type === 'arrow' || el.type === 'line' || el.type === 'pencil') return;
+    if (isConnectorElement(el) || el.type === 'pencil') return;
 
-    const ports: { port: 'top' | 'bottom' | 'left' | 'right'; x: number; y: number }[] = [
-      { port: 'top', x: el.x + el.width / 2, y: el.y },
-      { port: 'bottom', x: el.x + el.width / 2, y: el.y + el.height },
-      { port: 'left', x: el.x, y: el.y + el.height / 2 },
-      { port: 'right', x: el.x + el.width, y: el.y + el.height / 2 },
-    ];
+    const ports = getShapePorts(el);
 
     ports.forEach((p) => {
       const dist = Math.hypot(pt.x - p.x, pt.y - p.y);
@@ -272,17 +252,5 @@ export function findNearestShapePort(
   return closest;
 }
 
-export function generateUniqueId(): string {
-  return `el-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-export function getElementBounds(el: WhiteboardElement): { x: number; y: number; width: number; height: number } {
-  if (el.type === 'arrow' || el.type === 'line') {
-    const minX = Math.min(el.startX, el.endX);
-    const minY = Math.min(el.startY, el.endY);
-    const width = Math.max(10, Math.abs(el.endX - el.startX));
-    const height = Math.max(10, Math.abs(el.endY - el.startY));
-    return { x: minX, y: minY, width, height };
-  }
-  return { x: el.x, y: el.y, width: el.width, height: el.height };
-}
+export { getElementBounds } from './whiteboard-types';
+export { generateId } from '@/lib/utils';

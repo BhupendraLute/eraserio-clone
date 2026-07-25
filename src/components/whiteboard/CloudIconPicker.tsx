@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { Search, X, Loader2 } from 'lucide-react';
 import { useIconSearch } from '@/lib/hooks/useIconSearch';
+import { useClickOutside } from '@/lib/hooks/useClickOutside';
 import type { CloudIconKind } from '@/lib/whiteboard/whiteboard-types';
+import { generateId } from '@/lib/utils';
 import { WHITEBOARD_COLORS } from '@/lib/whiteboard/whiteboard-types';
 
 export function CloudIconPicker({
@@ -17,7 +19,7 @@ export function CloudIconPicker({
   onSelect?: (kind: CloudIconKind | string) => void;
 }) {
   const [search, setSearch] = useState('');
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useClickOutside<HTMLDivElement>(() => onOpenChange(false), open);
 
   const { data: filteredIcons = [], isLoading, isFetching } = useIconSearch(search, 120);
 
@@ -25,21 +27,6 @@ export function CloudIconPicker({
   const setSelectedIds = useWhiteboardStore((s) => s.setSelectedIds);
   const setActiveTool = useWhiteboardStore((s) => s.setActiveTool);
   const activeColor = useWhiteboardStore((s) => s.activeColor);
-
-  // Auto-close popup when clicking outside container
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        onOpenChange(false);
-      }
-    };
-    if (open) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [open, onOpenChange]);
 
   if (!open) return null;
 
@@ -50,7 +37,7 @@ export function CloudIconPicker({
 
     // DIRECT CANVAS INSERTION
     const colorStyle = WHITEBOARD_COLORS[activeColor];
-    const id = `el-icon-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const id = generateId();
     
     const posX = 300 + (Math.random() * 40 - 20);
     const posY = 200 + (Math.random() * 40 - 20);

@@ -6,6 +6,7 @@ import type {
   ResizeHandle,
   Point,
   WhiteboardTool,
+  PortDirection,
 } from '@/lib/whiteboard/whiteboard-types';
 import {
   getDirectionalOrthogonalPathD,
@@ -21,7 +22,7 @@ interface WhiteboardOverlaysProps {
   endpointDragState: { arrowId: string; endpoint: 'start' | 'end'; currentPos: Point } | null;
   quickConnectDragState: {
     sourceId: string;
-    fromPort: 'top' | 'bottom' | 'left' | 'right';
+    fromPort: PortDirection;
     startPos: Point;
     currentPos: Point;
   } | null;
@@ -32,8 +33,8 @@ interface WhiteboardOverlaysProps {
   hoveredPort: { elementId: string; dir: 'top' | 'right' | 'bottom' | 'left' } | null;
   isDraggingShape?: boolean;
   onResizeHandlePointerDown: (e: React.PointerEvent, handle: ResizeHandle, targetId: string) => void;
-  onSpawnConnectedNode: (sourceId: string, dir: 'top' | 'right' | 'bottom' | 'left') => void;
-  onQuickConnectDragStart: (e: React.PointerEvent, sourceId: string, fromPort: 'top' | 'right' | 'bottom' | 'left', pos: Point) => void;
+  onSpawnConnectedNode: (sourceId: string, dir: PortDirection) => void;
+  onQuickConnectDragStart: (e: React.PointerEvent, sourceId: string, fromPort: PortDirection, pos: Point) => void;
   onPortHover: (port: { elementId: string; dir: 'top' | 'right' | 'bottom' | 'left' }) => void;
 }
 
@@ -58,53 +59,68 @@ export function WhiteboardOverlays({
     <>
       {/* Live Active Drawing Preview */}
       {drawingState && (() => {
-        const targetPt = activeSnap ? { x: activeSnap.x, y: activeSnap.y } : drawingState.current;
-        const fromPort = inferCardinalDirection(drawingState.start.x, drawingState.start.y, targetPt.x, targetPt.y);
-        const toPort = activeSnap ? activeSnap.port : inferCardinalDirection(targetPt.x, targetPt.y, drawingState.start.x, drawingState.start.y);
+        const { start, current, points } = drawingState;
+        const targetPt = activeSnap ? { x: activeSnap.x, y: activeSnap.y } : current;
+        const minX = Math.min(start.x, current.x);
+        const minY = Math.min(start.y, current.y);
+        const w = Math.abs(current.x - start.x);
+        const h = Math.abs(current.y - start.y);
+        const cx = (start.x + current.x) / 2;
+        const cy = (start.y + current.y) / 2;
+        const fromPort = inferCardinalDirection(start.x, start.y, targetPt.x, targetPt.y);
+        const toPort = activeSnap ? activeSnap.port : inferCardinalDirection(targetPt.x, targetPt.y, start.x, start.y);
 
         return (
-          <g>
-            {activeTool === 'rectangle' && (
-              <rect
-                x={Math.min(drawingState.start.x, drawingState.current.x)}
-                y={Math.min(drawingState.start.y, drawingState.current.y)}
-                width={Math.abs(drawingState.current.x - drawingState.start.x)}
-                height={Math.abs(drawingState.current.y - drawingState.start.y)}
-                rx={6}
-                fill="none"
-                stroke="#3b82f6"
-                strokeWidth={2}
-                strokeDasharray="4 4"
-              />
+          <g className="pointer-events-none">
+            {activeTool === 'rectangle' && w > 0 && h > 0 && (
+              <rect x={minX} y={minY} width={w} height={h} rx={6}
+                fill="none" stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4" />
             )}
-            {activeTool === 'circle' && (
-              <ellipse
-                cx={(drawingState.start.x + drawingState.current.x) / 2}
-                cy={(drawingState.start.y + drawingState.current.y) / 2}
-                rx={Math.abs(drawingState.current.x - drawingState.start.x) / 2}
-                ry={Math.abs(drawingState.current.y - drawingState.start.y) / 2}
-                fill="none"
-                stroke="#3b82f6"
-                strokeWidth={2}
-                strokeDasharray="4 4"
-              />
+            {activeTool === 'circle' && w > 0 && h > 0 && (
+              <ellipse cx={cx} cy={cy} rx={w / 2} ry={h / 2}
+                fill="none" stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4" />
+            )}
+            {activeTool === 'diamond' && w > 0 && h > 0 && (
+              <polygon
+                points={`${cx},${minY} ${minX + w},${cy} ${cx},${minY + h} ${minX},${cy}`}
+                fill="none" stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4" />
+            )}
+            {activeTool === 'cylinder' && w > 0 && h > 0 && (
+              <g>
+                <rect x={minX} y={minY + Math.min(16, h / 4)} width={w} height={h - Math.min(16, h / 4) * 2}
+                  fill="none" stroke="none" />
+                <ellipse cx={cx} cy={minY + Math.min(16, h / 4)} rx={w / 2} ry={Math.min(16, h / 4)}
+                  fill="none" stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4" />
+                <path d={`M ${minX} ${minY + Math.min(16, h / 4)} L ${minX} ${minY + h - Math.min(16, h / 4)}`}
+                  stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4" />
+                <path d={`M ${minX + w} ${minY + Math.min(16, h / 4)} L ${minX + w} ${minY + h - Math.min(16, h / 4)}`}
+                  stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4" />
+                <ellipse cx={cx} cy={minY + h - Math.min(16, h / 4)} rx={w / 2} ry={Math.min(16, h / 4)}
+                  fill="none" stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4" />
+              </g>
             )}
             {(activeTool === 'arrow' || activeTool === 'line') && (
               <path
-                d={getDirectionalOrthogonalPathD(
-                  drawingState.start.x,
-                  drawingState.start.y,
-                  targetPt.x,
-                  targetPt.y,
-                  fromPort,
-                  toPort
-                )}
-                fill="none"
-                stroke="#3b82f6"
-                strokeWidth={2}
-                strokeDasharray="4 4"
-                markerEnd={activeTool === 'arrow' ? 'url(#wb-arrowhead)' : undefined}
-              />
+                d={getDirectionalOrthogonalPathD(start.x, start.y, targetPt.x, targetPt.y, fromPort, toPort)}
+                fill="none" stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4"
+                markerEnd={activeTool === 'arrow' ? 'url(#wb-arrowhead)' : undefined} />
+            )}
+            {activeTool === 'pencil' && points.length > 0 && (
+              <path
+                d={points.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ')}
+                fill="none" stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4" />
+            )}
+            {activeTool === 'sticky' && (
+              <rect x={start.x} y={start.y} width={180} height={180} rx={8}
+                fill="none" stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4" />
+            )}
+            {activeTool === 'text' && (
+              <rect x={start.x} y={start.y} width={160} height={40} rx={4}
+                fill="none" stroke="#3b82f6" strokeWidth={1.5} strokeDasharray="4 4" />
+            )}
+            {activeTool === 'comment' && (
+              <rect x={start.x - 16} y={start.y - 16} width={200} height={80} rx={8}
+                fill="none" stroke="#3b82f6" strokeWidth={1.5} strokeDasharray="4 4" />
             )}
           </g>
         );
