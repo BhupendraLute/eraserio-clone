@@ -12,6 +12,8 @@ import {
   findNearestShapePort,
   getOptimalPortPair,
   generateUniqueId,
+  getOppositePort,
+  getElementBounds,
   ShapePortSnap,
 } from '@/lib/whiteboard/orthogonal-routing';
 import type { PanZoomState } from '@/lib/hooks/usePanZoom';
@@ -280,7 +282,8 @@ export function useWhiteboardInteractions({
 
       const enclosedIds = elements
         .filter((el) => {
-          return el.x >= minX && el.x + el.width <= maxX && el.y >= minY && el.y + el.height <= maxY;
+          const bounds = getElementBounds(el);
+          return bounds.x >= minX && bounds.x + bounds.width <= maxX && bounds.y >= minY && bounds.y + bounds.height <= maxY;
         })
         .map((el) => el.id);
 
@@ -301,6 +304,8 @@ export function useWhiteboardInteractions({
       const dy = coords.y - dragState.lastPos.y;
       moveSelectedElements(dx, dy);
       setDragState({ ...dragState, lastPos: coords });
+      setHoveredPort(null);
+      if (activeSnap) setActiveSnap(null);
       return;
     }
 
@@ -319,6 +324,11 @@ export function useWhiteboardInteractions({
           : null
       );
       return;
+    }
+
+    // Clear stale snap ring when not performing an arrow creation/drag operation
+    if (!endpointDragState && !quickConnectDragState) {
+      if (activeSnap) setActiveSnap(null);
     }
 
     // Dynamic port hover detection for selected shape
@@ -427,8 +437,15 @@ export function useWhiteboardInteractions({
           y: coords.y - sourceEl.height / 2,
         };
 
-        const targetPort = 'left';
-        const targetPortPos = { x: newShape.x, y: newShape.y + newShape.height / 2 };
+        const targetPort = getOppositePort(quickConnectDragState.fromPort);
+        let targetPortPos = { x: newShape.x, y: newShape.y + newShape.height / 2 };
+        if (targetPort === 'top') {
+          targetPortPos = { x: newShape.x + newShape.width / 2, y: newShape.y };
+        } else if (targetPort === 'bottom') {
+          targetPortPos = { x: newShape.x + newShape.width / 2, y: newShape.y + newShape.height };
+        } else if (targetPort === 'right') {
+          targetPortPos = { x: newShape.x + newShape.width, y: newShape.y + newShape.height / 2 };
+        }
 
         const newArrow: WhiteboardElement = {
           id: arrowId,
@@ -700,6 +717,7 @@ export function useWhiteboardInteractions({
     setActiveFontSize,
     isSpacePressed,
     isPanning: isPanningRef.current,
+    isDraggingShape: dragState.isDragging,
     drawingState,
     selectionBox,
     endpointDragState,

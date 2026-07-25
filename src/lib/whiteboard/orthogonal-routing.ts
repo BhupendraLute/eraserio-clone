@@ -26,6 +26,19 @@ export function inferCardinalDirection(
   }
 }
 
+export function getOppositePort(port: 'top' | 'bottom' | 'left' | 'right'): 'top' | 'bottom' | 'left' | 'right' {
+  switch (port) {
+    case 'top':
+      return 'bottom';
+    case 'bottom':
+      return 'top';
+    case 'left':
+      return 'right';
+    case 'right':
+      return 'left';
+  }
+}
+
 /**
  * Calculates Eraser.io directional orthogonal elbow connector paths with clearance stubs and smooth arc bends.
  */
@@ -187,6 +200,31 @@ export function getOptimalPortPair(fromEl: WhiteboardElement, toEl: WhiteboardEl
   return bestPair;
 }
 
+export function getOptimalSinglePort(
+  el: WhiteboardElement,
+  pt: { x: number; y: number }
+): { port: 'top' | 'bottom' | 'left' | 'right'; x: number; y: number } {
+  const ports: { port: 'top' | 'bottom' | 'left' | 'right'; x: number; y: number }[] = [
+    { port: 'top', x: el.x + el.width / 2, y: el.y },
+    { port: 'bottom', x: el.x + el.width / 2, y: el.y + el.height },
+    { port: 'left', x: el.x, y: el.y + el.height / 2 },
+    { port: 'right', x: el.x + el.width, y: el.y + el.height / 2 },
+  ];
+
+  let best = ports[0];
+  let minDist = Infinity;
+
+  ports.forEach((p) => {
+    const dist = Math.hypot(pt.x - p.x, pt.y - p.y);
+    if (dist < minDist) {
+      minDist = dist;
+      best = p;
+    }
+  });
+
+  return best;
+}
+
 export function findNearestShapePort(
   pt: { x: number; y: number },
   elements: WhiteboardElement[],
@@ -213,6 +251,22 @@ export function findNearestShapePort(
         closest = { elementId: el.id, port: p.port, x: p.x, y: p.y };
       }
     });
+
+    // Check if cursor point is inside or near shape bounding box (16px threshold)
+    const isInsideShape =
+      pt.x >= el.x - 16 &&
+      pt.x <= el.x + el.width + 16 &&
+      pt.y >= el.y - 16 &&
+      pt.y <= el.y + el.height + 16;
+
+    if (isInsideShape) {
+      const optimal = getOptimalSinglePort(el, pt);
+      const distToOptimal = Math.hypot(pt.x - optimal.x, pt.y - optimal.y);
+      if (distToOptimal < minDistance || !closest) {
+        minDistance = distToOptimal;
+        closest = { elementId: el.id, port: optimal.port, x: optimal.x, y: optimal.y };
+      }
+    }
   });
 
   return closest;
@@ -220,4 +274,15 @@ export function findNearestShapePort(
 
 export function generateUniqueId(): string {
   return `el-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function getElementBounds(el: WhiteboardElement): { x: number; y: number; width: number; height: number } {
+  if (el.type === 'arrow' || el.type === 'line') {
+    const minX = Math.min(el.startX, el.endX);
+    const minY = Math.min(el.startY, el.endY);
+    const width = Math.max(10, Math.abs(el.endX - el.startX));
+    const height = Math.max(10, Math.abs(el.endY - el.startY));
+    return { x: minX, y: minY, width, height };
+  }
+  return { x: el.x, y: el.y, width: el.width, height: el.height };
 }

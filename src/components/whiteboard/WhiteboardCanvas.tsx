@@ -27,8 +27,10 @@ export function WhiteboardCanvas() {
     setActiveFontSize,
     isSpacePressed,
     isPanning,
+    isDraggingShape,
     drawingState,
     selectionBox,
+    endpointDragState,
     quickConnectDragState,
     setQuickConnectDragState,
     activeSnap,
@@ -164,6 +166,7 @@ export function WhiteboardCanvas() {
           <WhiteboardElements
             elements={elements}
             selectedIds={selectedIds}
+            endpointDragState={endpointDragState}
             onElementPointerDown={handleElementPointerDown}
             onElementClick={handleElementClick}
             onEndpointPointerDown={(evt, arrowId, endpoint, pos) => {
@@ -174,14 +177,17 @@ export function WhiteboardCanvas() {
 
           {/* Interactive Previews, Snap Indicators, Resize Handles & Quick Connect Buttons */}
           <WhiteboardOverlays
+            elements={elements}
             activeTool={activeTool}
             drawingState={drawingState}
+            endpointDragState={endpointDragState}
             quickConnectDragState={quickConnectDragState}
             activeSnap={activeSnap}
             selectionBox={selectionBox}
             selectedElements={selectedElements}
             singleSelectedShape={singleSelectedShape}
             hoveredPort={hoveredPort}
+            isDraggingShape={isDraggingShape}
             onResizeHandlePointerDown={handleResizeHandlePointerDown}
             onSpawnConnectedNode={spawnConnectedNode}
             onQuickConnectDragStart={(evt, sourceId, fromPort, pos) => {

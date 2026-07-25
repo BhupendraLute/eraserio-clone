@@ -10,12 +10,15 @@ import type {
 import {
   getDirectionalOrthogonalPathD,
   inferCardinalDirection,
+  getOppositePort,
   ShapePortSnap,
 } from '@/lib/whiteboard/orthogonal-routing';
 
 interface WhiteboardOverlaysProps {
+  elements: WhiteboardElement[];
   activeTool: WhiteboardTool;
   drawingState: { start: Point; current: Point; points: Point[] } | null;
+  endpointDragState: { arrowId: string; endpoint: 'start' | 'end'; currentPos: Point } | null;
   quickConnectDragState: {
     sourceId: string;
     fromPort: 'top' | 'bottom' | 'left' | 'right';
@@ -27,6 +30,7 @@ interface WhiteboardOverlaysProps {
   selectedElements: WhiteboardElement[];
   singleSelectedShape: WhiteboardElement | null;
   hoveredPort: { elementId: string; dir: 'top' | 'right' | 'bottom' | 'left' } | null;
+  isDraggingShape?: boolean;
   onResizeHandlePointerDown: (e: React.PointerEvent, handle: ResizeHandle, targetId: string) => void;
   onSpawnConnectedNode: (sourceId: string, dir: 'top' | 'right' | 'bottom' | 'left') => void;
   onQuickConnectDragStart: (e: React.PointerEvent, sourceId: string, fromPort: 'top' | 'right' | 'bottom' | 'left', pos: Point) => void;
@@ -34,14 +38,17 @@ interface WhiteboardOverlaysProps {
 }
 
 export function WhiteboardOverlays({
+  elements,
   activeTool,
   drawingState,
+  endpointDragState,
   quickConnectDragState,
   activeSnap,
   selectionBox,
   selectedElements,
   singleSelectedShape,
   hoveredPort,
+  isDraggingShape = false,
   onResizeHandlePointerDown,
   onSpawnConnectedNode,
   onQuickConnectDragStart,
@@ -106,7 +113,7 @@ export function WhiteboardOverlays({
       {/* Live Quick-Connect Drag Preview */}
       {quickConnectDragState && (() => {
         const targetPt = activeSnap ? { x: activeSnap.x, y: activeSnap.y } : quickConnectDragState.currentPos;
-        const toPort = activeSnap ? activeSnap.port : inferCardinalDirection(targetPt.x, targetPt.y, quickConnectDragState.startPos.x, quickConnectDragState.startPos.y);
+        const toPort = activeSnap ? activeSnap.port : getOppositePort(quickConnectDragState.fromPort);
 
         return (
           <g>
@@ -129,17 +136,63 @@ export function WhiteboardOverlays({
         );
       })()}
 
+      {/* Live Endpoint Dragging Preview */}
+      {endpointDragState && (() => {
+        const arrow = elements.find((el) => el.id === endpointDragState.arrowId);
+        if (!arrow || (arrow.type !== 'arrow' && arrow.type !== 'line')) return null;
+
+        const isStart = endpointDragState.endpoint === 'start';
+        const startPt = isStart
+          ? (activeSnap ? { x: activeSnap.x, y: activeSnap.y } : endpointDragState.currentPos)
+          : { x: arrow.startX, y: arrow.startY };
+
+        const endPt = !isStart
+          ? (activeSnap ? { x: activeSnap.x, y: activeSnap.y } : endpointDragState.currentPos)
+          : { x: arrow.endX, y: arrow.endY };
+
+        const fromPort = isStart
+          ? (activeSnap ? activeSnap.port : inferCardinalDirection(startPt.x, startPt.y, endPt.x, endPt.y))
+          : (arrow.fromElementId ? (arrow.fromPort || 'right') : inferCardinalDirection(startPt.x, startPt.y, endPt.x, endPt.y));
+
+        const toPort = !isStart
+          ? (activeSnap ? activeSnap.port : inferCardinalDirection(endPt.x, endPt.y, startPt.x, startPt.y))
+          : (arrow.toElementId ? (arrow.toPort || 'left') : inferCardinalDirection(endPt.x, endPt.y, startPt.x, startPt.y));
+
+        const pathD = arrow.routingStyle === 'straight'
+          ? `M ${startPt.x} ${startPt.y} L ${endPt.x} ${endPt.y}`
+          : getDirectionalOrthogonalPathD(
+              startPt.x,
+              startPt.y,
+              endPt.x,
+              endPt.y,
+              fromPort,
+              toPort
+            );
+
+        return (
+          <g className="pointer-events-none">
+            <path
+              d={pathD}
+              fill="none"
+              stroke="#3b82f6"
+              strokeWidth={2}
+              strokeDasharray="4 4"
+              markerEnd={arrow.type === 'arrow' ? 'url(#wb-arrowhead)' : undefined}
+            />
+          </g>
+        );
+      })()}
+
       {/* Dynamic Snap Ring Indicator */}
       {activeSnap && (
-        <g key="active-snap-ring">
+        <g key="active-snap-ring" className="pointer-events-none">
           <circle
             cx={activeSnap.x}
             cy={activeSnap.y}
-            r={10}
-            fill="rgba(59, 130, 246, 0.25)"
+            r={8}
+            fill="rgba(59, 130, 246, 0.2)"
             stroke="#3b82f6"
             strokeWidth={2}
-            className="animate-ping"
           />
           <circle cx={activeSnap.x} cy={activeSnap.y} r={4} fill="#3b82f6" />
         </g>
@@ -159,9 +212,11 @@ export function WhiteboardOverlays({
         />
       )}
 
-      {/* Selection Bounding Box & 8 Resize Handles */}
-      {selectedElements.map((el) => (
-        <g key={`select-box-${el.id}`}>
+      {/* Selection Bounding Box & 8 Resize Handles (Shapes only — removed for arrows/lines) */}
+      {selectedElements
+        .filter((el) => !['arrow', 'line', 'pencil'].includes(el.type))
+        .map((el) => (
+          <g key={`select-box-${el.id}`}>
           <rect
             x={el.x - 2}
             y={el.y - 2}
@@ -199,7 +254,7 @@ export function WhiteboardOverlays({
       ))}
 
       {/* Eraser.io Dynamic Side-Hover Quick-Connect Flow Handles (+) */}
-      {singleSelectedShape && (
+      {!isDraggingShape && singleSelectedShape && (
         <g key={`quick-connect-${singleSelectedShape.id}`}>
           {[
             {

@@ -11,46 +11,7 @@ interface HistoryState {
   elements: WhiteboardElement[];
 }
 
-function getOptimalPortPair(fromEl: WhiteboardElement, toEl: WhiteboardElement) {
-  const portsA: { port: 'top' | 'bottom' | 'left' | 'right'; x: number; y: number }[] = [
-    { port: 'top', x: fromEl.x + fromEl.width / 2, y: fromEl.y },
-    { port: 'bottom', x: fromEl.x + fromEl.width / 2, y: fromEl.y + fromEl.height },
-    { port: 'left', x: fromEl.x, y: fromEl.y + fromEl.height / 2 },
-    { port: 'right', x: fromEl.x + fromEl.width, y: fromEl.y + fromEl.height / 2 },
-  ];
-
-  const portsB: { port: 'top' | 'bottom' | 'left' | 'right'; x: number; y: number }[] = [
-    { port: 'top', x: toEl.x + toEl.width / 2, y: toEl.y },
-    { port: 'bottom', x: toEl.x + toEl.width / 2, y: toEl.y + toEl.height },
-    { port: 'left', x: toEl.x, y: toEl.y + toEl.height / 2 },
-    { port: 'right', x: toEl.x + toEl.width, y: toEl.y + toEl.height / 2 },
-  ];
-
-  let bestPair = {
-    fromPort: portsA[1].port,
-    fromPos: { x: portsA[1].x, y: portsA[1].y },
-    toPort: portsB[0].port,
-    toPos: { x: portsB[0].x, y: portsB[0].y },
-    minDist: Infinity,
-  };
-
-  portsA.forEach((pA) => {
-    portsB.forEach((pB) => {
-      const dist = Math.hypot(pB.x - pA.x, pB.y - pA.y);
-      if (dist < bestPair.minDist) {
-        bestPair = {
-          fromPort: pA.port,
-          fromPos: { x: pA.x, y: pA.y },
-          toPort: pB.port,
-          toPos: { x: pB.x, y: pB.y },
-          minDist: dist,
-        };
-      }
-    });
-  });
-
-  return bestPair;
-}
+import { getOptimalPortPair, getOptimalSinglePort } from '@/lib/whiteboard/orthogonal-routing';
 
 interface WhiteboardStore {
   activeTool: WhiteboardTool;
@@ -198,23 +159,21 @@ export const useWhiteboardStore = create<WhiteboardStore>((set) => ({
             toPort: optimal.toPort,
           };
         } else if (fromEl) {
-          const port = el.fromPort || 'bottom';
-          let px = fromEl.x + fromEl.width / 2;
-          let py = fromEl.y + fromEl.height;
-          if (port === 'top') { px = fromEl.x + fromEl.width / 2; py = fromEl.y; }
-          else if (port === 'left') { px = fromEl.x; py = fromEl.y + fromEl.height / 2; }
-          else if (port === 'right') { px = fromEl.x + fromEl.width; py = fromEl.y + fromEl.height / 2; }
-
-          return { ...el, startX: px, startY: py };
+          const optimal = getOptimalSinglePort(fromEl, { x: el.endX, y: el.endY });
+          return {
+            ...el,
+            startX: optimal.x,
+            startY: optimal.y,
+            fromPort: optimal.port,
+          };
         } else if (toEl) {
-          const port = el.toPort || 'top';
-          let px = toEl.x + toEl.width / 2;
-          let py = toEl.y;
-          if (port === 'bottom') { px = toEl.x + toEl.width / 2; py = toEl.y + toEl.height; }
-          else if (port === 'left') { px = toEl.x; py = toEl.y + toEl.height / 2; }
-          else if (port === 'right') { px = toEl.x + toEl.width; py = toEl.y + toEl.height / 2; }
-
-          return { ...el, endX: px, endY: py };
+          const optimal = getOptimalSinglePort(toEl, { x: el.startX, y: el.startY });
+          return {
+            ...el,
+            endX: optimal.x,
+            endY: optimal.y,
+            toPort: optimal.port,
+          };
         }
 
         return el;
@@ -277,23 +236,21 @@ export const useWhiteboardStore = create<WhiteboardStore>((set) => ({
             toPort: optimal.toPort,
           };
         } else if (fromEl) {
-          const port = el.fromPort || 'bottom';
-          let px = fromEl.x + fromEl.width / 2;
-          let py = fromEl.y + fromEl.height;
-          if (port === 'top') { px = fromEl.x + fromEl.width / 2; py = fromEl.y; }
-          else if (port === 'left') { px = fromEl.x; py = fromEl.y + fromEl.height / 2; }
-          else if (port === 'right') { px = fromEl.x + fromEl.width; py = fromEl.y + fromEl.height / 2; }
-
-          return { ...el, startX: px, startY: py };
+          const optimal = getOptimalSinglePort(fromEl, { x: el.endX, y: el.endY });
+          return {
+            ...el,
+            startX: optimal.x,
+            startY: optimal.y,
+            fromPort: optimal.port,
+          };
         } else if (toEl) {
-          const port = el.toPort || 'top';
-          let px = toEl.x + toEl.width / 2;
-          let py = toEl.y;
-          if (port === 'bottom') { px = toEl.x + toEl.width / 2; py = toEl.y + toEl.height; }
-          else if (port === 'left') { px = toEl.x; py = toEl.y + toEl.height / 2; }
-          else if (port === 'right') { px = toEl.x + toEl.width; py = toEl.y + toEl.height / 2; }
-
-          return { ...el, endX: px, endY: py };
+          const optimal = getOptimalSinglePort(toEl, { x: el.startX, y: el.startY });
+          return {
+            ...el,
+            endX: optimal.x,
+            endY: optimal.y,
+            toPort: optimal.port,
+          };
         }
 
         return el;
@@ -451,9 +408,23 @@ export const useWhiteboardStore = create<WhiteboardStore>((set) => ({
       const updatedElements = state.elements.map((el) => {
         if (el.id !== arrowId || (el.type !== 'arrow' && el.type !== 'line')) return el;
 
+        const newStartX = endpoint === 'start' ? targetPos.x : el.startX;
+        const newStartY = endpoint === 'start' ? targetPos.y : el.startY;
+        const newEndX = endpoint === 'end' ? targetPos.x : el.endX;
+        const newEndY = endpoint === 'end' ? targetPos.y : el.endY;
+
+        const boundsX = Math.min(newStartX, newEndX);
+        const boundsY = Math.min(newStartY, newEndY);
+        const boundsW = Math.max(10, Math.abs(newEndX - newStartX));
+        const boundsH = Math.max(10, Math.abs(newEndY - newStartY));
+
         if (endpoint === 'start') {
           return {
             ...el,
+            x: boundsX,
+            y: boundsY,
+            width: boundsW,
+            height: boundsH,
             startX: targetPos.x,
             startY: targetPos.y,
             fromElementId: targetElementId,
@@ -462,6 +433,10 @@ export const useWhiteboardStore = create<WhiteboardStore>((set) => ({
         } else {
           return {
             ...el,
+            x: boundsX,
+            y: boundsY,
+            width: boundsW,
+            height: boundsH,
             endX: targetPos.x,
             endY: targetPos.y,
             toElementId: targetElementId,
@@ -480,6 +455,10 @@ export const useWhiteboardStore = create<WhiteboardStore>((set) => ({
             const optimal = getOptimalPortPair(fromEl, toEl);
             return {
               ...el,
+              x: Math.min(optimal.fromPos.x, optimal.toPos.x),
+              y: Math.min(optimal.fromPos.y, optimal.toPos.y),
+              width: Math.max(10, Math.abs(optimal.toPos.x - optimal.fromPos.x)),
+              height: Math.max(10, Math.abs(optimal.toPos.y - optimal.fromPos.y)),
               startX: optimal.fromPos.x,
               startY: optimal.fromPos.y,
               endX: optimal.toPos.x,

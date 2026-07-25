@@ -16,6 +16,7 @@ import {
 interface WhiteboardElementsProps {
   elements: WhiteboardElement[];
   selectedIds: string[];
+  endpointDragState: { arrowId: string; endpoint: 'start' | 'end'; currentPos: { x: number; y: number } } | null;
   onElementPointerDown: (e: React.PointerEvent, el: WhiteboardElement) => void;
   onElementClick: (e: React.MouseEvent, el: WhiteboardElement) => void;
   onEndpointPointerDown: (e: React.PointerEvent, arrowId: string, endpoint: 'start' | 'end', pos: { x: number; y: number }) => void;
@@ -24,6 +25,7 @@ interface WhiteboardElementsProps {
 export function WhiteboardElements({
   elements,
   selectedIds,
+  endpointDragState,
   onElementPointerDown,
   onElementClick,
   onEndpointPointerDown,
@@ -111,6 +113,7 @@ export function WhiteboardElements({
         }
 
         if (el.type === 'arrow') {
+          const isBeingDragged = endpointDragState?.arrowId === el.id;
           const isOrthogonal = el.routingStyle !== 'straight';
           const fromPort = el.fromElementId
             ? (el.fromPort || 'right')
@@ -136,22 +139,26 @@ export function WhiteboardElements({
               <path
                 d={pathD}
                 fill="none"
-                stroke="transparent"
-                strokeWidth={20}
+                stroke="rgba(0,0,0,0.001)"
+                strokeWidth={24}
+                style={{ pointerEvents: 'stroke' }}
                 className="cursor-pointer"
               />
-              <path
-                d={pathD}
-                fill="none"
-                stroke={el.strokeColor}
-                strokeWidth={el.strokeWidth}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                markerEnd="url(#wb-arrowhead)"
-                className="cursor-pointer pointer-events-none"
-              />
+              {/* Main visible path — hidden during endpoint drag (live preview takes over) */}
+              {!isBeingDragged && (
+                <path
+                  d={pathD}
+                  fill="none"
+                  stroke={el.strokeColor}
+                  strokeWidth={el.strokeWidth}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  markerEnd="url(#wb-arrowhead)"
+                  className="cursor-pointer pointer-events-none"
+                />
+              )}
               {/* Draggable Endpoint Handles for Selected Arrows */}
-              {isSelected && (
+              {isSelected && !isBeingDragged && (
                 <>
                   <circle
                     cx={el.startX}
@@ -186,6 +193,7 @@ export function WhiteboardElements({
         }
 
         if (el.type === 'line') {
+          const isBeingDragged = endpointDragState?.arrowId === el.id;
           const isOrthogonal = el.routingStyle !== 'straight';
           const fromPort = el.fromElementId
             ? (el.fromPort || 'right')
@@ -211,20 +219,23 @@ export function WhiteboardElements({
               <path
                 d={pathD}
                 fill="none"
-                stroke="transparent"
-                strokeWidth={20}
+                stroke="rgba(0,0,0,0.001)"
+                strokeWidth={24}
+                style={{ pointerEvents: 'stroke' }}
                 className="cursor-pointer"
               />
-              <path
-                d={pathD}
-                fill="none"
-                stroke={el.strokeColor}
-                strokeWidth={el.strokeWidth}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="cursor-pointer pointer-events-none"
-              />
-              {isSelected && (
+              {!isBeingDragged && (
+                <path
+                  d={pathD}
+                  fill="none"
+                  stroke={el.strokeColor}
+                  strokeWidth={el.strokeWidth}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="cursor-pointer pointer-events-none"
+                />
+              )}
+              {isSelected && !isBeingDragged && (
                 <>
                   <circle
                     cx={el.startX}
