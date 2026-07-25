@@ -1,36 +1,21 @@
 'use client';
 
-import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import Placeholder from '@tiptap/extension-placeholder';
-import { DiagramEmbed } from '@/components/docs/diagram-embed-extension';
-import { SlashCommandExtension } from '@/components/docs/slash-command-extension';
-import { DocToolbar } from '@/components/docs/DocToolbar';
+import { useEffect } from 'react';
+import { useWorkspaceStore } from '@/lib/store/workspace-store';
+import { EraserHeader } from '@/components/EraserHeader';
+import { EraserWorkspace } from '@/components/workspace/EraserWorkspace';
 
 export default function DocsPage() {
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Placeholder.configure({ placeholder: "Start writing, or type '/' for commands…" }),
-      DiagramEmbed,
-      SlashCommandExtension,
-    ],
-    content: '<h2>Untitled document</h2><p></p>',
-    immediatelyRender: false,
-  });
+  const setViewMode = useWorkspaceStore((s) => s.setViewMode);
 
-  const handleInsertDiagram = () => {
-    editor?.chain().focus().insertDiagramEmbed({ diagramId: null }).run();
-  };
+  useEffect(() => {
+    setViewMode('document');
+  }, [setViewMode]);
 
   return (
-    <div className="flex h-screen w-full flex-col">
-      <DocToolbar editor={editor} onInsertDiagram={handleInsertDiagram} />
-      <div className="flex-1 overflow-auto">
-        <div className="mx-auto max-w-3xl px-8 py-8">
-          <EditorContent editor={editor} className="prose prose-sm max-w-none focus:outline-none" />
-        </div>
-      </div>
+    <div className="flex h-screen w-full flex-col overflow-hidden bg-background">
+      <EraserHeader />
+      <EraserWorkspace />
     </div>
   );
 }
