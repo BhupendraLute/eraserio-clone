@@ -5,12 +5,16 @@ import { useWhiteboardStore, GRID_SIZE } from '@/lib/store/whiteboard-store';
 import { WHITEBOARD_COLORS } from '@/lib/whiteboard/whiteboard-types';
 import { Trash2, Plus, Minus, Maximize, Grid3X3, Download, Copy, Clipboard, Group, Ungroup, ZoomIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { usePanZoom } from '@/lib/hooks/usePanZoom';
 import { useWhiteboardInteractions } from '@/lib/hooks/useWhiteboardInteractions';
 import { WhiteboardElements } from './WhiteboardElements';
 import { WhiteboardOverlays } from './WhiteboardOverlays';
 import { ExportMenu } from './ExportMenu';
-import { MiniMap } from './MiniMap';
+import { ContextMenu } from './ContextMenu';
+import { ToolSubOptions } from './ToolSubOptions';
+import { InlineTextEditor } from './InlineTextEditor';
+import { ArrowToolbar } from './ArrowToolbar';
 
 export function WhiteboardCanvas() {
   const updateElement = useWhiteboardStore((s) => s.updateElement);
@@ -60,6 +64,7 @@ export function WhiteboardCanvas() {
     handleFitSelection,
     spawnConnectedNode,
     deleteElements,
+
   } = useWhiteboardInteractions({
     transform,
     setTransform,
@@ -70,6 +75,13 @@ export function WhiteboardCanvas() {
   });
 
   const [showExport, setShowExport] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; context: 'canvas' | 'element' | 'multi' } | null>(null);
+
+  // Elements sorted by z-order (later in array = on top)
+  const activeStrokeHex = useWhiteboardStore((s) => s.activeStrokeHex);
+  const setActiveStrokeHex = useWhiteboardStore((s) => s.setActiveStrokeHex);
+  const activeFillHex = useWhiteboardStore((s) => s.activeFillHex);
+  const setActiveFillHex = useWhiteboardStore((s) => s.setActiveFillHex);
 
   // Zoom level indicator animation
   const [zoomAnimState, setZoomAnimState] = useState<'idle' | 'pop-in' | 'pop-out'>('idle');
@@ -111,7 +123,7 @@ export function WhiteboardCanvas() {
     <div className="relative h-full w-full select-none overflow-hidden bg-background">
       {/* Floating Rich Text Formatting Toolbar */}
       {hasSelection && (
-        <div className="absolute top-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-1.5 rounded-xl border bg-background/95 p-1.5 shadow-2xl backdrop-blur animate-in fade-in zoom-in-95">
+        <div className="absolute top-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-1.5 rounded-xl border bg-muted/90 p-1.5 shadow-2xl backdrop-blur animate-in fade-in zoom-in-95">
           <select
             value={activeFontFamily}
             onChange={(e) => {
@@ -146,11 +158,30 @@ export function WhiteboardCanvas() {
                 <button
                   key={colorKey}
                   onClick={() => selectedIds.forEach((id) => updateElement(id, { strokeColor: c.border, fillColor: c.bg }))}
-                  className="h-4 w-4 rounded-full border transition-transform hover:scale-110"
+                  className={cn('h-4 w-4 rounded-full border transition-transform hover:scale-110', 
+                    selectedIds.length === 1 && elements.find(e => e.id === selectedIds[0])?.strokeColor === c.border && 'ring-2 ring-primary ring-offset-1'
+                  )}
                   style={{ backgroundColor: c.border }}
                 />
               );
             })}
+            {/* Custom hex color pickers for selected element colors */}
+            <div className="flex items-center gap-0.5 border-l pl-1.5 ml-1.5">
+              <input
+                type="color"
+                value={selectedIds.length === 1 ? (elements.find(e => e.id === selectedIds[0])?.strokeColor ?? activeStrokeHex) : activeStrokeHex}
+                onChange={(e) => selectedIds.forEach((id) => updateElement(id, { strokeColor: e.target.value }))}
+                className="h-5 w-5 cursor-pointer rounded border-0 bg-transparent p-0"
+                title="Custom stroke color"
+              />
+              <input
+                type="color"
+                value={selectedIds.length === 1 ? (elements.find(e => e.id === selectedIds[0])?.fillColor ?? activeFillHex) : activeFillHex}
+                onChange={(e) => selectedIds.forEach((id) => updateElement(id, { fillColor: e.target.value }))}
+                className="h-5 w-5 cursor-pointer rounded border-0 bg-transparent p-0"
+                title="Custom fill color"
+              />
+            </div>
           </div>
 
           {/* Line style selector */}
@@ -164,12 +195,20 @@ export function WhiteboardCanvas() {
             ))}
           </div>
 
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
             onClick={() => deleteElements(selectedIds)} title="Delete Selected">
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       )}
+
+      {/* Sub-tool options bar — appears below the left toolbar when a drawing tool is active */}
+      <div className="absolute top-4 left-[58px] z-40">
+        <ToolSubOptions />
+      </div>
+
+      {/* Arrow-specific bottom toolbar (eraser.io style) */}
+      <ArrowToolbar />
 
       {/* SVG Canvas Workspace */}
       <svg
@@ -180,6 +219,11 @@ export function WhiteboardCanvas() {
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          const context = selectedIds.length > 1 ? 'multi' : selectedIds.length === 1 ? 'element' : 'canvas';
+          setContextMenu({ x: e.clientX, y: e.clientY, context });
+        }}
       >
         <defs>
           {showGrid && (
@@ -188,8 +232,39 @@ export function WhiteboardCanvas() {
               <circle cx={GRID_SIZE / 2} cy={GRID_SIZE / 2} r={1} fill="currentColor" className="text-foreground/10" />
             </pattern>
           )}
+          {/* Standard open arrowhead */}
           <marker id="wb-arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
-            <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#3b82f6" />
+            <path d="M 0 0 L 9 5 L 0 10 z" fill="currentColor" />
+          </marker>
+          {/* Filled triangle arrowhead */}
+          <marker id="wb-arrowhead-triangle" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+            <path d="M 2 1 L 9 5 L 2 9 z" fill="currentColor" />
+          </marker>
+          {/* Diamond arrowhead */}
+          <marker id="wb-arrowhead-diamond" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="8" markerHeight="8" orient="auto">
+            <path d="M 3 6 L 6 2 L 9 6 L 6 10 z" fill="currentColor" />
+          </marker>
+          {/* Circle arrowhead */}
+          <marker id="wb-arrowhead-circle" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+            <circle cx="5" cy="5" r="4" fill="currentColor" />
+          </marker>
+          {/* Invisible marker for 'none' style */}
+          <marker id="wb-arrowhead-none" viewBox="0 0 1 1" refX="0" refY="0" markerWidth="0" markerHeight="0" orient="auto">
+            <path d="" />
+          </marker>
+
+          {/* Start arrowhead markers (reversed orientation) */}
+          <marker id="wb-arrowhead-start" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+            <path d="M 10 0 L 1 5 L 10 10 z" fill="currentColor" />
+          </marker>
+          <marker id="wb-arrowhead-start-triangle" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+            <path d="M 8 1 L 1 5 L 8 9 z" fill="currentColor" />
+          </marker>
+          <marker id="wb-arrowhead-start-diamond" viewBox="0 0 12 12" refX="3" refY="6" markerWidth="8" markerHeight="8" orient="auto">
+            <path d="M 9 6 L 6 2 L 3 6 L 6 10 z" fill="currentColor" />
+          </marker>
+          <marker id="wb-arrowhead-start-circle" viewBox="0 0 10 10" refX="3" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+            <circle cx="5" cy="5" r="4" fill="currentColor" />
           </marker>
         </defs>
 
@@ -208,7 +283,26 @@ export function WhiteboardCanvas() {
               evt.stopPropagation();
               setEndpointDragState({ arrowId, endpoint, currentPos: pos });
             }}
+            onElementContextMenu={(e, el) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const context = selectedIds.length > 1 || (selectedIds.length === 1 && selectedIds[0] === el.id) ?
+                (selectedIds.length > 1 ? 'multi' : 'element') : 'element';
+              setContextMenu({ x: e.clientX, y: e.clientY, context });
+            }}
+
           />
+
+          {/* Render InlineTextEditor for the element being edited */}
+          {editingElementId && (() => {
+            const editingEl = elements.find(el => el.id === editingElementId);
+            if (!editingEl) return null;
+            return (
+              <g key={`inline-editor-${editingElementId}`}>
+                <InlineTextEditor element={editingEl} onFinish={() => setEditingElementId(null)} />
+              </g>
+            );
+          })()}
 
           <WhiteboardOverlays
             elements={elements}
@@ -245,13 +339,23 @@ export function WhiteboardCanvas() {
         </g>
       </svg>
 
+      {/* Context Menu */}
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          context={contextMenu.context}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+
       {/* Floating Actions Toolbar */}
       <div className="absolute bottom-4 right-4 z-40 flex flex-col items-end gap-2">
         {/* Export Menu */}
         {showExport && <ExportMenu svgRef={svgRef} onClose={() => setShowExport(false)} />}
 
         {/* Zoom & Utility Controls */}
-        <div className="flex flex-col gap-1 rounded-lg border bg-background/95 p-1 shadow-lg backdrop-blur">
+        <div className="flex flex-col gap-1 rounded-lg border bg-muted/90 p-1 shadow-lg backdrop-blur">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomIn} title="Zoom In (+)">
             <Plus className="h-4 w-4" />
           </Button>
@@ -309,8 +413,8 @@ export function WhiteboardCanvas() {
           zoomAnimState === 'pop-in'
             ? 'scale-125 border-primary/60 bg-primary/10 text-primary shadow-primary/20'
             : zoomAnimState === 'pop-out'
-              ? 'scale-100 border-border/80 bg-background/95 text-muted-foreground'
-              : 'border-border bg-background/95 text-muted-foreground'
+              ? 'scale-100 border-border/80 bg-muted/90 text-muted-foreground'
+              : 'border-border bg-muted/90 text-muted-foreground'
         }`}
       >
         <span className="flex items-center gap-1.5">
@@ -328,8 +432,6 @@ export function WhiteboardCanvas() {
         </span>
       </div>
 
-      {/* Minimap — always visible for spatial orientation on the infinite canvas */}
-      <MiniMap elements={elements} transform={transform} svgRef={svgRef} />
     </div>
   );
 }

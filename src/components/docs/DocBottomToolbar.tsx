@@ -25,7 +25,7 @@ export function DocBottomToolbar({ editor, onInsertDiagram }: DocBottomToolbarPr
   if (!editor) return null;
 
   return (
-    <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl border bg-background/95 p-1 shadow-lg backdrop-blur select-none">
+    <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl border bg-muted/90 p-1 shadow-lg backdrop-blur select-none">
       <Button
         variant="ghost"
         size="icon"

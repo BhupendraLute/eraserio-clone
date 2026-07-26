@@ -10,10 +10,15 @@ import type {
 } from '@/lib/whiteboard/whiteboard-types';
 import {
   getDirectionalOrthogonalPathD,
+  getCurvedPathD,
   inferCardinalDirection,
   getOppositePort,
   ShapePortSnap,
 } from '@/lib/whiteboard/orthogonal-routing';
+import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
+
+/* CSS variable helpers for theme-aware canvas chrome */
+const BG = () => 'var(--background)' as const;
 
 interface WhiteboardOverlaysProps {
   elements: WhiteboardElement[];
@@ -74,53 +79,61 @@ export function WhiteboardOverlays({
           <g className="pointer-events-none">
             {activeTool === 'rectangle' && w > 0 && h > 0 && (
               <rect x={minX} y={minY} width={w} height={h} rx={6}
-                fill="none" stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4" />
+                fill="none" stroke="var(--canvas-accent)" strokeWidth={2} strokeDasharray="4 4" />
             )}
             {activeTool === 'circle' && w > 0 && h > 0 && (
               <ellipse cx={cx} cy={cy} rx={w / 2} ry={h / 2}
-                fill="none" stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4" />
+                fill="none" stroke="var(--canvas-accent)" strokeWidth={2} strokeDasharray="4 4" />
             )}
             {activeTool === 'diamond' && w > 0 && h > 0 && (
               <polygon
                 points={`${cx},${minY} ${minX + w},${cy} ${cx},${minY + h} ${minX},${cy}`}
-                fill="none" stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4" />
+                fill="none" stroke="var(--canvas-accent)" strokeWidth={2} strokeDasharray="4 4" />
             )}
             {activeTool === 'cylinder' && w > 0 && h > 0 && (
               <g>
                 <rect x={minX} y={minY + Math.min(16, h / 4)} width={w} height={h - Math.min(16, h / 4) * 2}
                   fill="none" stroke="none" />
                 <ellipse cx={cx} cy={minY + Math.min(16, h / 4)} rx={w / 2} ry={Math.min(16, h / 4)}
-                  fill="none" stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4" />
+                  fill="none" stroke="var(--canvas-accent)" strokeWidth={2} strokeDasharray="4 4" />
                 <path d={`M ${minX} ${minY + Math.min(16, h / 4)} L ${minX} ${minY + h - Math.min(16, h / 4)}`}
-                  stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4" />
+                  stroke="var(--canvas-accent)" strokeWidth={2} strokeDasharray="4 4" />
                 <path d={`M ${minX + w} ${minY + Math.min(16, h / 4)} L ${minX + w} ${minY + h - Math.min(16, h / 4)}`}
-                  stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4" />
+                  stroke="var(--canvas-accent)" strokeWidth={2} strokeDasharray="4 4" />
                 <ellipse cx={cx} cy={minY + h - Math.min(16, h / 4)} rx={w / 2} ry={Math.min(16, h / 4)}
-                  fill="none" stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4" />
+                  fill="none" stroke="var(--canvas-accent)" strokeWidth={2} strokeDasharray="4 4" />
               </g>
             )}
-            {(activeTool === 'arrow' || activeTool === 'line') && (
-              <path
-                d={getDirectionalOrthogonalPathD(start.x, start.y, targetPt.x, targetPt.y, fromPort, toPort)}
-                fill="none" stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4"
-                markerEnd={activeTool === 'arrow' ? 'url(#wb-arrowhead)' : undefined} />
-            )}
+            {(activeTool === 'arrow' || activeTool === 'line') && (() => {
+              const routingStyle = useWhiteboardStore.getState().activeRoutingStyle;
+              const pathD = routingStyle === 'straight'
+                ? `M ${start.x} ${start.y} L ${targetPt.x} ${targetPt.y}`
+                : routingStyle === 'curved'
+                  ? getCurvedPathD(start.x, start.y, targetPt.x, targetPt.y)
+                  : getDirectionalOrthogonalPathD(start.x, start.y, targetPt.x, targetPt.y, fromPort, toPort);
+              return (
+                <path
+                  d={pathD}
+                  fill="none" stroke="var(--canvas-accent)" strokeWidth={2} strokeDasharray="4 4"
+                  markerEnd={activeTool === 'arrow' ? 'url(#wb-arrowhead)' : undefined} />
+              );
+            })()}
             {activeTool === 'pencil' && points.length > 0 && (
               <path
                 d={points.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ')}
-                fill="none" stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4" />
+                fill="none" stroke="var(--canvas-accent)" strokeWidth={2} strokeDasharray="4 4" />
             )}
             {activeTool === 'sticky' && (
               <rect x={start.x} y={start.y} width={180} height={180} rx={8}
-                fill="none" stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4" />
+                fill="none" stroke="var(--canvas-accent)" strokeWidth={2} strokeDasharray="4 4" />
             )}
             {activeTool === 'text' && (
               <rect x={start.x} y={start.y} width={160} height={40} rx={4}
-                fill="none" stroke="#3b82f6" strokeWidth={1.5} strokeDasharray="4 4" />
+                fill="none" stroke="var(--canvas-accent)" strokeWidth={1.5} strokeDasharray="4 4" />
             )}
             {activeTool === 'comment' && (
               <rect x={start.x - 16} y={start.y - 16} width={200} height={80} rx={8}
-                fill="none" stroke="#3b82f6" strokeWidth={1.5} strokeDasharray="4 4" />
+                fill="none" stroke="var(--canvas-accent)" strokeWidth={1.5} strokeDasharray="4 4" />
             )}
           </g>
         );
@@ -143,7 +156,7 @@ export function WhiteboardOverlays({
                 toPort
               )}
               fill="none"
-              stroke="#3b82f6"
+              stroke="var(--canvas-accent)"
               strokeWidth={2}
               strokeDasharray="4 4"
               markerEnd="url(#wb-arrowhead)"
@@ -190,7 +203,7 @@ export function WhiteboardOverlays({
             <path
               d={pathD}
               fill="none"
-              stroke="#3b82f6"
+              stroke="var(--canvas-accent)"
               strokeWidth={2}
               strokeDasharray="4 4"
               markerEnd={arrow.type === 'arrow' ? 'url(#wb-arrowhead)' : undefined}
@@ -206,11 +219,12 @@ export function WhiteboardOverlays({
             cx={activeSnap.x}
             cy={activeSnap.y}
             r={8}
-            fill="rgba(59, 130, 246, 0.2)"
-            stroke="#3b82f6"
+            fill="var(--canvas-accent)"
+            fillOpacity={0.2}
+            stroke="var(--canvas-accent)"
             strokeWidth={2}
           />
-          <circle cx={activeSnap.x} cy={activeSnap.y} r={4} fill="#3b82f6" />
+          <circle cx={activeSnap.x} cy={activeSnap.y} r={4} fill="var(--canvas-accent)" />
         </g>
       )}
 
@@ -221,8 +235,9 @@ export function WhiteboardOverlays({
           y={Math.min(selectionBox.start.y, selectionBox.current.y)}
           width={Math.abs(selectionBox.current.x - selectionBox.start.x)}
           height={Math.abs(selectionBox.current.y - selectionBox.start.y)}
-          fill="rgba(59, 130, 246, 0.08)"
-          stroke="#3b82f6"
+          fill="var(--canvas-accent)"
+          fillOpacity={0.08}
+          stroke="var(--canvas-accent)"
           strokeWidth={1}
           strokeDasharray="3 3"
         />
@@ -239,7 +254,7 @@ export function WhiteboardOverlays({
             width={el.width + 4}
             height={el.height + 4}
             fill="none"
-            stroke="#3b82f6"
+            stroke="var(--canvas-accent)"
             strokeWidth={1.5}
             strokeDasharray="4 4"
           />
@@ -259,8 +274,8 @@ export function WhiteboardOverlays({
               y={h.y}
               width={8}
               height={8}
-              fill="#ffffff"
-              stroke="#3b82f6"
+              fill="var(--background)"
+              stroke="var(--canvas-accent)"
               strokeWidth={1.5}
               className="cursor-nwse-resize"
               onPointerDown={(e) => onResizeHandlePointerDown(e, h.handle as ResizeHandle, el.id)}
@@ -319,13 +334,13 @@ export function WhiteboardOverlays({
                       cx={qc.cx}
                       cy={qc.cy}
                       r={11}
-                      fill="#3b82f6"
+                      fill="var(--canvas-accent)"
                       className="transition-all duration-150 scale-110 shadow-lg"
                       style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
                     />
                     <path
                       d={`M ${qc.cx - 4} ${qc.cy} L ${qc.cx + 4} ${qc.cy} M ${qc.cx} ${qc.cy - 4} L ${qc.cx} ${qc.cy + 4}`}
-                      stroke="#ffffff"
+                      stroke="var(--background)"
                       strokeWidth={2}
                       strokeLinecap="round"
                     />
@@ -336,7 +351,7 @@ export function WhiteboardOverlays({
                     cy={qc.cy}
                     r={3.5}
                     fill="var(--background)"
-                    stroke="#3b82f6"
+                    stroke="var(--canvas-accent)"
                     strokeWidth={1.5}
                     className="opacity-50 transition-opacity hover:opacity-100 cursor-pointer"
                     onPointerEnter={() =>

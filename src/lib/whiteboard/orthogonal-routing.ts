@@ -1,4 +1,4 @@
-import type { WhiteboardElement, PortDirection, PortPosition } from './whiteboard-types';
+import type { WhiteboardElement, PortDirection, PortPosition, Point } from './whiteboard-types';
 import { getShapePorts, isConnectorElement } from './whiteboard-types';
 
 export interface ShapePortSnap {
@@ -41,6 +41,11 @@ export function getOppositePort(port: PortDirection): PortDirection {
 }
 
 /**
+ * Generates an orthogonal elbow path between two points with a given corner radius.
+ * Used for path segments.
+ */
+
+/**
  * Calculates Eraser.io directional orthogonal elbow connector paths with clearance stubs and smooth arc bends.
  */
 export function getDirectionalOrthogonalPathD(
@@ -69,6 +74,31 @@ export function getDirectionalOrthogonalPathD(
   else if (fromPort === 'top') s1y -= stubLength;
 
   // Stub 2 (extending outwards from end port)
+  let s2x = x2;
+  let s2y = y2;
+  if (toPort === 'right') s2x += stubLength;
+  else if (toPort === 'left') s2x -= stubLength;
+  else if (toPort === 'bottom') s2y += stubLength;
+  else if (toPort === 'top') s2y -= stubLength;
+
+  return getOriginalOrthogonalPathD(x1, y1, x2, y2, fromPort, toPort, cornerRadius, stubLength);
+}
+
+/**
+ * Original orthogonal path algorithm
+ */
+function getOriginalOrthogonalPathD(
+  x1: number, y1: number, x2: number, y2: number,
+  fromPort: PortDirection, toPort: PortDirection,
+  cornerRadius: number, stubLength: number
+): string {
+  let s1x = x1;
+  let s1y = y1;
+  if (fromPort === 'right') s1x += stubLength;
+  else if (fromPort === 'left') s1x -= stubLength;
+  else if (fromPort === 'bottom') s1y += stubLength;
+  else if (fromPort === 'top') s1y -= stubLength;
+
   let s2x = x2;
   let s2y = y2;
   if (toPort === 'right') s2x += stubLength;
@@ -251,6 +281,45 @@ export function findNearestShapePort(
 
   return closest;
 }
+
+/**
+}
+
+/**
+ * Generate a smooth cubic bezier curved path between two points.
+ * Creates an S-curve between the start and end, with control points offset perpendicularly.
+ */
+export function getCurvedPathD(
+  x1: number, y1: number, x2: number, y2: number
+): string {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const dist = Math.hypot(dx, dy);
+
+  if (dist < 5) {
+    return `M ${x1} ${y1} L ${x2} ${y2}`;
+  }
+
+  const offset = dist * 0.35;
+
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    const cp1x = x1 + offset;
+    const cp1y = y1;
+    const cp2x = x2 - offset;
+    const cp2y = y2;
+    return `M ${x1} ${y1} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2}`;
+  } else {
+    const cp1x = x1;
+    const cp1y = y1 + offset;
+    const cp2x = x2;
+    const cp2y = y2 - offset;
+    return `M ${x1} ${y1} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2}`;
+  }
+}
+
+/**
+ * Unified path generator that picks the right path based on routing style.
+ */
 
 export { getElementBounds } from './whiteboard-types';
 export { generateId } from '@/lib/utils';

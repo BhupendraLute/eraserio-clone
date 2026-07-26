@@ -8,7 +8,7 @@ import type {
   LineStyle,
   PortDirection,
 } from '@/lib/whiteboard/whiteboard-types';
-import { isConnectorElement, getShapePorts } from '@/lib/whiteboard/whiteboard-types';
+import { WHITEBOARD_COLORS, isConnectorElement, getShapePorts, ArrowheadStyle, RoutingStyle } from '@/lib/whiteboard/whiteboard-types';
 import { getOptimalPortPair, getOptimalSinglePort } from '@/lib/whiteboard/orthogonal-routing';
 import { generateId } from '@/lib/utils';
 
@@ -39,12 +39,28 @@ function saveElements(elements: WhiteboardElement[]) {
   }
 }
 
+export type LineWidthSize = 'S' | 'M' | 'L' | 'XL';
+
+export const LINE_WIDTH_PRESETS: Record<LineWidthSize, number> = {
+  S: 1,
+  M: 2,
+  L: 4,
+  XL: 8,
+};
+
 interface WhiteboardStore {
   activeTool: WhiteboardTool;
   activeColor: WhiteboardColor;
+  activeStrokeHex: string;
+  activeFillHex: string;
   activeCloudIcon: CloudIconKind;
   activeStrokeWidth: number;
+  activeLineWidthSize: LineWidthSize;
   activeLineStyle: LineStyle;
+  activeArrowheadStyle: ArrowheadStyle;
+  activeStartArrowheadStyle: ArrowheadStyle;
+  activeRoutingStyle: RoutingStyle;
+  activeCornerRadius: number;
   elements: WhiteboardElement[];
   selectedIds: string[];
   history: HistoryState[];
@@ -54,9 +70,16 @@ interface WhiteboardStore {
 
   setActiveTool: (tool: WhiteboardTool) => void;
   setActiveColor: (color: WhiteboardColor) => void;
+  setActiveStrokeHex: (hex: string) => void;
+  setActiveFillHex: (hex: string) => void;
   setActiveCloudIcon: (icon: CloudIconKind) => void;
   setActiveStrokeWidth: (width: number) => void;
+  setActiveLineWidthSize: (size: LineWidthSize) => void;
   setActiveLineStyle: (style: LineStyle) => void;
+  setActiveArrowheadStyle: (style: ArrowheadStyle) => void;
+  setActiveStartArrowheadStyle: (style: ArrowheadStyle) => void;
+  setActiveRoutingStyle: (style: RoutingStyle) => void;
+  setActiveCornerRadius: (radius: number) => void;
   setShowGrid: (show: boolean) => void;
 
   addElement: (element: WhiteboardElement) => void;
@@ -110,9 +133,16 @@ function pushHistory(state: { history: HistoryState[]; elements: WhiteboardEleme
 export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
   activeTool: 'select',
   activeColor: 'blue',
+  activeStrokeHex: '#3b82f6',
+  activeFillHex: '#dbeafe',
   activeCloudIcon: 'iconify-aws-ec2',
   activeStrokeWidth: 2,
+  activeLineWidthSize: 'M',
   activeLineStyle: 'solid',
+  activeArrowheadStyle: 'arrow',
+  activeStartArrowheadStyle: 'none',
+  activeRoutingStyle: 'orthogonal',
+  activeCornerRadius: 6,
   elements: [],
   selectedIds: [],
   history: [],
@@ -124,10 +154,24 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
   canRedo: false,
 
   setActiveTool: (tool) => set({ activeTool: tool }),
-  setActiveColor: (color) => set({ activeColor: color }),
+  setActiveColor: (color) => {
+    const preset = WHITEBOARD_COLORS[color];
+    set({ activeColor: color, activeStrokeHex: preset.border, activeFillHex: preset.bg });
+  },
+  setActiveStrokeHex: (hex) => set({ activeStrokeHex: hex }),
+  setActiveFillHex: (hex) => set({ activeFillHex: hex }),
   setActiveCloudIcon: (icon) => set({ activeCloudIcon: icon }),
-  setActiveStrokeWidth: (width) => set({ activeStrokeWidth: width }),
+  setActiveStrokeWidth: (width) => {
+    // Try to sync with a matching preset size
+    const match = (Object.entries(LINE_WIDTH_PRESETS) as [LineWidthSize, number][]).find(([, w]) => w === width);
+    set({ activeStrokeWidth: width, activeLineWidthSize: match ? match[0] : 'M' });
+  },
+  setActiveLineWidthSize: (size) => set({ activeLineWidthSize: size, activeStrokeWidth: LINE_WIDTH_PRESETS[size] }),
   setActiveLineStyle: (style) => set({ activeLineStyle: style }),
+  setActiveArrowheadStyle: (style) => set({ activeArrowheadStyle: style }),
+  setActiveStartArrowheadStyle: (style) => set({ activeStartArrowheadStyle: style }),
+  setActiveRoutingStyle: (style) => set({ activeRoutingStyle: style }),
+  setActiveCornerRadius: (radius) => set({ activeCornerRadius: radius }),
   setShowGrid: (show) => set({ showGrid: show }),
 
   hydrate: () => {
@@ -428,6 +472,8 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
         width: Math.abs(endPos.x - startPos.x) || 10, height: Math.abs(endPos.y - startPos.y) || 10,
         startX: startPos.x, startY: startPos.y, endX: endPos.x, endY: endPos.y,
         routingStyle: 'orthogonal', lineStyle: 'solid',
+        arrowheadStyle: get().activeArrowheadStyle,
+        arrowheadColor: sourceEl.strokeColor,
         fromElementId: sourceEl.id, fromPort, toElementId: newShapeId, toPort,
         strokeColor: sourceEl.strokeColor, strokeWidth: sourceEl.strokeWidth || 2,
       };

@@ -47,6 +47,12 @@ export function useWhiteboardInteractions({
   const activeColor = useWhiteboardStore((s) => s.activeColor);
   const activeStrokeWidth = useWhiteboardStore((s) => s.activeStrokeWidth);
   const activeLineStyle = useWhiteboardStore((s) => s.activeLineStyle);
+  const activeStrokeHex = useWhiteboardStore((s) => s.activeStrokeHex);
+  const activeFillHex = useWhiteboardStore((s) => s.activeFillHex);
+  const activeRoutingStyle = useWhiteboardStore((s) => s.activeRoutingStyle);
+  const activeCornerRadius = useWhiteboardStore((s) => s.activeCornerRadius);
+  const activeArrowheadStyle = useWhiteboardStore((s) => s.activeArrowheadStyle);
+  const activeStartArrowheadStyle = useWhiteboardStore((s) => s.activeStartArrowheadStyle);
 
   const setActiveTool = useWhiteboardStore((s) => s.setActiveTool);
   const addElement = useWhiteboardStore((s) => s.addElement);
@@ -105,6 +111,8 @@ export function useWhiteboardInteractions({
     startPos: Point;
     currentPos: Point;
   } | null>(null);
+
+
 
   const [activeSnap, setActiveSnap] = useState<ShapePortSnap | null>(null);
   const [hoveredPort, setHoveredPort] = useState<{
@@ -427,6 +435,7 @@ export function useWhiteboardInteractions({
           startX: quickConnectDragState.startPos.x, startY: quickConnectDragState.startPos.y,
           endX: snap.x, endY: snap.y,
           routingStyle: 'orthogonal', lineStyle: activeLineStyle,
+          arrowheadStyle: activeArrowheadStyle, startArrowheadStyle: activeStartArrowheadStyle, arrowheadColor: sourceEl.strokeColor || '#3b82f6',
           fromElementId: quickConnectDragState.sourceId, fromPort: quickConnectDragState.fromPort,
           toElementId: snap.elementId, toPort: snap.port,
           strokeColor: sourceEl.strokeColor || '#3b82f6', strokeWidth: sourceEl.strokeWidth || 2,
@@ -448,6 +457,7 @@ export function useWhiteboardInteractions({
           startX: quickConnectDragState.startPos.x, startY: quickConnectDragState.startPos.y,
           endX: targetPortPos.x, endY: targetPortPos.y,
           routingStyle: 'orthogonal', lineStyle: activeLineStyle,
+          arrowheadStyle: activeArrowheadStyle, startArrowheadStyle: activeStartArrowheadStyle, arrowheadColor: sourceEl.strokeColor || '#3b82f6',
           fromElementId: quickConnectDragState.sourceId, fromPort: quickConnectDragState.fromPort,
           toElementId: newShapeId, toPort: targetPort,
           strokeColor: sourceEl.strokeColor || '#3b82f6', strokeWidth: sourceEl.strokeWidth || 2,
@@ -472,17 +482,18 @@ export function useWhiteboardInteractions({
     const width = Math.max(30, Math.abs(current.x - start.x));
     const height = Math.max(30, Math.abs(current.y - start.y));
 
-    const colorStyle = WHITEBOARD_COLORS[activeColor];
+    const strokeHex = activeStrokeHex || WHITEBOARD_COLORS[activeColor].border;
+    const fillHex = activeFillHex && activeFillHex !== 'transparent' ? activeFillHex : WHITEBOARD_COLORS[activeColor].bg;
     const id = generateId();
 
     if (activeTool === 'rectangle') {
-      addElement({ id, type: 'rectangle', x: minX, y: minY, width, height, strokeColor: colorStyle.border, fillColor: colorStyle.bg, strokeWidth: activeStrokeWidth });
+      addElement({ id, type: 'rectangle', x: minX, y: minY, width, height, cornerRadius: activeCornerRadius, strokeColor: strokeHex, fillColor: fillHex, strokeWidth: activeStrokeWidth });
     } else if (activeTool === 'circle') {
-      addElement({ id, type: 'circle', x: minX, y: minY, width, height, strokeColor: colorStyle.border, fillColor: colorStyle.bg, strokeWidth: activeStrokeWidth });
+      addElement({ id, type: 'circle', x: minX, y: minY, width, height, strokeColor: strokeHex, fillColor: fillHex, strokeWidth: activeStrokeWidth });
     } else if (activeTool === 'diamond') {
-      addElement({ id, type: 'diamond', x: minX, y: minY, width, height, strokeColor: colorStyle.border, fillColor: colorStyle.bg, strokeWidth: activeStrokeWidth });
+      addElement({ id, type: 'diamond', x: minX, y: minY, width, height, strokeColor: strokeHex, fillColor: fillHex, strokeWidth: activeStrokeWidth });
     } else if (activeTool === 'cylinder') {
-      addElement({ id, type: 'cylinder', x: minX, y: minY, width, height, strokeColor: colorStyle.border, fillColor: colorStyle.bg, strokeWidth: activeStrokeWidth });
+      addElement({ id, type: 'cylinder', x: minX, y: minY, width, height, strokeColor: strokeHex, fillColor: fillHex, strokeWidth: activeStrokeWidth });
     } else if (activeTool === 'arrow' || activeTool === 'line') {
       const fromPortSnap = findNearestShapePort(start, elements);
       const toPortSnap = findNearestShapePort(current, elements);
@@ -505,33 +516,36 @@ export function useWhiteboardInteractions({
       addElement({
         id, type: activeTool, x: Math.min(startX, endX), y: Math.min(startY, endY),
         width: Math.abs(endX - startX) || 10, height: Math.abs(endY - startY) || 10,
-        startX, startY, endX, endY, routingStyle: 'orthogonal', lineStyle: activeLineStyle,
+        startX, startY, endX, endY, routingStyle: activeRoutingStyle, lineStyle: activeLineStyle,
+        arrowheadStyle: activeTool === 'arrow' ? activeArrowheadStyle : undefined,
+        startArrowheadStyle: activeTool === 'arrow' ? activeStartArrowheadStyle : undefined,
+        arrowheadColor: activeTool === 'arrow' ? strokeHex : undefined,
         fromElementId: fromPortSnap?.elementId, fromPort,
         toElementId: toPortSnap?.elementId, toPort,
-        strokeColor: colorStyle.border, strokeWidth: activeStrokeWidth,
+        strokeColor: strokeHex, strokeWidth: activeStrokeWidth,
       });
     } else if (activeTool === 'sticky') {
       addElement({
         id, type: 'sticky', x: start.x, y: start.y, width: 180, height: 180,
         text: 'New Sticky Note', color: activeColor,
-        strokeColor: colorStyle.border, fillColor: colorStyle.bg, strokeWidth: 1,
+        strokeColor: strokeHex, fillColor: fillHex, strokeWidth: 1,
       });
     } else if (activeTool === 'pencil') {
       addElement({
         id, type: 'pencil', x: minX, y: minY, width, height, points,
-        strokeColor: colorStyle.border, strokeWidth: activeStrokeWidth,
+        strokeColor: strokeHex, strokeWidth: activeStrokeWidth,
       });
     } else if (activeTool === 'text') {
       addElement({
         id, type: 'text', x: start.x, y: start.y, width: 160, height: 40,
         text: 'Click to edit text', fontSize: 16,
-        strokeColor: colorStyle.border, strokeWidth: 1,
+        strokeColor: strokeHex, strokeWidth: 1,
       });
     } else if (activeTool === 'comment') {
       addElement({
         id, type: 'comment', x: start.x - 16, y: start.y - 16, width: 200, height: 80,
         text: 'Add a comment...', author: 'You', resolved: false,
-        color: activeColor, strokeColor: colorStyle.border, fillColor: colorStyle.bg, strokeWidth: 1,
+        color: activeColor, strokeColor: strokeHex, fillColor: fillHex, strokeWidth: 1,
       });
     }
 
@@ -649,5 +663,6 @@ export function useWhiteboardInteractions({
     handleFitSelection,
     spawnConnectedNode,
     deleteElements,
+
   };
 }

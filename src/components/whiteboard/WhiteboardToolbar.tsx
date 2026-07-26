@@ -58,7 +58,7 @@ export function WhiteboardToolbar() {
 
   return (
     <>
-      <div className="absolute top-3 left-1/2 z-30 flex -translate-x-1/2 flex-wrap items-center gap-1.5 rounded-xl border bg-background/95 p-1.5 shadow-lg backdrop-blur">
+      <div className="absolute top-3 left-1/2 z-30 flex -translate-x-1/2 flex-wrap items-center gap-1.5 rounded-xl border bg-muted/90 p-1.5 shadow-lg backdrop-blur">
         {/* Undo / Redo */}
         <div className="flex items-center gap-0.5">
           <Button

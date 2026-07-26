@@ -89,7 +89,7 @@ export function InsertItemPopup({
       width: frameType === 'browser' ? 500 : 280,
       height: frameType === 'browser' ? 320 : 520,
       title: frameType === 'browser' ? 'Browser Frame (localhost:3000)' : 'Mobile Phone Frame',
-      strokeColor: '#3b82f6',
+      strokeColor: 'var(--canvas-accent)',
       strokeWidth: 2,
     });
     setSelectedIds([id]);

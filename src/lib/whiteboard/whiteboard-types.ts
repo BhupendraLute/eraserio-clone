@@ -22,7 +22,11 @@ export type CloudIconKind = string;
 
 export type ResizeHandle = 'tl' | 'tc' | 'tr' | 'ml' | 'mr' | 'bl' | 'bc' | 'br';
 
-export type LineStyle = 'solid' | 'dashed' | 'dotted';
+export type LineStyle = 'solid' | 'dashed' | 'dotted' | 'dash-dot';
+
+export type ArrowheadStyle = 'arrow' | 'triangle' | 'diamond' | 'circle' | 'none';
+
+export type RoutingStyle = 'orthogonal' | 'straight' | 'curved';
 
 export type PortDirection = 'top' | 'bottom' | 'left' | 'right';
 
@@ -46,6 +50,7 @@ export interface BaseElement {
 
 export interface RectangleElement extends BaseElement {
   type: 'rectangle';
+  cornerRadius?: number;
 }
 
 export interface CircleElement extends BaseElement {
@@ -66,8 +71,11 @@ export interface ArrowElement extends BaseElement {
   startY: number;
   endX: number;
   endY: number;
-  routingStyle?: 'orthogonal' | 'straight';
+  routingStyle?: RoutingStyle;
   lineStyle?: LineStyle;
+  arrowheadStyle?: ArrowheadStyle;
+  startArrowheadStyle?: ArrowheadStyle;
+  arrowheadColor?: string;
   label?: string;
   fromElementId?: string;
   fromPort?: PortDirection;
@@ -81,7 +89,7 @@ export interface LineElement extends BaseElement {
   startY: number;
   endX: number;
   endY: number;
-  routingStyle?: 'orthogonal' | 'straight';
+  routingStyle?: RoutingStyle;
   lineStyle?: LineStyle;
   label?: string;
   fromElementId?: string;
@@ -168,18 +176,19 @@ export const WHITEBOARD_COLORS: Record<
   WhiteboardColor,
   { bg: string; border: string; text: string }
 > = {
-  blue: { bg: '#dbeafe', border: '#3b82f6', text: '#1e40af' },
-  green: { bg: '#dcfce7', border: '#22c55e', text: '#166534' },
-  amber: { bg: '#fef3c7', border: '#f59e0b', text: '#92400e' },
-  purple: { bg: '#f3e8ff', border: '#a855f7', text: '#6b21a8' },
-  rose: { bg: '#ffe4e6', border: '#f43f5e', text: '#9f1239' },
-  gray: { bg: '#f3f4f6', border: '#6b7280', text: '#1f2937' },
+  blue: { bg: 'rgba(59, 130, 246, 0.12)', border: '#3b82f6', text: 'var(--foreground)' },
+  green: { bg: 'rgba(34, 197, 94, 0.12)', border: '#22c55e', text: 'var(--foreground)' },
+  amber: { bg: 'rgba(245, 158, 11, 0.12)', border: '#f59e0b', text: 'var(--foreground)' },
+  purple: { bg: 'rgba(168, 85, 247, 0.12)', border: '#a855f7', text: 'var(--foreground)' },
+  rose: { bg: 'rgba(244, 63, 94, 0.12)', border: '#f43f5e', text: 'var(--foreground)' },
+  gray: { bg: 'rgba(107, 114, 128, 0.12)', border: '#6b7280', text: 'var(--foreground)' },
 };
 
-export const LINE_DASH: Record<LineStyle, string> = {
+export const  LINE_DASH: Record<LineStyle, string> = {
   solid: '',
   dashed: '8 4',
   dotted: '2 4',
+  'dash-dot': '8 4 2 4',
 };
 
 export function isConnectorElement(el: WhiteboardElement): el is ArrowElement | LineElement {

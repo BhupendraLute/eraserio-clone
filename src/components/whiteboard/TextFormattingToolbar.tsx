@@ -40,12 +40,12 @@ export function TextFormattingToolbar() {
   ];
 
   return (
-    <div className="absolute top-16 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-lg border bg-background/95 p-1 shadow-md backdrop-blur">
+    <div className="absolute top-16 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-lg border bg-muted/90 p-1 shadow-md backdrop-blur">
       {/* Font Family Selector */}
       <select
         value={currentFontFamily}
         onChange={(e) => updateElement(target.id, { fontFamily: e.target.value })}
-        className="h-7 rounded border bg-background px-2 text-xs text-foreground outline-none"
+        className="h-7 rounded border bg-transparent px-2 text-xs text-foreground outline-none"
       >
         {fontFamilies.map((f) => (
           <option key={f.value} value={f.value}>
@@ -58,7 +58,7 @@ export function TextFormattingToolbar() {
       <select
         value={currentFontSize}
         onChange={(e) => updateElement(target.id, { fontSize: Number(e.target.value) })}
-        className="h-7 rounded border bg-background px-2 text-xs text-foreground outline-none"
+        className="h-7 rounded border bg-transparent px-2 text-xs text-foreground outline-none"
       >
         {fontSizes.map((s) => (
           <option key={s} value={s}>

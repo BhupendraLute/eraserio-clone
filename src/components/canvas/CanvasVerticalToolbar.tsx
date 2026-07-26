@@ -26,7 +26,7 @@ export function CanvasVerticalToolbar() {
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
 
   return (
-    <div className="absolute top-4 left-3 z-40 flex flex-col items-center gap-1 rounded-xl border bg-background/95 p-1 shadow-xl backdrop-blur select-none">
+    <div className="absolute top-4 left-3 z-40 flex flex-col items-center gap-1 rounded-xl border bg-muted/90 p-1 shadow-xl backdrop-blur select-none">
       {/* Top Insert Item (+ / Ctrl+/) */}
       <Button variant={insertItemOpen ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8 text-primary"
         onClick={toggleInsertItem} title="Insert item (Ctrl+/)">
