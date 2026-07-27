@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
-import { ICON_CATALOG } from '@/lib/icons/icon-catalog';
+import { ICON_MAP } from '@/lib/icons/icon-catalog';
 import { CloudIconPicker } from './CloudIconPicker';
 import {
   ToolbarPanel,
@@ -74,7 +74,7 @@ export function IconToolbar() {
     ? (firstSelectedCloud.strokeColor || WHITEBOARD_COLORS[activeColor]?.border || '#3b82f6')
     : WHITEBOARD_COLORS[activeColor]?.border || '#3b82f6';
 
-  const matched = ICON_CATALOG.find((item) => item.kind === currentIconKind);
+  const matched = ICON_MAP.get(currentIconKind);
   const IconComponent = matched?.icon || Server;
 
   const handleSelectIcon = (kind: CloudIconKind | string) => {

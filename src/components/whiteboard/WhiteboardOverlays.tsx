@@ -19,7 +19,7 @@ import {
 } from '@/lib/whiteboard/orthogonal-routing';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { getMarkerId, getStartMarkerId } from '@/components/whiteboard/WhiteboardElements';
-import { ICON_CATALOG } from '@/lib/icons/icon-catalog';
+import { ICON_MAP } from '@/lib/icons/icon-catalog';
 import { Server } from 'lucide-react';
 
 /* CSS variable helpers for theme-aware canvas chrome */
@@ -147,7 +147,7 @@ export function WhiteboardOverlays({
             )}
             {activeTool === 'cloud' && (() => {
               const activeCloudIcon = useWhiteboardStore.getState().activeCloudIcon;
-              const matched = ICON_CATALOG.find((item) => item.kind === activeCloudIcon);
+              const matched = ICON_MAP.get(activeCloudIcon);
               const IconComponent = (matched && matched.icon) ? matched.icon : Server;
               const side = w < 15 && h < 15 ? 64 : Math.max(Math.max(w, h), 32);
               const previewX = w < 15 && h < 15 ? start.x - 32 : minX;

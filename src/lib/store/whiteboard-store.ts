@@ -30,13 +30,24 @@ function loadElements(): WhiteboardElement[] {
   }
 }
 
+/**
+ * Debounced localStorage persistence.
+ * The Zustand store state updates instantly on every frame (powering live
+ * preview during drag/resize). Only the expensive JSON.stringify +
+ * localStorage.setItem call is debounced so it runs at most once per 300ms.
+ */
+let _saveTimer: ReturnType<typeof setTimeout> | null = null;
+
 function saveElements(elements: WhiteboardElement[]) {
   if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(elements));
-  } catch {
-    // quota exceeded or SSR — ignore
-  }
+  if (_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(elements));
+    } catch {
+      // quota exceeded or SSR — ignore
+    }
+  }, 300);
 }
 
 export type LineWidthSize = 'S' | 'M' | 'L' | 'XL';
@@ -252,6 +263,9 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
         return { ...el, x: el.x + dx, y: el.y + dy };
       });
 
+      // O(1) element lookup map for connector rerouting
+      const idMap = new Map(updatedElements.map((e) => [e.id, e]));
+
       const finalElements = updatedElements.map((el) => {
         if (!isConnectorElement(el)) return el;
         const fromSelected = el.fromElementId ? state.selectedIds.includes(el.fromElementId) : false;
@@ -262,8 +276,8 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
           waypoint = { x: waypoint.x + dx, y: waypoint.y + dy };
         }
 
-        const fromEl = el.fromElementId ? updatedElements.find((item) => item.id === el.fromElementId) : undefined;
-        const toEl = el.toElementId ? updatedElements.find((item) => item.id === el.toElementId) : undefined;
+        const fromEl = el.fromElementId ? idMap.get(el.fromElementId) : undefined;
+        const toEl = el.toElementId ? idMap.get(el.toElementId) : undefined;
         if (fromEl && toEl) {
           const optimal = getOptimalPortPair(fromEl, toEl);
           const autoRouting = (!el.isUserRoutingStyle && el.routingStyle !== 'curved')
@@ -326,10 +340,13 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
         return { ...el, x: newX, y: newY, width: newW, height: newH };
       });
 
+      // O(1) element lookup map for connector rerouting
+      const idMap = new Map(updatedElements.map((e) => [e.id, e]));
+
       const finalElements = updatedElements.map((el) => {
         if (!isConnectorElement(el)) return el;
-        const fromEl = el.fromElementId ? updatedElements.find((item) => item.id === el.fromElementId) : undefined;
-        const toEl = el.toElementId ? updatedElements.find((item) => item.id === el.toElementId) : undefined;
+        const fromEl = el.fromElementId ? idMap.get(el.fromElementId) : undefined;
+        const toEl = el.toElementId ? idMap.get(el.toElementId) : undefined;
         if (fromEl && toEl) {
           const optimal = getOptimalPortPair(fromEl, toEl);
           return { ...el, startX: optimal.fromPos.x, startY: optimal.fromPos.y, endX: optimal.toPos.x, endY: optimal.toPos.y, fromPort: optimal.fromPort, toPort: optimal.toPort };
@@ -643,11 +660,14 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
         }
       });
 
+      // O(1) element lookup map for connector rerouting
+      const idMap = new Map(updatedElements.map((e) => [e.id, e]));
+
       const finalElements = updatedElements.map((el) => {
         if (!isConnectorElement(el)) return el;
         if (el.fromElementId && el.toElementId) {
-          const fromEl = updatedElements.find((item) => item.id === el.fromElementId);
-          const toEl = updatedElements.find((item) => item.id === el.toElementId);
+          const fromEl = idMap.get(el.fromElementId);
+          const toEl = idMap.get(el.toElementId);
           if (fromEl && toEl) {
             const optimal = getOptimalPortPair(fromEl, toEl);
             return { ...el, x: Math.min(optimal.fromPos.x, optimal.toPos.x), y: Math.min(optimal.fromPos.y, optimal.toPos.y), width: Math.max(10, Math.abs(optimal.toPos.x - optimal.fromPos.x)), height: Math.max(10, Math.abs(optimal.toPos.y - optimal.fromPos.y)), startX: optimal.fromPos.x, startY: optimal.fromPos.y, endX: optimal.toPos.x, endY: optimal.toPos.y, fromPort: optimal.fromPort, toPort: optimal.toPort };

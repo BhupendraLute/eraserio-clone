@@ -221,6 +221,9 @@ registerSystemDesignModuleIcons(TbIcons, 'tabler', 2);
 
 export const ICON_CATALOG: IconCatalogEntry[] = Array.from(dynamicCatalogMap.values());
 
+/** O(1) lookup map by icon kind — use instead of ICON_CATALOG.find() in render paths */
+export const ICON_MAP: ReadonlyMap<string, IconCatalogEntry> = dynamicCatalogMap;
+
 /**
  * Pure dynamic continuous character (substring) search algorithm for System Design icons.
  */

@@ -2,7 +2,7 @@
 
 import type { WhiteboardElement, ArrowElement, LineElement, CloudIconKind, LineStyle, ArrowheadStyle, Point, PortDirection } from '@/lib/whiteboard/whiteboard-types';
 import { WHITEBOARD_COLORS, LINE_DASH } from '@/lib/whiteboard/whiteboard-types';
-import { ICON_CATALOG } from '@/lib/icons/icon-catalog';
+import { ICON_MAP } from '@/lib/icons/icon-catalog';
 import { DiagramPreview } from '@/components/docs/DiagramPreview';
 import { useDiagramRegistry } from '@/lib/store/diagram-registry';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
@@ -68,7 +68,7 @@ export function WhiteboardElements({
   const diagramMap = useDiagramRegistry((s) => s.diagrams);
 
   const renderCloudIconSvg = (kind: CloudIconKind | string, color: string, elementWidth: number = 64) => {
-    const matched = ICON_CATALOG.find((item) => item.kind === kind);
+    const matched = ICON_MAP.get(kind);
     const IconComponent = (matched && matched.icon) ? matched.icon : Server;
 
     // Ultra-fine stroke scaling (1.15px baseline, max 1.8px)
