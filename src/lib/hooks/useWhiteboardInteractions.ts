@@ -53,9 +53,11 @@ export function useWhiteboardInteractions({
   const activeCornerRadius = useWhiteboardStore((s) => s.activeCornerRadius);
   const activeArrowheadStyle = useWhiteboardStore((s) => s.activeArrowheadStyle);
   const activeStartArrowheadStyle = useWhiteboardStore((s) => s.activeStartArrowheadStyle);
+  const activeIsAnimated = useWhiteboardStore((s) => s.activeIsAnimated);
 
   const setActiveTool = useWhiteboardStore((s) => s.setActiveTool);
   const addElement = useWhiteboardStore((s) => s.addElement);
+  const updateElement = useWhiteboardStore((s) => s.updateElement);
   const deleteElements = useWhiteboardStore((s) => s.deleteElements);
   const setSelectedIds = useWhiteboardStore((s) => s.setSelectedIds);
   const clearSelection = useWhiteboardStore((s) => s.clearSelection);
@@ -101,7 +103,7 @@ export function useWhiteboardInteractions({
 
   const [endpointDragState, setEndpointDragState] = useState<{
     arrowId: string;
-    endpoint: 'start' | 'end';
+    endpoint: 'start' | 'end' | 'waypoint';
     currentPos: Point;
   } | null>(null);
 
@@ -415,9 +417,13 @@ export function useWhiteboardInteractions({
     const coords = getCanvasCoords(e);
 
     if (endpointDragState) {
-      const snap = findNearestShapePort(coords, elements);
-      const targetPos = snap ? { x: snap.x, y: snap.y } : coords;
-      reconnectArrowEndpoint(endpointDragState.arrowId, endpointDragState.endpoint, targetPos, snap?.elementId, snap?.port);
+      if (endpointDragState.endpoint === 'waypoint') {
+        updateElement(endpointDragState.arrowId, { waypoint: coords });
+      } else {
+        const snap = findNearestShapePort(coords, elements);
+        const targetPos = snap ? { x: snap.x, y: snap.y } : coords;
+        reconnectArrowEndpoint(endpointDragState.arrowId, endpointDragState.endpoint, targetPos, snap?.elementId, snap?.port);
+      }
       setEndpointDragState(null);
       setActiveSnap(null);
       return;
@@ -434,7 +440,7 @@ export function useWhiteboardInteractions({
           width: Math.abs(snap.x - quickConnectDragState.startPos.x) || 10, height: Math.abs(snap.y - quickConnectDragState.startPos.y) || 10,
           startX: quickConnectDragState.startPos.x, startY: quickConnectDragState.startPos.y,
           endX: snap.x, endY: snap.y,
-          routingStyle: 'orthogonal', lineStyle: activeLineStyle,
+          routingStyle: activeRoutingStyle, lineStyle: activeLineStyle,
           arrowheadStyle: activeArrowheadStyle, startArrowheadStyle: activeStartArrowheadStyle, arrowheadColor: sourceEl.strokeColor || '#3b82f6',
           fromElementId: quickConnectDragState.sourceId, fromPort: quickConnectDragState.fromPort,
           toElementId: snap.elementId, toPort: snap.port,
@@ -456,7 +462,7 @@ export function useWhiteboardInteractions({
           width: Math.abs(targetPortPos.x - quickConnectDragState.startPos.x) || 10, height: Math.abs(targetPortPos.y - quickConnectDragState.startPos.y) || 10,
           startX: quickConnectDragState.startPos.x, startY: quickConnectDragState.startPos.y,
           endX: targetPortPos.x, endY: targetPortPos.y,
-          routingStyle: 'orthogonal', lineStyle: activeLineStyle,
+          routingStyle: activeRoutingStyle, lineStyle: activeLineStyle,
           arrowheadStyle: activeArrowheadStyle, startArrowheadStyle: activeStartArrowheadStyle, arrowheadColor: sourceEl.strokeColor || '#3b82f6',
           fromElementId: quickConnectDragState.sourceId, fromPort: quickConnectDragState.fromPort,
           toElementId: newShapeId, toPort: targetPort,
@@ -523,6 +529,7 @@ export function useWhiteboardInteractions({
         fromElementId: fromPortSnap?.elementId, fromPort,
         toElementId: toPortSnap?.elementId, toPort,
         strokeColor: strokeHex, strokeWidth: activeStrokeWidth,
+        isAnimated: activeIsAnimated,
       });
     } else if (activeTool === 'sticky') {
       addElement({
@@ -577,8 +584,7 @@ export function useWhiteboardInteractions({
     e.stopPropagation();
     if (['text', 'sticky', 'frame', 'comment'].includes(el.type)) {
       setEditingElementId(el.id);
-    } else if (['rectangle', 'circle', 'diamond', 'cylinder'].includes(el.type)) {
-      // Add/edit label on shape — create a child text element or enter edit mode
+    } else if (['rectangle', 'circle', 'diamond', 'cylinder', 'arrow', 'line'].includes(el.type)) {
       setEditingElementId(el.id);
     }
   };

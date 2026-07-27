@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import type { WhiteboardElement, ArrowElement, LineElement, CloudIconKind, LineStyle, ArrowheadStyle, Point, PortDirection } from '@/lib/whiteboard/whiteboard-types';
 import { WHITEBOARD_COLORS, LINE_DASH } from '@/lib/whiteboard/whiteboard-types';
 import { ICON_CATALOG } from '@/lib/icons/icon-catalog';
@@ -8,42 +7,46 @@ import { DiagramPreview } from '@/components/docs/DiagramPreview';
 import { useDiagramRegistry } from '@/lib/store/diagram-registry';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { Server, MessageSquare, Check } from 'lucide-react';
+import { cn, generateId } from '@/lib/utils';
 import {
   getDirectionalOrthogonalPathD,
   getCurvedPathD,
   inferCardinalDirection,
+  getArrowMidpoint,
 } from '@/lib/whiteboard/orthogonal-routing';
 
 interface WhiteboardElementsProps {
   elements: WhiteboardElement[];
   selectedIds: string[];
-  endpointDragState: { arrowId: string; endpoint: 'start' | 'end'; currentPos: { x: number; y: number } } | null;
+  endpointDragState: { arrowId: string; endpoint: 'start' | 'end' | 'waypoint'; currentPos: { x: number; y: number } } | null;
   editingElementId: string | null;
   onElementPointerDown: (e: React.PointerEvent, el: WhiteboardElement) => void;
   onElementClick: (e: React.MouseEvent, el: WhiteboardElement) => void;
   onElementDoubleClick: (e: React.MouseEvent, el: WhiteboardElement) => void;
-  onEndpointPointerDown: (e: React.PointerEvent, arrowId: string, endpoint: 'start' | 'end', pos: { x: number; y: number }) => void;
+  onEndpointPointerDown: (e: React.PointerEvent, arrowId: string, endpoint: 'start' | 'end' | 'waypoint', pos: { x: number; y: number }) => void;
   onElementContextMenu?: (e: React.MouseEvent, el: WhiteboardElement) => void;
 
 }
 
-function getMarkerId(ahStyle: ArrowheadStyle | undefined): string {
+export function getMarkerId(ahStyle: ArrowheadStyle | undefined, color?: string): string {
+  const cSuffix = color ? `-${color.replace(/[^a-zA-Z0-9]/g, '')}` : '';
   switch (ahStyle) {
-    case 'triangle': return 'url(#wb-arrowhead-triangle)';
-    case 'diamond': return 'url(#wb-arrowhead-diamond)';
-    case 'circle': return 'url(#wb-arrowhead-circle)';
+    case 'triangle': return `url(#wb-arrowhead-triangle${cSuffix})`;
+    case 'diamond': return `url(#wb-arrowhead-diamond${cSuffix})`;
+    case 'circle': return `url(#wb-arrowhead-circle${cSuffix})`;
     case 'none': return '';
-    default: return 'url(#wb-arrowhead)';
+    default: return `url(#wb-arrowhead${cSuffix})`;
   }
 }
 
-function getStartMarkerId(ahStyle: ArrowheadStyle | undefined): string {
+export function getStartMarkerId(ahStyle: ArrowheadStyle | undefined, color?: string): string {
+  const cSuffix = color ? `-${color.replace(/[^a-zA-Z0-9]/g, '')}` : '';
   switch (ahStyle) {
-    case 'triangle': return 'url(#wb-arrowhead-start-triangle)';
-    case 'diamond': return 'url(#wb-arrowhead-start-diamond)';
-    case 'circle': return 'url(#wb-arrowhead-start-circle)';
+    case 'triangle': return `url(#wb-arrowhead-start-triangle${cSuffix})`;
+    case 'diamond': return `url(#wb-arrowhead-start-diamond${cSuffix})`;
+    case 'circle': return `url(#wb-arrowhead-start-circle${cSuffix})`;
     case 'none': return '';
-    default: return 'url(#wb-arrowhead-start)';
+    default: return `url(#wb-arrowhead-start${cSuffix})`;
   }
 }
 
@@ -87,45 +90,103 @@ export function WhiteboardElements({
   };
 
   const renderLabel = (el: WhiteboardElement, label: string | undefined, midX: number, midY: number) => {
-    if (!label) return null;
+    if (!label || editingElementId === el.id) return null;
+    const labelFontSize = (el as any).labelFontSize ?? (el as any).fontSize ?? 12;
+    const labelFontFamily = (el as any).labelFontFamily ?? (el as any).fontFamily ?? 'inherit';
+    const labelColor = (el as any).labelColor ?? el.strokeColor ?? 'currentColor';
+
+    const charWidth = labelFontSize * 0.62;
+    const paddingX = 8;
+    const paddingY = 4;
+    const rectWidth = Math.max(24, label.length * charWidth + paddingX * 2);
+    const rectHeight = labelFontSize + paddingY * 2;
+    const rectX = midX - rectWidth / 2;
+    const rectY = midY - rectHeight / 2;
+
     return (
-      <text x={midX} y={midY} textAnchor="middle" dominantBaseline="central"
-        className="pointer-events-none select-none" fill="currentColor" fontSize={11} fontWeight={500}>
-        {label}
-      </text>
+      <g className="pointer-events-none select-none">
+        {/* Opaque pill background mask matching canvas background to hide path underneath */}
+        <rect
+          x={rectX}
+          y={rectY}
+          width={rectWidth}
+          height={rectHeight}
+          rx={4}
+          fill="var(--background)"
+        />
+        <text
+          x={midX}
+          y={midY}
+          textAnchor="middle"
+          dominantBaseline="central"
+          className="font-medium"
+          fill={labelColor}
+          fontSize={labelFontSize}
+          fontFamily={labelFontFamily}
+        >
+          {label}
+        </text>
+      </g>
     );
   };
 
-  const renderConnectorHandles = (el: ArrowElement | LineElement) => (
-    <>
-      <circle cx={el.startX} cy={el.startY} r={6} fill="var(--canvas-accent)" stroke="var(--background)" strokeWidth={2}
-        className="cursor-grab hover:scale-125 transition-transform" style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
-        onPointerDown={(evt) => onEndpointPointerDown(evt, el.id, 'start', { x: el.startX, y: el.startY })} />
-      <circle cx={el.endX} cy={el.endY} r={6} fill="var(--canvas-accent)" stroke="var(--background)" strokeWidth={2}
-        className="cursor-grab hover:scale-125 transition-transform" style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
-        onPointerDown={(evt) => onEndpointPointerDown(evt, el.id, 'end', { x: el.endX, y: el.endY })} />
-    </>
-  );
+  const renderConnectorHandles = (el: ArrowElement | LineElement) => {
+    const isCurved = el.routingStyle === 'curved';
+    const waypoint = isCurved ? el.waypoint : undefined;
+    const mid = getArrowMidpoint(el.startX, el.startY, el.endX, el.endY, waypoint);
+    return (
+      <>
+        {/* Start Handle */}
+        <circle cx={el.startX} cy={el.startY} r={6} fill="var(--canvas-accent)" stroke="var(--background)" strokeWidth={2}
+          className="cursor-grab hover:scale-125 transition-transform" style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+          onPointerDown={(evt) => onEndpointPointerDown(evt, el.id, 'start', { x: el.startX, y: el.startY })} />
+        {/* End Handle */}
+        <circle cx={el.endX} cy={el.endY} r={6} fill="var(--canvas-accent)" stroke="var(--background)" strokeWidth={2}
+          className="cursor-grab hover:scale-125 transition-transform" style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+          onPointerDown={(evt) => onEndpointPointerDown(evt, el.id, 'end', { x: el.endX, y: el.endY })} />
+        {/* Waypoint / Middle Drag Handle (Only for curved arrows) */}
+        {isCurved && (
+          <g
+            className="cursor-move group"
+            onPointerDown={(evt) => {
+              evt.stopPropagation();
+              onEndpointPointerDown(evt, el.id, 'waypoint', mid);
+            }}
+            onDoubleClick={(evt) => {
+              evt.stopPropagation();
+              useWhiteboardStore.getState().updateElement(el.id, { waypoint: undefined });
+            }}
+          >
+            <title>Drag to bend / Double-click to reset</title>
+            <circle cx={mid.x} cy={mid.y} r={6} fill="var(--background)" stroke="var(--canvas-accent)" strokeWidth={2}
+              className="hover:scale-125 transition-transform shadow-md" style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
+            <circle cx={mid.x} cy={mid.y} r={2.5} fill="var(--canvas-accent)" />
+          </g>
+        )}
+      </>
+    );
+  };
 
   const renderConnector = (el: ArrowElement | LineElement, showArrowhead: boolean) => {
     const isBeingDragged = endpointDragState?.arrowId === el.id;
     const fromPort: PortDirection = el.fromElementId ? (el.fromPort || 'right') as PortDirection : inferCardinalDirection(el.startX, el.startY, el.endX, el.endY);
     const toPort: PortDirection = el.toElementId ? (el.toPort || 'left') as PortDirection : inferCardinalDirection(el.endX, el.endY, el.startX, el.startY);
     const dashArray = getStrokeDasharray(el);
+    const isCurved = el.routingStyle === 'curved';
+    const waypoint = isCurved ? el.waypoint : undefined;
+    const mid = getArrowMidpoint(el.startX, el.startY, el.endX, el.endY, waypoint);
 
     const pathD = el.routingStyle === 'straight'
       ? `M ${el.startX} ${el.startY} L ${el.endX} ${el.endY}`
-      : el.routingStyle === 'curved'
-        ? getCurvedPathD(el.startX, el.startY, el.endX, el.endY)
+      : isCurved
+        ? getCurvedPathD(el.startX, el.startY, el.endX, el.endY, waypoint)
         : getDirectionalOrthogonalPathD(el.startX, el.startY, el.endX, el.endY, fromPort, toPort);
 
-    const markerEnd = showArrowhead ? getMarkerId((el as ArrowElement).arrowheadStyle) : '';
-    const markerStart = showArrowhead ? getStartMarkerId((el as ArrowElement).startArrowheadStyle) : '';
-    const arrowColor = showArrowhead ? ((el as ArrowElement).arrowheadColor || el.strokeColor) : el.strokeColor;
+    const markerEnd = showArrowhead ? getMarkerId((el as ArrowElement).arrowheadStyle, el.strokeColor) : '';
+    const markerStart = showArrowhead ? getStartMarkerId((el as ArrowElement).startArrowheadStyle, el.strokeColor) : '';
+    const arrowColor = el.strokeColor;
 
     const isSelected = selectedIds.includes(el.id);
-
-
 
     return (
       <g key={el.id}
@@ -141,10 +202,10 @@ export function WhiteboardElements({
             strokeDasharray={dashArray} strokeLinecap="round" strokeLinejoin="round"
             markerEnd={markerEnd || undefined}
             markerStart={markerStart || undefined}
-            className="cursor-pointer pointer-events-none"
+            className={cn('cursor-pointer pointer-events-none', el.isAnimated && 'animate-flow-dash')}
             style={(markerEnd || markerStart) ? { color: arrowColor } : undefined} />
         )}
-        {el.label && renderLabel(el, el.label, (el.startX + el.endX) / 2, (el.startY + el.endY) / 2 - 10)}
+        {el.label && !isBeingDragged && renderLabel(el, el.label, mid.x, mid.y)}
         {isSelected && !isBeingDragged && renderConnectorHandles(el)}
       </g>
     );

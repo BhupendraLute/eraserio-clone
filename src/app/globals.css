@@ -212,3 +212,18 @@
   margin-top: 1.5em;
   margin-bottom: 1.5em;
 }
+
+@keyframes flowDash {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+.animate-flow-dash {
+  stroke-dasharray: 6 4 !important;
+  animation: flowDash 0.6s linear infinite !important;
+  will-change: stroke-dashoffset;
+}

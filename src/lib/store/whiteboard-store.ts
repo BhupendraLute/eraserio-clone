@@ -60,6 +60,7 @@ interface WhiteboardStore {
   activeArrowheadStyle: ArrowheadStyle;
   activeStartArrowheadStyle: ArrowheadStyle;
   activeRoutingStyle: RoutingStyle;
+  activeIsAnimated: boolean;
   activeCornerRadius: number;
   elements: WhiteboardElement[];
   selectedIds: string[];
@@ -79,6 +80,7 @@ interface WhiteboardStore {
   setActiveArrowheadStyle: (style: ArrowheadStyle) => void;
   setActiveStartArrowheadStyle: (style: ArrowheadStyle) => void;
   setActiveRoutingStyle: (style: RoutingStyle) => void;
+  setActiveIsAnimated: (animated: boolean) => void;
   setActiveCornerRadius: (radius: number) => void;
   setShowGrid: (show: boolean) => void;
 
@@ -142,6 +144,7 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
   activeArrowheadStyle: 'arrow',
   activeStartArrowheadStyle: 'none',
   activeRoutingStyle: 'orthogonal',
+  activeIsAnimated: false,
   activeCornerRadius: 6,
   elements: [],
   selectedIds: [],
@@ -171,6 +174,7 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
   setActiveArrowheadStyle: (style) => set({ activeArrowheadStyle: style }),
   setActiveStartArrowheadStyle: (style) => set({ activeStartArrowheadStyle: style }),
   setActiveRoutingStyle: (style) => set({ activeRoutingStyle: style }),
+  setActiveIsAnimated: (animated) => set({ activeIsAnimated: animated }),
   setActiveCornerRadius: (radius) => set({ activeCornerRadius: radius }),
   setShowGrid: (show) => set({ showGrid: show }),
 
@@ -193,9 +197,14 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
   updateElement: (id, patch) =>
     set((state) => {
       const history = pushHistory(state);
-      const elements = state.elements.map((el) =>
-        el.id === id ? ({ ...el, ...patch } as WhiteboardElement) : el
-      );
+      const elements = state.elements.map((el) => {
+        if (el.id !== id) return el;
+        const updated = { ...el, ...patch } as WhiteboardElement;
+        if (isConnectorElement(updated) && updated.routingStyle !== 'curved') {
+          delete (updated as any).waypoint;
+        }
+        return updated;
+      });
       saveElements(elements);
       return { history, future: [], elements, canUndo: true, canRedo: false };
     }),
@@ -231,6 +240,7 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
             startY: el.startY + dy,
             endX: el.endX + dx,
             endY: el.endY + dy,
+            waypoint: el.waypoint ? { x: el.waypoint.x + dx, y: el.waypoint.y + dy } : undefined,
           };
         }
         return { ...el, x: el.x + dx, y: el.y + dy };
@@ -238,19 +248,27 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
 
       const finalElements = updatedElements.map((el) => {
         if (!isConnectorElement(el)) return el;
+        const fromSelected = el.fromElementId ? state.selectedIds.includes(el.fromElementId) : false;
+        const toSelected = el.toElementId ? state.selectedIds.includes(el.toElementId) : false;
+
+        let waypoint = el.waypoint;
+        if (!state.selectedIds.includes(el.id) && (fromSelected || toSelected) && waypoint) {
+          waypoint = { x: waypoint.x + dx, y: waypoint.y + dy };
+        }
+
         const fromEl = el.fromElementId ? updatedElements.find((item) => item.id === el.fromElementId) : undefined;
         const toEl = el.toElementId ? updatedElements.find((item) => item.id === el.toElementId) : undefined;
         if (fromEl && toEl) {
           const optimal = getOptimalPortPair(fromEl, toEl);
-          return { ...el, startX: optimal.fromPos.x, startY: optimal.fromPos.y, endX: optimal.toPos.x, endY: optimal.toPos.y, fromPort: optimal.fromPort, toPort: optimal.toPort };
+          return { ...el, startX: optimal.fromPos.x, startY: optimal.fromPos.y, endX: optimal.toPos.x, endY: optimal.toPos.y, fromPort: optimal.fromPort, toPort: optimal.toPort, waypoint };
         } else if (fromEl) {
           const optimal = getOptimalSinglePort(fromEl, { x: el.endX, y: el.endY });
-          return { ...el, startX: optimal.x, startY: optimal.y, fromPort: optimal.port };
+          return { ...el, startX: optimal.x, startY: optimal.y, fromPort: optimal.port, waypoint };
         } else if (toEl) {
           const optimal = getOptimalSinglePort(toEl, { x: el.startX, y: el.startY });
-          return { ...el, endX: optimal.x, endY: optimal.y, toPort: optimal.port };
+          return { ...el, endX: optimal.x, endY: optimal.y, toPort: optimal.port, waypoint };
         }
-        return el;
+        return { ...el, waypoint };
       });
 
       saveElements(finalElements);
@@ -372,12 +390,40 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
       const offset = 24;
       const newIds: string[] = [];
       const idMap = new Map<string, string>();
-      const newElements = selected.map((el) => {
+
+      selected.forEach((el) => {
         const newId = generateId();
         idMap.set(el.id, newId);
         newIds.push(newId);
-        return { ...el, id: newId, x: el.x + offset, y: el.y + offset } as WhiteboardElement;
       });
+
+      const newElements = selected.map((el) => {
+        const newId = idMap.get(el.id)!;
+        if (isConnectorElement(el)) {
+          const fromId = el.fromElementId && idMap.has(el.fromElementId) ? idMap.get(el.fromElementId) : undefined;
+          const toId = el.toElementId && idMap.has(el.toElementId) ? idMap.get(el.toElementId) : undefined;
+          return {
+            ...el,
+            id: newId,
+            x: el.x + offset,
+            y: el.y + offset,
+            startX: el.startX + offset,
+            startY: el.startY + offset,
+            endX: el.endX + offset,
+            endY: el.endY + offset,
+            waypoint: el.waypoint ? { x: el.waypoint.x + offset, y: el.waypoint.y + offset } : undefined,
+            fromElementId: fromId,
+            toElementId: toId,
+          } as WhiteboardElement;
+        }
+        return {
+          ...el,
+          id: newId,
+          x: el.x + offset,
+          y: el.y + offset,
+        } as WhiteboardElement;
+      });
+
       const elements = [...state.elements, ...newElements];
       saveElements(elements);
       return { history, future: [], elements, selectedIds: newIds, canUndo: true, canRedo: false };
@@ -395,14 +441,61 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
       const history = pushHistory(state);
       const offset = 32;
       const newIds: string[] = [];
-      const newElements = state.clipboard.map((el) => {
+      const idMap = new Map<string, string>();
+
+      state.clipboard.forEach((el) => {
         const newId = generateId();
+        idMap.set(el.id, newId);
         newIds.push(newId);
-        return { ...el, id: newId, x: el.x + offset, y: el.y + offset } as WhiteboardElement;
       });
+
+      const newElements = state.clipboard.map((el) => {
+        const newId = idMap.get(el.id)!;
+        if (isConnectorElement(el)) {
+          const fromId = el.fromElementId && idMap.has(el.fromElementId) ? idMap.get(el.fromElementId) : undefined;
+          const toId = el.toElementId && idMap.has(el.toElementId) ? idMap.get(el.toElementId) : undefined;
+          return {
+            ...el,
+            id: newId,
+            x: el.x + offset,
+            y: el.y + offset,
+            startX: el.startX + offset,
+            startY: el.startY + offset,
+            endX: el.endX + offset,
+            endY: el.endY + offset,
+            waypoint: el.waypoint ? { x: el.waypoint.x + offset, y: el.waypoint.y + offset } : undefined,
+            fromElementId: fromId,
+            toElementId: toId,
+          } as WhiteboardElement;
+        }
+        return {
+          ...el,
+          id: newId,
+          x: el.x + offset,
+          y: el.y + offset,
+        } as WhiteboardElement;
+      });
+
+      // Update clipboard elements coordinates so repeated pastes cascade further down/right
+      const updatedClipboard = state.clipboard.map((el) => {
+        if (isConnectorElement(el)) {
+          return {
+            ...el,
+            x: el.x + offset,
+            y: el.y + offset,
+            startX: el.startX + offset,
+            startY: el.startY + offset,
+            endX: el.endX + offset,
+            endY: el.endY + offset,
+            waypoint: el.waypoint ? { x: el.waypoint.x + offset, y: el.waypoint.y + offset } : undefined,
+          };
+        }
+        return { ...el, x: el.x + offset, y: el.y + offset };
+      });
+
       const elements = [...state.elements, ...newElements];
       saveElements(elements);
-      return { history, future: [], elements, selectedIds: newIds, canUndo: true, canRedo: false };
+      return { history, future: [], elements, selectedIds: newIds, clipboard: updatedClipboard, canUndo: true, canRedo: false };
     }),
 
   groupSelected: () =>

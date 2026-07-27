@@ -119,10 +119,12 @@ export function WhiteboardCanvas() {
     };
   }, []);
 
+  const isOnlyArrowSelection = selectedElements.length > 0 && selectedElements.every(el => el.type === 'arrow' || el.type === 'line');
+
   return (
     <div className="relative h-full w-full select-none overflow-hidden bg-background">
-      {/* Floating Rich Text Formatting Toolbar */}
-      {hasSelection && (
+      {/* Floating Rich Text Formatting Toolbar (hidden when only arrows are selected, since ArrowToolbar subtool panel handles arrows) */}
+      {hasSelection && !isOnlyArrowSelection && (
         <div className="absolute top-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-1.5 rounded-xl border bg-muted/90 p-1.5 shadow-2xl backdrop-blur animate-in fade-in zoom-in-95">
           <select
             value={activeFontFamily}
@@ -232,40 +234,81 @@ export function WhiteboardCanvas() {
               <circle cx={GRID_SIZE / 2} cy={GRID_SIZE / 2} r={1} fill="currentColor" className="text-foreground/10" />
             </pattern>
           )}
-          {/* Standard open arrowhead */}
-          <marker id="wb-arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+          {/* Standard open arrowhead fallback */}
+          <marker id="wb-arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
             <path d="M 0 0 L 9 5 L 0 10 z" fill="currentColor" />
           </marker>
-          {/* Filled triangle arrowhead */}
-          <marker id="wb-arrowhead-triangle" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+          <marker id="wb-arrowhead-triangle" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
             <path d="M 2 1 L 9 5 L 2 9 z" fill="currentColor" />
           </marker>
-          {/* Diamond arrowhead */}
-          <marker id="wb-arrowhead-diamond" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="8" markerHeight="8" orient="auto">
+          <marker id="wb-arrowhead-diamond" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="6" markerHeight="6" orient="auto">
             <path d="M 3 6 L 6 2 L 9 6 L 6 10 z" fill="currentColor" />
           </marker>
-          {/* Circle arrowhead */}
-          <marker id="wb-arrowhead-circle" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+          <marker id="wb-arrowhead-circle" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto">
             <circle cx="5" cy="5" r="4" fill="currentColor" />
           </marker>
-          {/* Invisible marker for 'none' style */}
           <marker id="wb-arrowhead-none" viewBox="0 0 1 1" refX="0" refY="0" markerWidth="0" markerHeight="0" orient="auto">
             <path d="" />
           </marker>
 
-          {/* Start arrowhead markers (reversed orientation) */}
-          <marker id="wb-arrowhead-start" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+          <marker id="wb-arrowhead-start" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto">
             <path d="M 10 0 L 1 5 L 10 10 z" fill="currentColor" />
           </marker>
-          <marker id="wb-arrowhead-start-triangle" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+          <marker id="wb-arrowhead-start-triangle" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto">
             <path d="M 8 1 L 1 5 L 8 9 z" fill="currentColor" />
           </marker>
-          <marker id="wb-arrowhead-start-diamond" viewBox="0 0 12 12" refX="3" refY="6" markerWidth="8" markerHeight="8" orient="auto">
+          <marker id="wb-arrowhead-start-diamond" viewBox="0 0 12 12" refX="3" refY="6" markerWidth="6" markerHeight="6" orient="auto">
             <path d="M 9 6 L 6 2 L 3 6 L 6 10 z" fill="currentColor" />
           </marker>
-          <marker id="wb-arrowhead-start-circle" viewBox="0 0 10 10" refX="3" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+          <marker id="wb-arrowhead-start-circle" viewBox="0 0 10 10" refX="3" refY="5" markerWidth="6" markerHeight="6" orient="auto">
             <circle cx="5" cy="5" r="4" fill="currentColor" />
           </marker>
+
+          {/* Color-specific arrowhead markers */}
+          {Array.from(
+            new Set([
+              '#3b82f6',
+              '#10b981',
+              '#f59e0b',
+              '#8b5cf6',
+              '#f43f5e',
+              '#6b7280',
+              '#000000',
+              '#ffffff',
+              ...elements.map((el) => el.strokeColor).filter(Boolean),
+            ])
+          ).map((color) => {
+            const cId = color.replace(/[^a-zA-Z0-9]/g, '');
+            return (
+              <React.Fragment key={cId}>
+                <marker id={`wb-arrowhead-${cId}`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                  <path d="M 0 0 L 9 5 L 0 10 z" fill={color} stroke={color} />
+                </marker>
+                <marker id={`wb-arrowhead-triangle-${cId}`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                  <path d="M 2 1 L 9 5 L 2 9 z" fill={color} stroke={color} />
+                </marker>
+                <marker id={`wb-arrowhead-diamond-${cId}`} viewBox="0 0 12 12" refX="9" refY="6" markerWidth="6" markerHeight="6" orient="auto">
+                  <path d="M 3 6 L 6 2 L 9 6 L 6 10 z" fill={color} stroke={color} />
+                </marker>
+                <marker id={`wb-arrowhead-circle-${cId}`} viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                  <circle cx="5" cy="5" r="4" fill={color} stroke={color} />
+                </marker>
+
+                <marker id={`wb-arrowhead-start-${cId}`} viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                  <path d="M 10 0 L 1 5 L 10 10 z" fill={color} stroke={color} />
+                </marker>
+                <marker id={`wb-arrowhead-start-triangle-${cId}`} viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                  <path d="M 8 1 L 1 5 L 8 9 z" fill={color} stroke={color} />
+                </marker>
+                <marker id={`wb-arrowhead-start-diamond-${cId}`} viewBox="0 0 12 12" refX="3" refY="6" markerWidth="6" markerHeight="6" orient="auto">
+                  <path d="M 9 6 L 6 2 L 3 6 L 6 10 z" fill={color} stroke={color} />
+                </marker>
+                <marker id={`wb-arrowhead-start-circle-${cId}`} viewBox="0 0 10 10" refX="3" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                  <circle cx="5" cy="5" r="4" fill={color} stroke={color} />
+                </marker>
+              </React.Fragment>
+            );
+          })}
         </defs>
 
         {showGrid && <rect width="100%" height="100%" fill="url(#wb-grid)" />}

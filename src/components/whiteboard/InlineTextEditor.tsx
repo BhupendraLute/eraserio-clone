@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useCallback } from 'react';
 import type { WhiteboardElement } from '@/lib/whiteboard/whiteboard-types';
 import { WHITEBOARD_COLORS } from '@/lib/whiteboard/whiteboard-types';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
+import { getArrowMidpoint } from '@/lib/whiteboard/orthogonal-routing';
 
 interface InlineTextEditorProps {
   element: WhiteboardElement;
@@ -19,6 +20,7 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
   const isComment = element.type === 'comment';
   const isFrame = element.type === 'frame';
   const isShape = ['rectangle', 'circle', 'diamond', 'cylinder'].includes(element.type);
+  const isConnector = element.type === 'arrow' || element.type === 'line';
 
   // Determine the text value and style based on element type
   let textValue = '';
@@ -64,6 +66,14 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
     fontSize = 13;
     fontWeight = '500' as any;
     placeholder = 'Type label...';
+  } else if (isConnector) {
+    textValue = (element as any).label ?? '';
+    fontSize = (element as any).labelFontSize ?? 12;
+    fontFamily = (element as any).labelFontFamily ?? 'inherit';
+    textColor = (element as any).labelColor ?? element.strokeColor ?? 'var(--foreground)';
+    fontWeight = '500' as any;
+    placeholder = 'Type label...';
+    isMultiline = false;
   } else if (isFrame) {
     textValue = (element as any).title ?? '';
     fontSize = 11;
@@ -77,9 +87,9 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
     if (isText) updateElement(element.id, { text: value } as any);
     else if (isSticky) updateElement(element.id, { text: value } as any);
     else if (isComment) updateElement(element.id, { text: value } as any);
-    else if (isShape) updateElement(element.id, { label: value } as any);
+    else if (isShape || isConnector) updateElement(element.id, { label: value } as any);
     else if (isFrame) updateElement(element.id, { title: value } as any);
-  }, [element.id, updateElement, isText, isSticky, isComment, isShape, isFrame]);
+  }, [element.id, updateElement, isText, isSticky, isComment, isShape, isConnector, isFrame]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!isMultiline && e.key === 'Enter') {
@@ -120,7 +130,20 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
   let foW = Math.max(60, element.width);
   let foH = Math.max(30, element.height);
 
-  if (isShape) {
+  if (isConnector) {
+    const el = element as any;
+    const isCurved = el.routingStyle === 'curved';
+    const mid = getArrowMidpoint(el.startX, el.startY, el.endX, el.endY, isCurved ? el.waypoint : undefined);
+    const labelFontSize = el.labelFontSize ?? 12;
+    const charWidth = labelFontSize * 0.62;
+    const textLen = (textValue || '').length;
+    const width = Math.max(80, Math.min(240, textLen * charWidth + 28));
+    const height = labelFontSize + 12;
+    foX = mid.x - width / 2;
+    foY = mid.y - height / 2;
+    foW = width;
+    foH = height;
+  } else if (isShape) {
     // For shapes, position the label editor centered
     foX = element.x;
     foY = element.y + element.height / 2 - 14;
@@ -136,8 +159,9 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
   const inputStyle: React.CSSProperties = {
     width: '100%',
     height: '100%',
-    border: 'none',
-    background: 'transparent',
+    border: isConnector ? '1px solid var(--border)' : 'none',
+    borderRadius: isConnector ? '4px' : '0',
+    background: isConnector ? 'var(--background)' : 'transparent',
     outline: 'none',
     resize: 'none',
     overflow: 'hidden',
@@ -146,10 +170,11 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
     fontFamily,
     fontWeight: fontWeight as any,
     fontStyle,
-    textAlign,
+    textAlign: isConnector ? 'center' : textAlign,
     lineHeight: '1.4',
-    padding: isText ? '4px' : isSticky ? '0' : isShape ? '0' : '2px',
+    padding: isConnector ? '0 4px' : isText ? '4px' : isSticky ? '0' : isShape ? '0' : '2px',
     whiteSpace: isMultiline ? 'pre-wrap' : 'nowrap',
+    boxShadow: isConnector ? '0 2px 8px rgba(0,0,0,0.15)' : undefined,
   };
 
   const commonProps = {

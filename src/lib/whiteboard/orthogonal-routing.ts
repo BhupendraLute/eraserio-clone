@@ -56,7 +56,8 @@ export function getDirectionalOrthogonalPathD(
   fromPort: PortDirection = 'bottom',
   toPort: PortDirection = 'top',
   cornerRadius: number = 12,
-  stubLength: number = 24
+  stubLength: number = 24,
+  waypoint?: Point
 ): string {
   const dx = x2 - x1;
   const dy = y2 - y1;
@@ -65,21 +66,9 @@ export function getDirectionalOrthogonalPathD(
     return `M ${x1} ${y1} L ${x2} ${y2}`;
   }
 
-  // Stub 1 (extending outwards from start port)
-  let s1x = x1;
-  let s1y = y1;
-  if (fromPort === 'right') s1x += stubLength;
-  else if (fromPort === 'left') s1x -= stubLength;
-  else if (fromPort === 'bottom') s1y += stubLength;
-  else if (fromPort === 'top') s1y -= stubLength;
-
-  // Stub 2 (extending outwards from end port)
-  let s2x = x2;
-  let s2y = y2;
-  if (toPort === 'right') s2x += stubLength;
-  else if (toPort === 'left') s2x -= stubLength;
-  else if (toPort === 'bottom') s2y += stubLength;
-  else if (toPort === 'top') s2y -= stubLength;
+  if (waypoint) {
+    return `M ${x1} ${y1} L ${waypoint.x} ${y1} L ${waypoint.x} ${waypoint.y} L ${x2} ${waypoint.y} L ${x2} ${y2}`;
+  }
 
   return getOriginalOrthogonalPathD(x1, y1, x2, y2, fromPort, toPort, cornerRadius, stubLength);
 }
@@ -290,7 +279,7 @@ export function findNearestShapePort(
  * Creates an S-curve between the start and end, with control points offset perpendicularly.
  */
 export function getCurvedPathD(
-  x1: number, y1: number, x2: number, y2: number
+  x1: number, y1: number, x2: number, y2: number, waypoint?: Point
 ): string {
   const dx = x2 - x1;
   const dy = y2 - y1;
@@ -298,6 +287,12 @@ export function getCurvedPathD(
 
   if (dist < 5) {
     return `M ${x1} ${y1} L ${x2} ${y2}`;
+  }
+
+  if (waypoint) {
+    const cpX = 2 * waypoint.x - 0.5 * (x1 + x2);
+    const cpY = 2 * waypoint.y - 0.5 * (y1 + y2);
+    return `M ${x1} ${y1} Q ${cpX} ${cpY}, ${x2} ${y2}`;
   }
 
   const offset = dist * 0.35;
@@ -317,9 +312,12 @@ export function getCurvedPathD(
   }
 }
 
-/**
- * Unified path generator that picks the right path based on routing style.
- */
+export function getArrowMidpoint(
+  x1: number, y1: number, x2: number, y2: number, waypoint?: Point
+): Point {
+  if (waypoint) return waypoint;
+  return { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
+}
 
 export { getElementBounds } from './whiteboard-types';
 export { generateId } from '@/lib/utils';

@@ -77,10 +77,15 @@ export interface ArrowElement extends BaseElement {
   startArrowheadStyle?: ArrowheadStyle;
   arrowheadColor?: string;
   label?: string;
+  labelFontSize?: number;
+  labelFontFamily?: string;
+  labelColor?: string;
   fromElementId?: string;
   fromPort?: PortDirection;
   toElementId?: string;
   toPort?: PortDirection;
+  waypoint?: Point;
+  isAnimated?: boolean;
 }
 
 export interface LineElement extends BaseElement {
@@ -92,10 +97,15 @@ export interface LineElement extends BaseElement {
   routingStyle?: RoutingStyle;
   lineStyle?: LineStyle;
   label?: string;
+  labelFontSize?: number;
+  labelFontFamily?: string;
+  labelColor?: string;
   fromElementId?: string;
   fromPort?: PortDirection;
   toElementId?: string;
   toPort?: PortDirection;
+  waypoint?: Point;
+  isAnimated?: boolean;
 }
 
 export interface StickyElement extends BaseElement {

@@ -13,9 +13,11 @@ import {
   getCurvedPathD,
   inferCardinalDirection,
   getOppositePort,
+  getArrowMidpoint,
   ShapePortSnap,
 } from '@/lib/whiteboard/orthogonal-routing';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
+import { getMarkerId } from '@/components/whiteboard/WhiteboardElements';
 
 /* CSS variable helpers for theme-aware canvas chrome */
 const BG = () => 'var(--background)' as const;
@@ -24,7 +26,7 @@ interface WhiteboardOverlaysProps {
   elements: WhiteboardElement[];
   activeTool: WhiteboardTool;
   drawingState: { start: Point; current: Point; points: Point[] } | null;
-  endpointDragState: { arrowId: string; endpoint: 'start' | 'end'; currentPos: Point } | null;
+  endpointDragState: { arrowId: string; endpoint: 'start' | 'end' | 'waypoint'; currentPos: Point } | null;
   quickConnectDragState: {
     sourceId: string;
     fromPort: PortDirection;
@@ -143,18 +145,24 @@ export function WhiteboardOverlays({
       {quickConnectDragState && (() => {
         const targetPt = activeSnap ? { x: activeSnap.x, y: activeSnap.y } : quickConnectDragState.currentPos;
         const toPort = activeSnap ? activeSnap.port : getOppositePort(quickConnectDragState.fromPort);
-
-        return (
-          <g>
-            <path
-              d={getDirectionalOrthogonalPathD(
+        const routingStyle = useWhiteboardStore.getState().activeRoutingStyle;
+        const pathD = routingStyle === 'straight'
+          ? `M ${quickConnectDragState.startPos.x} ${quickConnectDragState.startPos.y} L ${targetPt.x} ${targetPt.y}`
+          : routingStyle === 'curved'
+            ? getCurvedPathD(quickConnectDragState.startPos.x, quickConnectDragState.startPos.y, targetPt.x, targetPt.y)
+            : getDirectionalOrthogonalPathD(
                 quickConnectDragState.startPos.x,
                 quickConnectDragState.startPos.y,
                 targetPt.x,
                 targetPt.y,
                 quickConnectDragState.fromPort,
                 toPort
-              )}
+              );
+
+        return (
+          <g>
+            <path
+              d={pathD}
               fill="none"
               stroke="var(--canvas-accent)"
               strokeWidth={2}
@@ -171,43 +179,92 @@ export function WhiteboardOverlays({
         if (!arrow || (arrow.type !== 'arrow' && arrow.type !== 'line')) return null;
 
         const isStart = endpointDragState.endpoint === 'start';
+        const isWaypoint = endpointDragState.endpoint === 'waypoint';
         const startPt = isStart
           ? (activeSnap ? { x: activeSnap.x, y: activeSnap.y } : endpointDragState.currentPos)
           : { x: arrow.startX, y: arrow.startY };
 
-        const endPt = !isStart
+        const endPt = !isStart && !isWaypoint
           ? (activeSnap ? { x: activeSnap.x, y: activeSnap.y } : endpointDragState.currentPos)
           : { x: arrow.endX, y: arrow.endY };
+
+        const waypointPt = isWaypoint ? endpointDragState.currentPos : arrow.waypoint;
 
         const fromPort = isStart
           ? (activeSnap ? activeSnap.port : inferCardinalDirection(startPt.x, startPt.y, endPt.x, endPt.y))
           : (arrow.fromElementId ? (arrow.fromPort || 'right') : inferCardinalDirection(startPt.x, startPt.y, endPt.x, endPt.y));
 
-        const toPort = !isStart
+        const toPort = !isStart && !isWaypoint
           ? (activeSnap ? activeSnap.port : inferCardinalDirection(endPt.x, endPt.y, startPt.x, startPt.y))
           : (arrow.toElementId ? (arrow.toPort || 'left') : inferCardinalDirection(endPt.x, endPt.y, startPt.x, startPt.y));
 
         const pathD = arrow.routingStyle === 'straight'
-          ? `M ${startPt.x} ${startPt.y} L ${endPt.x} ${endPt.y}`
-          : getDirectionalOrthogonalPathD(
-              startPt.x,
-              startPt.y,
-              endPt.x,
-              endPt.y,
-              fromPort,
-              toPort
-            );
+          ? (waypointPt ? `M ${startPt.x} ${startPt.y} L ${waypointPt.x} ${waypointPt.y} L ${endPt.x} ${endPt.y}` : `M ${startPt.x} ${startPt.y} L ${endPt.x} ${endPt.y}`)
+          : arrow.routingStyle === 'curved'
+            ? getCurvedPathD(startPt.x, startPt.y, endPt.x, endPt.y, waypointPt)
+            : getDirectionalOrthogonalPathD(
+                startPt.x,
+                startPt.y,
+                endPt.x,
+                endPt.y,
+                fromPort,
+                toPort,
+                12,
+                24,
+                waypointPt
+              );
+
+        const isCurved = arrow.routingStyle === 'curved';
+        const liveWaypoint = isCurved ? waypointPt : undefined;
+        const liveMid = getArrowMidpoint(startPt.x, startPt.y, endPt.x, endPt.y, liveWaypoint);
+
+        const label = (arrow as any).label;
+        const labelFontSize = (arrow as any).labelFontSize ?? (arrow as any).fontSize ?? 12;
+        const labelFontFamily = (arrow as any).labelFontFamily ?? (arrow as any).fontFamily ?? 'inherit';
+        const labelColor = (arrow as any).labelColor ?? (arrow as any).strokeColor ?? 'currentColor';
+
+        const charWidth = labelFontSize * 0.62;
+        const paddingX = 8;
+        const paddingY = 4;
+        const rectWidth = label ? Math.max(24, label.length * charWidth + paddingX * 2) : 0;
+        const rectHeight = labelFontSize + paddingY * 2;
+        const rectX = liveMid.x - rectWidth / 2;
+        const rectY = liveMid.y - rectHeight / 2;
 
         return (
           <g className="pointer-events-none">
             <path
               d={pathD}
               fill="none"
-              stroke="var(--canvas-accent)"
+              stroke={arrow.strokeColor || "var(--canvas-accent)"}
               strokeWidth={2}
               strokeDasharray="4 4"
-              markerEnd={arrow.type === 'arrow' ? 'url(#wb-arrowhead)' : undefined}
+              markerEnd={arrow.type === 'arrow' ? (getMarkerId((arrow as any).arrowheadStyle, arrow.strokeColor) || undefined) : undefined}
             />
+            {label && (
+              <g className="pointer-events-none select-none">
+                <rect
+                  x={rectX}
+                  y={rectY}
+                  width={rectWidth}
+                  height={rectHeight}
+                  rx={4}
+                  fill="var(--background)"
+                />
+                <text
+                  x={liveMid.x}
+                  y={liveMid.y}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  className="font-medium"
+                  fill={labelColor}
+                  fontSize={labelFontSize}
+                  fontFamily={labelFontFamily}
+                >
+                  {label}
+                </text>
+              </g>
+            )}
           </g>
         );
       })()}
