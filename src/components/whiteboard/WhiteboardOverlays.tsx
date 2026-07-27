@@ -19,6 +19,8 @@ import {
 } from '@/lib/whiteboard/orthogonal-routing';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { getMarkerId, getStartMarkerId } from '@/components/whiteboard/WhiteboardElements';
+import { ICON_CATALOG } from '@/lib/icons/icon-catalog';
+import { Server } from 'lucide-react';
 
 /* CSS variable helpers for theme-aware canvas chrome */
 const BG = () => 'var(--background)' as const;
@@ -143,6 +145,36 @@ export function WhiteboardOverlays({
               <rect x={start.x - 16} y={start.y - 16} width={200} height={80} rx={8}
                 fill="none" stroke="var(--canvas-accent)" strokeWidth={1.5} strokeDasharray="4 4" />
             )}
+            {activeTool === 'cloud' && (() => {
+              const activeCloudIcon = useWhiteboardStore.getState().activeCloudIcon;
+              const matched = ICON_CATALOG.find((item) => item.kind === activeCloudIcon);
+              const IconComponent = (matched && matched.icon) ? matched.icon : Server;
+              const side = w < 15 && h < 15 ? 64 : Math.max(Math.max(w, h), 32);
+              const previewX = w < 15 && h < 15 ? start.x - 32 : minX;
+              const previewY = w < 15 && h < 15 ? start.y - 32 : minY;
+
+              return (
+                <g className="pointer-events-none">
+                  <rect
+                    x={previewX}
+                    y={previewY}
+                    width={side}
+                    height={side}
+                    rx={8}
+                    fill="var(--canvas-accent)"
+                    fillOpacity={0.08}
+                    stroke="var(--canvas-accent)"
+                    strokeWidth={2}
+                    strokeDasharray="4 4"
+                  />
+                  <foreignObject x={previewX} y={previewY} width={side} height={side} className="overflow-visible pointer-events-none">
+                    <div className="flex h-full w-full items-center justify-center text-primary opacity-70 p-1">
+                      <IconComponent className="h-full w-full max-h-full max-w-full" strokeWidth={Math.max(1.0, Math.min(1.8, 1.15 * Math.pow(Math.max(32, side) / 64, 0.25)))} />
+                    </div>
+                  </foreignObject>
+                </g>
+              );
+            })()}
           </g>
         );
       })()}
@@ -150,24 +182,26 @@ export function WhiteboardOverlays({
       {/* Live Quick-Connect Drag Preview */}
       {quickConnectDragState && (() => {
         const targetPt = activeSnap ? { x: activeSnap.x, y: activeSnap.y } : quickConnectDragState.currentPos;
-        const toPort = activeSnap ? activeSnap.port : getOppositePort(quickConnectDragState.fromPort);
-        const activeRS = useWhiteboardStore.getState().activeRoutingStyle;
-        const activeStartAh = useWhiteboardStore.getState().activeStartArrowheadStyle;
-        const activeEndAh = useWhiteboardStore.getState().activeArrowheadStyle;
-        const activeStrokeHex = useWhiteboardStore.getState().activeStrokeHex;
-        const liveRoutingStyle = activeRS === 'curved' ? 'curved' : determineAutoRoutingStyle(quickConnectDragState.startPos, targetPt, quickConnectDragState.fromPort, toPort);
-        const pathD = liveRoutingStyle === 'straight'
+        const arrow = elements.find((el) => el.id === quickConnectDragState.sourceId);
+        const activeEndAh = arrow ? (arrow as any).arrowheadStyle : 'arrow';
+        const activeStartAh = arrow ? (arrow as any).startArrowheadStyle : 'none';
+        const activeStrokeHex = arrow?.strokeColor || 'var(--canvas-accent)';
+        const toPort = activeSnap ? activeSnap.port : 'top';
+        const pathD = determineAutoRoutingStyle(
+          quickConnectDragState.startPos,
+          targetPt,
+          quickConnectDragState.fromPort,
+          toPort
+        ) === 'straight'
           ? `M ${quickConnectDragState.startPos.x} ${quickConnectDragState.startPos.y} L ${targetPt.x} ${targetPt.y}`
-          : liveRoutingStyle === 'curved'
-            ? getCurvedPathD(quickConnectDragState.startPos.x, quickConnectDragState.startPos.y, targetPt.x, targetPt.y)
-            : getDirectionalOrthogonalPathD(
-                quickConnectDragState.startPos.x,
-                quickConnectDragState.startPos.y,
-                targetPt.x,
-                targetPt.y,
-                quickConnectDragState.fromPort,
-                toPort
-              );
+          : getDirectionalOrthogonalPathD(
+              quickConnectDragState.startPos.x,
+              quickConnectDragState.startPos.y,
+              targetPt.x,
+              targetPt.y,
+              quickConnectDragState.fromPort,
+              toPort
+            );
 
         return (
           <g>
@@ -229,9 +263,7 @@ export function WhiteboardOverlays({
                 waypointPt
               );
 
-        const isCurved = arrow.routingStyle === 'curved';
-        const liveWaypoint = isCurved ? waypointPt : undefined;
-        const liveMid = getArrowMidpoint(startPt.x, startPt.y, endPt.x, endPt.y, liveWaypoint);
+        const liveMid = getArrowMidpoint(startPt.x, startPt.y, endPt.x, endPt.y, waypointPt);
 
         const label = (arrow as any).label;
         const labelFontSize = (arrow as any).labelFontSize ?? (arrow as any).fontSize ?? 12;
@@ -316,7 +348,7 @@ export function WhiteboardOverlays({
         />
       )}
 
-      {/* Selection Bounding Box & 8 Resize Handles (Shapes only — removed for arrows/lines) */}
+      {/* Selection Bounding Box & Resize Handles (Corner-only for cloud icons) */}
       {selectedElements
         .filter((el) => !['arrow', 'line', 'pencil'].includes(el.type))
         .map((el) => (
@@ -332,28 +364,30 @@ export function WhiteboardOverlays({
             strokeDasharray="4 4"
           />
           {[
-            { handle: 'tl', x: el.x - 5, y: el.y - 5 },
-            { handle: 'tc', x: el.x + el.width / 2 - 4, y: el.y - 5 },
-            { handle: 'tr', x: el.x + el.width - 3, y: el.y - 5 },
-            { handle: 'ml', x: el.x - 5, y: el.y + el.height / 2 - 4 },
-            { handle: 'mr', x: el.x + el.width - 3, y: el.y + el.height / 2 - 4 },
-            { handle: 'bl', x: el.x - 5, y: el.y + el.height - 3 },
-            { handle: 'bc', x: el.x + el.width / 2 - 4, y: el.y + el.height - 3 },
-            { handle: 'br', x: el.x + el.width - 3, y: el.y + el.height - 3 },
-          ].map((h) => (
-            <rect
-              key={h.handle}
-              x={h.x}
-              y={h.y}
-              width={8}
-              height={8}
-              fill="var(--background)"
-              stroke="var(--canvas-accent)"
-              strokeWidth={1.5}
-              className="cursor-nwse-resize"
-              onPointerDown={(e) => onResizeHandlePointerDown(e, h.handle as ResizeHandle, el.id)}
-            />
-          ))}
+            { handle: 'tl', x: el.x - 5, y: el.y - 5, cursor: 'cursor-nwse-resize' },
+            { handle: 'tc', x: el.x + el.width / 2 - 4, y: el.y - 5, cursor: 'cursor-ns-resize' },
+            { handle: 'tr', x: el.x + el.width - 3, y: el.y - 5, cursor: 'cursor-nesw-resize' },
+            { handle: 'ml', x: el.x - 5, y: el.y + el.height / 2 - 4, cursor: 'cursor-ew-resize' },
+            { handle: 'mr', x: el.x + el.width - 3, y: el.y + el.height / 2 - 4, cursor: 'cursor-ew-resize' },
+            { handle: 'bl', x: el.x - 5, y: el.y + el.height - 3, cursor: 'cursor-nesw-resize' },
+            { handle: 'bc', x: el.x + el.width / 2 - 4, y: el.y + el.height - 3, cursor: 'cursor-ns-resize' },
+            { handle: 'br', x: el.x + el.width - 3, y: el.y + el.height - 3, cursor: 'cursor-nwse-resize' },
+          ]
+            .filter((h) => el.type !== 'cloud' || ['tl', 'tr', 'bl', 'br'].includes(h.handle))
+            .map((h) => (
+              <rect
+                key={h.handle}
+                x={h.x}
+                y={h.y}
+                width={8}
+                height={8}
+                fill="var(--background)"
+                stroke="var(--canvas-accent)"
+                strokeWidth={1.5}
+                className={h.cursor}
+                onPointerDown={(e) => onResizeHandlePointerDown(e, h.handle as ResizeHandle, el.id)}
+              />
+            ))}
         </g>
       ))}
 

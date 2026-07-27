@@ -289,6 +289,36 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
       const updatedElements = state.elements.map((el) => {
         if (el.id !== id) return el;
         let newX = el.x, newY = el.y, newW = el.width, newH = el.height;
+        if (el.type === 'cloud') {
+          // 1:1 Aspect Ratio Corner Resizing for Icons
+          let change = Math.abs(dx) > Math.abs(dy) ? dx : dy;
+          if (handle === 'tl') {
+            change = -change;
+            const newSize = Math.max(24, el.width + change);
+            const diff = el.width - newSize;
+            newX = el.x + diff;
+            newY = el.y + diff;
+            newW = newSize;
+            newH = newSize;
+          } else if (handle === 'tr') {
+            const newSize = Math.max(24, el.width + (dx - dy) / 2);
+            const diff = el.width - newSize;
+            newY = el.y + diff;
+            newW = newSize;
+            newH = newSize;
+          } else if (handle === 'bl') {
+            const newSize = Math.max(24, el.width + (-dx + dy) / 2);
+            const diff = el.width - newSize;
+            newX = el.x + diff;
+            newW = newSize;
+            newH = newSize;
+          } else if (handle === 'br') {
+            const newSize = Math.max(24, el.width + (dx + dy) / 2);
+            newW = newSize;
+            newH = newSize;
+          }
+          return { ...el, x: newX, y: newY, width: newW, height: newH };
+        }
         if (handle.includes('r')) newW = Math.max(20, el.width + dx);
         if (handle.includes('l')) { const w = el.width - dx; if (w >= 20) { newX = el.x + dx; newW = w; } }
         if (handle.includes('b')) newH = Math.max(20, el.height + dy);

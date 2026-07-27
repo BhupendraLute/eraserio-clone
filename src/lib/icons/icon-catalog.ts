@@ -20,36 +20,112 @@ function createIconifyComponent(iconId: string): React.ComponentType<{ className
   return function IconifyWrapper(props: { className?: string; style?: React.CSSProperties }) {
     return React.createElement(Icon, {
       icon: iconId,
-      className: props.className || 'h-5 w-5',
-      style: props.style,
+      width: '100%',
+      height: '100%',
+      className: props.className || 'h-full w-full',
+      style: { width: '100%', height: '100%', ...props.style },
     });
   };
 }
 
-// System Design & Cloud Architecture Iconify Collection
+// System Design & Cloud Architecture Iconify Collection (Eraser.io style ready-made icons)
 const SYSTEM_DESIGN_ICONIFY_LIST: { kind: string; name: string; iconId: string }[] = [
+  // AWS Cloud Infrastructure
   { kind: 'iconify-aws-ec2', name: 'EC2 (AWS Compute)', iconId: 'logos:aws-ec2' },
   { kind: 'iconify-aws-elb', name: 'Load Balancer (AWS ELB/ALB)', iconId: 'logos:aws-elb' },
   { kind: 'iconify-aws-s3', name: 'S3 (AWS Object Storage)', iconId: 'logos:aws-s3' },
   { kind: 'iconify-aws-rds', name: 'RDS (AWS Relational DB)', iconId: 'logos:aws-rds' },
   { kind: 'iconify-aws-lambda', name: 'Lambda (AWS Serverless)', iconId: 'logos:aws-lambda' },
   { kind: 'iconify-aws-sqs', name: 'SQS (AWS Message Queue)', iconId: 'logos:aws-sqs' },
+  { kind: 'iconify-aws-sns', name: 'SNS (AWS Push Notification)', iconId: 'logos:aws-sns' },
   { kind: 'iconify-aws-dynamodb', name: 'DynamoDB (AWS NoSQL)', iconId: 'logos:aws-dynamodb' },
   { kind: 'iconify-aws-cloudfront', name: 'CloudFront (AWS CDN)', iconId: 'logos:aws-cloudfront' },
   { kind: 'iconify-aws-route53', name: 'Route 53 (AWS DNS)', iconId: 'logos:aws-route53' },
   { kind: 'iconify-aws-api-gateway', name: 'API Gateway (AWS)', iconId: 'logos:aws-api-gateway' },
-  { kind: 'iconify-redis', name: 'Redis Cache & Store', iconId: 'logos:redis' },
+  { kind: 'iconify-aws-ecs', name: 'ECS (AWS Container)', iconId: 'logos:aws-ecs' },
+  { kind: 'iconify-aws-eks', name: 'EKS (AWS Kubernetes)', iconId: 'logos:aws-eks' },
+  { kind: 'iconify-aws-elasticache', name: 'ElastiCache (AWS Cache)', iconId: 'logos:aws-elasticache' },
+  { kind: 'iconify-aws-iam', name: 'IAM (AWS Security)', iconId: 'logos:aws-iam' },
+  { kind: 'iconify-aws-vpc', name: 'VPC (AWS Network)', iconId: 'logos:aws-vpc' },
+  { kind: 'iconify-aws-kinesis', name: 'Kinesis (AWS Streaming)', iconId: 'logos:aws-kinesis' },
+
+  // GCP Google Cloud
+  { kind: 'iconify-gcp', name: 'Google Cloud Platform', iconId: 'logos:google-cloud' },
+  { kind: 'iconify-gcp-run', name: 'Cloud Run (GCP Containers)', iconId: 'logos:google-cloud-run' },
+  { kind: 'iconify-gcp-functions', name: 'Cloud Functions (GCP)', iconId: 'logos:google-cloud-functions' },
+  { kind: 'iconify-gcp-pubsub', name: 'Cloud Pub/Sub (GCP)', iconId: 'logos:google-cloud-pubsub' },
+  { kind: 'iconify-gcp-bigquery', name: 'BigQuery (GCP Warehouse)', iconId: 'logos:google-bigquery' },
+  { kind: 'iconify-firebase', name: 'Firebase Backend', iconId: 'logos:firebase' },
+
+  // Azure Cloud
+  { kind: 'iconify-azure', name: 'Microsoft Azure Cloud', iconId: 'logos:azure-icon' },
+  { kind: 'iconify-azure-devops', name: 'Azure DevOps Services', iconId: 'logos:azure-devops' },
+
+  // Databases & Caches
+  { kind: 'iconify-redis', name: 'Redis In-Memory Store', iconId: 'logos:redis' },
+  { kind: 'iconify-postgresql', name: 'PostgreSQL Database', iconId: 'logos:postgresql' },
+  { kind: 'iconify-mysql', name: 'MySQL Relational DB', iconId: 'logos:mysql' },
+  { kind: 'iconify-mongodb', name: 'MongoDB Document DB', iconId: 'logos:mongodb-icon' },
+  { kind: 'iconify-elasticsearch', name: 'Elasticsearch Engine', iconId: 'logos:elasticsearch' },
+  { kind: 'iconify-cassandra', name: 'Apache Cassandra', iconId: 'logos:cassandra' },
+  { kind: 'iconify-sqlite', name: 'SQLite Database', iconId: 'logos:sqlite' },
+  { kind: 'iconify-supabase', name: 'Supabase Open Source DB', iconId: 'logos:supabase-icon' },
+  { kind: 'iconify-snowflake', name: 'Snowflake Data Cloud', iconId: 'logos:snowflake-icon' },
+  { kind: 'iconify-neo4j', name: 'Neo4j Graph Database', iconId: 'logos:neo4j' },
+
+  // DevOps & Microservices
+  { kind: 'iconify-docker', name: 'Docker Container Engine', iconId: 'logos:docker-icon' },
+  { kind: 'iconify-kubernetes', name: 'Kubernetes Container Cluster', iconId: 'logos:kubernetes' },
+  { kind: 'iconify-nginx', name: 'Nginx Web Server Proxy', iconId: 'logos:nginx' },
+  { kind: 'iconify-terraform', name: 'HashiCorp Terraform IaC', iconId: 'logos:terraform' },
+  { kind: 'iconify-ansible', name: 'Ansible Automation', iconId: 'logos:ansible' },
+  { kind: 'iconify-helm', name: 'Helm Package Manager', iconId: 'logos:helm' },
+  { kind: 'iconify-jenkins', name: 'Jenkins CI/CD Pipeline', iconId: 'logos:jenkins' },
+  { kind: 'iconify-github', name: 'GitHub Code & Actions', iconId: 'logos:github-icon' },
+  { kind: 'iconify-gitlab', name: 'GitLab DevOps Platform', iconId: 'logos:gitlab' },
+  { kind: 'iconify-cloudflare', name: 'Cloudflare Edge & CDN', iconId: 'logos:cloudflare' },
+  { kind: 'iconify-vercel', name: 'Vercel Serverless Platform', iconId: 'logos:vercel-icon' },
+  { kind: 'iconify-netlify', name: 'Netlify Web Hosting', iconId: 'logos:netlify-icon' },
+  { kind: 'iconify-digitalocean', name: 'DigitalOcean Cloud', iconId: 'logos:digitalocean-icon' },
+
+  // Streaming & Messaging
   { kind: 'iconify-rabbitmq', name: 'RabbitMQ Message Broker', iconId: 'logos:rabbitmq-icon' },
   { kind: 'iconify-kafka', name: 'Apache Kafka Event Stream', iconId: 'logos:apache-kafka' },
-  { kind: 'iconify-docker', name: 'Docker Container', iconId: 'logos:docker-icon' },
-  { kind: 'iconify-kubernetes', name: 'Kubernetes Cluster', iconId: 'logos:kubernetes' },
-  { kind: 'iconify-nginx', name: 'Nginx Web Server Proxy', iconId: 'logos:nginx' },
-  { kind: 'iconify-postgresql', name: 'PostgreSQL Database', iconId: 'logos:postgresql' },
-  { kind: 'iconify-mongodb', name: 'MongoDB NoSQL Database', iconId: 'logos:mongodb-icon' },
   { kind: 'iconify-graphql', name: 'GraphQL API Engine', iconId: 'logos:graphql' },
+  { kind: 'iconify-grpc', name: 'gRPC Microservice API', iconId: 'logos:grpc' },
+  { kind: 'iconify-swagger', name: 'Swagger OpenAPI Specs', iconId: 'logos:swagger' },
+  { kind: 'iconify-socketio', name: 'Socket.io WebSockets', iconId: 'logos:socket-io' },
+
+  // Monitoring, Analytics & Security
   { kind: 'iconify-prometheus', name: 'Prometheus Metrics', iconId: 'logos:prometheus' },
-  { kind: 'iconify-grafana', name: 'Grafana Dashboard', iconId: 'logos:grafana' },
-  { kind: 'iconify-elasticsearch', name: 'Elasticsearch Engine', iconId: 'logos:elasticsearch' },
+  { kind: 'iconify-grafana', name: 'Grafana Dashboards', iconId: 'logos:grafana' },
+  { kind: 'iconify-datadog', name: 'Datadog APM & Logs', iconId: 'logos:datadog' },
+  { kind: 'iconify-sentry', name: 'Sentry Error Monitoring', iconId: 'logos:sentry-icon' },
+  { kind: 'iconify-auth0', name: 'Auth0 Identity Provider', iconId: 'logos:auth0-icon' },
+  { kind: 'iconify-okta', name: 'Okta Enterprise Auth', iconId: 'logos:okta-icon' },
+  { kind: 'iconify-vault', name: 'HashiCorp Vault Secrets', iconId: 'logos:vault-icon' },
+
+  // Tech Stacks & Languages
+  { kind: 'iconify-nodejs', name: 'Node.js JavaScript Runtime', iconId: 'logos:nodejs-icon' },
+  { kind: 'iconify-python', name: 'Python Programming', iconId: 'logos:python' },
+  { kind: 'iconify-go', name: 'Go / Golang Language', iconId: 'logos:go' },
+  { kind: 'iconify-rust', name: 'Rust High-Perf Systems', iconId: 'logos:rust' },
+  { kind: 'iconify-java', name: 'Java Platform Engine', iconId: 'logos:java' },
+  { kind: 'iconify-react', name: 'React UI Library', iconId: 'logos:react' },
+  { kind: 'iconify-nextjs', name: 'Next.js React Framework', iconId: 'logos:nextjs-icon' },
+  { kind: 'iconify-typescript', name: 'TypeScript Type System', iconId: 'logos:typescript-icon' },
+
+  // Generic Architecture Ready-Made Vector Symbols
+  { kind: 'iconify-sys-server', name: 'Server Host Node', iconId: 'tabler:server' },
+  { kind: 'iconify-sys-database', name: 'Database Cluster', iconId: 'tabler:database' },
+  { kind: 'iconify-sys-cloud', name: 'Cloud Infrastructure', iconId: 'tabler:cloud' },
+  { kind: 'iconify-sys-cpu', name: 'Compute Core CPU', iconId: 'tabler:cpu' },
+  { kind: 'iconify-sys-router', name: 'Network Gateway Router', iconId: 'tabler:router' },
+  { kind: 'iconify-sys-shield', name: 'Firewall & Shield', iconId: 'tabler:shield-lock' },
+  { kind: 'iconify-sys-box', name: 'Microservice Box', iconId: 'tabler:box-seam' },
+  { kind: 'iconify-sys-lock', name: 'Security Vault Lock', iconId: 'tabler:lock' },
+  { kind: 'iconify-sys-world', name: 'Public Internet Web', iconId: 'tabler:world-www' },
+  { kind: 'iconify-sys-devices', name: 'Client Endpoints Devices', iconId: 'tabler:devices' },
 ];
 
 SYSTEM_DESIGN_ICONIFY_LIST.forEach((item) => {

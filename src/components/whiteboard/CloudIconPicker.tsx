@@ -13,10 +13,12 @@ export function CloudIconPicker({
   open,
   onOpenChange,
   onSelect,
+  positionClass = 'absolute top-12 left-16 z-50',
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect?: (kind: CloudIconKind | string) => void;
+  positionClass?: string;
 }) {
   const [search, setSearch] = useState('');
   const containerRef = useClickOutside<HTMLDivElement>(() => onOpenChange(false), open);
@@ -26,44 +28,23 @@ export function CloudIconPicker({
   const addElement = useWhiteboardStore((s) => s.addElement);
   const setSelectedIds = useWhiteboardStore((s) => s.setSelectedIds);
   const setActiveTool = useWhiteboardStore((s) => s.setActiveTool);
+  const setActiveCloudIcon = useWhiteboardStore((s) => s.setActiveCloudIcon);
   const activeColor = useWhiteboardStore((s) => s.activeColor);
 
   if (!open) return null;
 
   const handleSelectIconDirect = (kind: string) => {
+    setActiveCloudIcon(kind as CloudIconKind);
     if (onSelect) {
       onSelect(kind as CloudIconKind);
     }
-
-    // DIRECT CANVAS INSERTION
-    const colorStyle = WHITEBOARD_COLORS[activeColor];
-    const id = generateId();
-    
-    const posX = 300 + (Math.random() * 40 - 20);
-    const posY = 200 + (Math.random() * 40 - 20);
-
-    addElement({
-      id,
-      type: 'cloud',
-      x: posX,
-      y: posY,
-      width: 64,
-      height: 64,
-      iconKind: kind as CloudIconKind,
-      strokeColor: colorStyle.border,
-      fillColor: colorStyle.bg,
-      strokeWidth: 2,
-    });
-
-    setSelectedIds([id]);
-    setActiveTool('select');
     onOpenChange(false);
   };
 
   return (
     <div
       ref={containerRef}
-      className="absolute top-12 left-16 z-50 flex w-96 flex-col rounded-xl border bg-background/95 p-3 shadow-2xl backdrop-blur select-none animate-in fade-in zoom-in-95"
+      className={`${positionClass} flex w-96 flex-col rounded-xl border bg-background/95 p-3 shadow-2xl backdrop-blur select-none animate-in fade-in zoom-in-95`}
     >
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-1.5">

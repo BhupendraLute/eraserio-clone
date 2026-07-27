@@ -15,6 +15,7 @@ import { ContextMenu } from './ContextMenu';
 import { ToolSubOptions } from './ToolSubOptions';
 import { InlineTextEditor } from './InlineTextEditor';
 import { ArrowToolbar } from './ArrowToolbar';
+import { IconToolbar } from './IconToolbar';
 
 export function WhiteboardCanvas() {
   const updateElement = useWhiteboardStore((s) => s.updateElement);
@@ -209,8 +210,9 @@ export function WhiteboardCanvas() {
         <ToolSubOptions />
       </div>
 
-      {/* Arrow-specific bottom toolbar (eraser.io style) */}
+      {/* Special bottom toolbars (eraser.io style) */}
       <ArrowToolbar />
+      <IconToolbar />
 
       {/* SVG Canvas Workspace */}
       <svg

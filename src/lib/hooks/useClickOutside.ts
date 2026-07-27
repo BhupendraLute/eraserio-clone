@@ -14,14 +14,16 @@ export function useClickOutside<T extends HTMLElement>(
 
   useEffect(() => {
     if (!enabled) return;
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = (e: Event) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         callback();
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('pointerdown', handleClickOutside, true);
+    document.addEventListener('mousedown', handleClickOutside, true);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('pointerdown', handleClickOutside, true);
+      document.removeEventListener('mousedown', handleClickOutside, true);
     };
   }, [callback, enabled]);
 

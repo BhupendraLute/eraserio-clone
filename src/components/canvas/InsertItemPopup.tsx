@@ -42,6 +42,7 @@ export function InsertItemPopup({
   const toggleAiChat = useWorkspaceStore((s) => s.toggleAiChat);
   const toggleDiagramCode = useWorkspaceStore((s) => s.toggleDiagramCode);
   const setActiveTool = useWhiteboardStore((s) => s.setActiveTool);
+  const setActiveCloudIcon = useWhiteboardStore((s) => s.setActiveCloudIcon);
   const addElement = useWhiteboardStore((s) => s.addElement);
   const setSelectedIds = useWhiteboardStore((s) => s.setSelectedIds);
   const activeColor = useWhiteboardStore((s) => s.activeColor);
@@ -54,28 +55,8 @@ export function InsertItemPopup({
   };
 
   const handleSelectIconDirect = (kind: string) => {
-    // DIRECT CANVAS INSERTION
-    const colorStyle = WHITEBOARD_COLORS[activeColor];
-    const id = generateId();
-    
-    const posX = 300 + (Math.random() * 40 - 20);
-    const posY = 200 + (Math.random() * 40 - 20);
-
-    addElement({
-      id,
-      type: 'cloud',
-      x: posX,
-      y: posY,
-      width: 64,
-      height: 64,
-      iconKind: kind as CloudIconKind,
-      strokeColor: colorStyle.border,
-      fillColor: colorStyle.bg,
-      strokeWidth: 2,
-    });
-
-    setSelectedIds([id]);
-    setActiveTool('select');
+    setActiveCloudIcon(kind as CloudIconKind);
+    setActiveTool('cloud');
     onOpenChange(false);
   };
 

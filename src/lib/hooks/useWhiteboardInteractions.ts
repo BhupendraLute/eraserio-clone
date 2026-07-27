@@ -55,6 +55,7 @@ export function useWhiteboardInteractions({
   const activeArrowheadStyle = useWhiteboardStore((s) => s.activeArrowheadStyle);
   const activeStartArrowheadStyle = useWhiteboardStore((s) => s.activeStartArrowheadStyle);
   const activeIsAnimated = useWhiteboardStore((s) => s.activeIsAnimated);
+  const activeCloudIcon = useWhiteboardStore((s) => s.activeCloudIcon);
 
   const setActiveTool = useWhiteboardStore((s) => s.setActiveTool);
   const addElement = useWhiteboardStore((s) => s.addElement);
@@ -281,8 +282,8 @@ export function useWhiteboardInteractions({
       return;
     }
 
-    const targetTag = (e.target as HTMLElement).tagName?.toLowerCase();
-    if (e.target !== svgRef.current && targetTag !== 'svg' && targetTag !== 'rect') return;
+    const isSvgChild = svgRef.current?.contains(e.target as Node);
+    if (!isSvgChild) return;
 
     const coords = getCanvasCoords(e);
 
@@ -559,6 +560,26 @@ export function useWhiteboardInteractions({
         text: 'Add a comment...', author: 'You', resolved: false,
         color: activeColor, strokeColor: strokeHex, fillColor: fillHex, strokeWidth: 1,
       });
+    } else if (activeTool === 'cloud') {
+      const rawW = Math.abs(current.x - start.x);
+      const rawH = Math.abs(current.y - start.y);
+      const isSingleClick = rawW < 15 && rawH < 15;
+      const side = isSingleClick ? 64 : Math.max(Math.max(rawW, rawH), 32);
+      const finalX = isSingleClick ? start.x - 32 : minX;
+      const finalY = isSingleClick ? start.y - 32 : minY;
+      addElement({
+        id,
+        type: 'cloud',
+        x: finalX,
+        y: finalY,
+        width: side,
+        height: side,
+        iconKind: activeCloudIcon,
+        strokeColor: strokeHex,
+        fillColor: fillHex,
+        strokeWidth: activeStrokeWidth,
+      });
+      setSelectedIds([id]);
     }
 
     setDrawingState(null);

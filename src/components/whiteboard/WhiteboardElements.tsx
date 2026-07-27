@@ -67,21 +67,19 @@ export function WhiteboardElements({
   const updateElement = useWhiteboardStore((s) => s.updateElement);
   const diagramMap = useDiagramRegistry((s) => s.diagrams);
 
-  const renderCloudIconSvg = (kind: CloudIconKind | string, color: string) => {
+  const renderCloudIconSvg = (kind: CloudIconKind | string, color: string, elementWidth: number = 64) => {
     const matched = ICON_CATALOG.find((item) => item.kind === kind);
-    if (matched && matched.icon) {
-      const IconComponent = matched.icon;
-      if (typeof IconComponent === 'function' || (typeof IconComponent === 'object' && IconComponent !== null && (IconComponent as unknown as { render?: unknown }).render)) {
-        return (
-          <div style={{ color }} className="flex h-full w-full items-center justify-center select-none pointer-events-none">
-            <IconComponent className="h-full w-full max-h-full max-w-full" />
-          </div>
-        );
-      }
-    }
+    const IconComponent = (matched && matched.icon) ? matched.icon : Server;
+
+    // Ultra-fine stroke scaling (1.15px baseline, max 1.8px)
+    const computedStrokeWidth = Math.max(1.0, Math.min(1.8, 1.15 * Math.pow(Math.max(32, elementWidth) / 64, 0.25)));
+
     return (
-      <div style={{ color }} className="flex h-full w-full items-center justify-center select-none pointer-events-none">
-        <Server className="h-full w-full max-h-full max-w-full" />
+      <div
+        style={{ color }}
+        className="flex h-full w-full items-center justify-center select-none pointer-events-none p-1 [&_svg]:max-h-full [&_svg]:max-w-full"
+      >
+        <IconComponent className="h-full w-full" strokeWidth={computedStrokeWidth} />
       </div>
     );
   };
@@ -367,7 +365,7 @@ export function WhiteboardElements({
               <rect x={el.x} y={el.y} width={el.width} height={el.height} fill="transparent" stroke="transparent" strokeWidth={0} className="cursor-pointer" />
               <foreignObject x={el.x} y={el.y} width={el.width} height={el.height} className="pointer-events-none">
                 <div className="flex h-full w-full items-center justify-center p-0.5 select-none pointer-events-none">
-                  {renderCloudIconSvg(el.iconKind, el.strokeColor)}
+                  {renderCloudIconSvg(el.iconKind, el.strokeColor, el.width)}
                 </div>
               </foreignObject>
             </g>
