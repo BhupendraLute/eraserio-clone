@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { useTheme } from 'next-themes';
-import { Search, Sun, Moon, Monitor, MousePointer, Square, Circle, Diamond, Database, MoveRight, Minus, Pencil, Type, StickyNote, Frame, MessageSquare, Eraser, Hash, Undo2, Redo2, Copy, Clipboard, Group, Ungroup, Settings, Trash2, Grid3X3, Download, Save, HelpCircle } from 'lucide-react';
+import { Search, Sun, Moon, Monitor, MousePointer, Square, Circle, Diamond, Database, MoveRight, Minus, Pencil, Type, StickyNote, Frame, MessageSquare, Eraser, Hash, Undo2, Redo2, Copy, CopyPlus, Clipboard, Group, Ungroup, Settings, Trash2, Grid3X3, Download, Save, HelpCircle } from 'lucide-react';
 
 interface Command {
   id: string;
@@ -62,7 +62,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     // Actions
     { id: 'undo', label: 'Undo', shortcut: 'Ctrl+Z', icon: Undo2, category: 'Actions', action: () => undo() },
     { id: 'redo', label: 'Redo', shortcut: 'Ctrl+Y', icon: Redo2, category: 'Actions', action: () => redo() },
-    { id: 'duplicate', label: 'Duplicate', shortcut: 'Ctrl+D', icon: Copy, category: 'Actions', action: () => duplicateSelected() },
+    { id: 'duplicate', label: 'Duplicate', shortcut: 'Ctrl+D', icon: CopyPlus, category: 'Actions', action: () => duplicateSelected() },
     { id: 'copy', label: 'Copy', shortcut: 'Ctrl+C', icon: Copy, category: 'Actions', action: () => copyToClipboard() },
     { id: 'paste', label: 'Paste', shortcut: 'Ctrl+V', icon: Clipboard, category: 'Actions', action: () => pasteFromClipboard() },
     { id: 'group', label: 'Group', shortcut: 'Ctrl+G', icon: Group, category: 'Actions', action: () => groupSelected() },

@@ -21,7 +21,59 @@ const LINE_WIDTH_OPTIONS: { size: LineWidthSize; label: string; width: number }[
   { size: 'XL', label: 'XL', width: 8 },
 ];
 
-type PopupId = 'color' | 'routing' | 'width' | 'lineStyle' | 'labelFont' | 'labelSize' | 'labelColor' | 'more' | null;
+const ARROWHEAD_STYLE_OPTIONS: { style: ArrowheadStyle; label: string; icon: React.ReactNode }[] = [
+  {
+    style: 'arrow',
+    label: 'Open Arrow',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="2" y1="8" x2="13" y2="8" />
+        <path d="M 9 4 L 13 8 L 9 12" />
+      </svg>
+    ),
+  },
+  {
+    style: 'triangle',
+    label: 'Triangle',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <line x1="2" y1="8" x2="8" y2="8" />
+        <polygon points="8,4 14,8 8,12" fill="currentColor" />
+      </svg>
+    ),
+  },
+  {
+    style: 'diamond',
+    label: 'Diamond',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <line x1="2" y1="8" x2="7" y2="8" />
+        <polygon points="7,8 10,4 14,8 10,12" fill="currentColor" />
+      </svg>
+    ),
+  },
+  {
+    style: 'circle',
+    label: 'Circle',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <line x1="2" y1="8" x2="9" y2="8" />
+        <circle cx="11" cy="8" r="3.5" fill="currentColor" />
+      </svg>
+    ),
+  },
+  {
+    style: 'none',
+    label: 'None',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <line x1="2" y1="8" x2="14" y2="8" />
+      </svg>
+    ),
+  },
+];
+
+type PopupId = 'color' | 'routing' | 'width' | 'lineStyle' | 'startArrowhead' | 'endArrowhead' | 'labelFont' | 'labelSize' | 'labelColor' | 'more' | null;
 
 export function ArrowToolbar() {
   const activeTool = useWhiteboardStore((s) => s.activeTool);
@@ -152,8 +204,9 @@ export function ArrowToolbar() {
       selectedArrows.forEach((el) => {
         updateElement(el.id, {
           routingStyle: rs,
+          isUserRoutingStyle: true,
           waypoint: rs === 'curved' ? el.waypoint : undefined,
-        });
+        } as any);
       });
     }
     setOpenPopup(null);
@@ -170,28 +223,28 @@ export function ArrowToolbar() {
     setOpenPopup(null);
   };
 
-  const handleToggleStartArrowhead = () => {
-    const newStyle: ArrowheadStyle = currentStartArrowheadStyle === 'none' ? 'arrow' : 'none';
-    setActiveStartArrowheadStyle(newStyle);
+  const handleSelectStartArrowheadStyle = (style: ArrowheadStyle) => {
+    setActiveStartArrowheadStyle(style);
     if (hasSelectedArrow) {
       selectedArrows.forEach((el) => {
         if (el.type === 'arrow') {
-          updateElement(el.id, { startArrowheadStyle: newStyle });
+          updateElement(el.id, { startArrowheadStyle: style });
         }
       });
     }
+    setOpenPopup(null);
   };
 
-  const handleToggleEndArrowhead = () => {
-    const newStyle: ArrowheadStyle = currentArrowheadStyle === 'none' ? 'arrow' : 'none';
-    setActiveArrowheadStyle(newStyle);
+  const handleSelectEndArrowheadStyle = (style: ArrowheadStyle) => {
+    setActiveArrowheadStyle(style);
     if (hasSelectedArrow) {
       selectedArrows.forEach((el) => {
         if (el.type === 'arrow') {
-          updateElement(el.id, { arrowheadStyle: newStyle });
+          updateElement(el.id, { arrowheadStyle: style });
         }
       });
     }
+    setOpenPopup(null);
   };
 
   const handleSelectLineStyle = (ls: LineStyle) => {
@@ -373,39 +426,95 @@ export function ArrowToolbar() {
           <>
             <div className="h-5 w-px bg-border" />
 
-            {/* Bidirectional Arrows - Start Arrowhead */}
-            <button
-              onClick={handleToggleStartArrowhead}
-              className={cn(
-                'flex h-8 w-8 items-center justify-center rounded-lg transition-colors',
-                currentStartArrowheadStyle !== 'none'
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+            {/* Start Arrowhead Picker */}
+            <div className="relative">
+              <button
+                onClick={() => togglePopup('startArrowhead')}
+                className={cn(
+                  'flex h-8 items-center gap-1.5 rounded-lg px-2 transition-colors',
+                  currentStartArrowheadStyle !== 'none'
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                )}
+                title="Start Arrowhead Style"
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M 7 4 L 3 8 L 7 12" />
+                  <line x1="3" y1="8" x2="14" y2="8" />
+                </svg>
+                <span className="text-xs font-medium capitalize">{currentStartArrowheadStyle === 'none' ? 'None' : currentStartArrowheadStyle}</span>
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                  <path d="M2 3.5L5 7L8 3.5" />
+                </svg>
+              </button>
+              {openPopup === 'startArrowhead' && (
+                <div className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded-lg border bg-muted/95 p-1.5 shadow-xl backdrop-blur min-w-[150px]">
+                  <div className="text-[10px] font-semibold text-muted-foreground px-2.5 py-1 uppercase tracking-wider">Start Arrowhead</div>
+                  <div className="flex flex-col gap-0.5">
+                    {ARROWHEAD_STYLE_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.style}
+                        onClick={() => handleSelectStartArrowheadStyle(opt.style)}
+                        className={cn(
+                          'flex h-8 items-center gap-2.5 rounded-md px-2.5 text-xs transition-colors',
+                          currentStartArrowheadStyle === opt.style
+                            ? 'bg-primary/10 text-primary font-medium'
+                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                        )}
+                      >
+                        <span className="shrink-0">{opt.icon}</span>
+                        <span>{opt.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
-              title={currentStartArrowheadStyle !== 'none' ? 'Start arrowhead: ON' : 'Start arrowhead: OFF'}
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M 7 4 L 3 8 L 7 12" />
-                <line x1="3" y1="8" x2="14" y2="8" />
-              </svg>
-            </button>
+            </div>
 
-            {/* End Arrowhead */}
-            <button
-              onClick={handleToggleEndArrowhead}
-              className={cn(
-                'flex h-8 w-8 items-center justify-center rounded-lg transition-colors',
-                currentArrowheadStyle !== 'none'
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+            {/* End Arrowhead Picker */}
+            <div className="relative">
+              <button
+                onClick={() => togglePopup('endArrowhead')}
+                className={cn(
+                  'flex h-8 items-center gap-1.5 rounded-lg px-2 transition-colors',
+                  currentArrowheadStyle !== 'none'
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                )}
+                title="End Arrowhead Style"
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="2" y1="8" x2="13" y2="8" />
+                  <path d="M 9 4 L 13 8 L 9 12" />
+                </svg>
+                <span className="text-xs font-medium capitalize">{currentArrowheadStyle === 'none' ? 'None' : currentArrowheadStyle}</span>
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                  <path d="M2 3.5L5 7L8 3.5" />
+                </svg>
+              </button>
+              {openPopup === 'endArrowhead' && (
+                <div className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded-lg border bg-muted/95 p-1.5 shadow-xl backdrop-blur min-w-[150px]">
+                  <div className="text-[10px] font-semibold text-muted-foreground px-2.5 py-1 uppercase tracking-wider">End Arrowhead</div>
+                  <div className="flex flex-col gap-0.5">
+                    {ARROWHEAD_STYLE_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.style}
+                        onClick={() => handleSelectEndArrowheadStyle(opt.style)}
+                        className={cn(
+                          'flex h-8 items-center gap-2.5 rounded-md px-2.5 text-xs transition-colors',
+                          currentArrowheadStyle === opt.style
+                            ? 'bg-primary/10 text-primary font-medium'
+                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                        )}
+                      >
+                        <span className="shrink-0">{opt.icon}</span>
+                        <span>{opt.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
-              title={currentArrowheadStyle !== 'none' ? 'End arrowhead: ON' : 'End arrowhead: OFF'}
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="2" y1="8" x2="13" y2="8" />
-                <path d="M 9 4 L 13 8 L 9 12" />
-              </svg>
-            </button>
+            </div>
           </>
         )}
 

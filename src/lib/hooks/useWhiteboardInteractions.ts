@@ -13,6 +13,7 @@ import {
   findNearestShapePort,
   getOptimalPortPair,
   getOppositePort,
+  determineAutoRoutingStyle,
   ShapePortSnap,
 } from '@/lib/whiteboard/orthogonal-routing';
 import { generateId } from '@/lib/utils';
@@ -519,10 +520,14 @@ export function useWhiteboardInteractions({
           fromPort = optimal.fromPort; toPort = optimal.toPort;
         }
       }
+      const initialRouting = determineAutoRoutingStyle({ x: startX, y: startY }, { x: endX, y: endY }, fromPort, toPort);
       addElement({
         id, type: activeTool, x: Math.min(startX, endX), y: Math.min(startY, endY),
         width: Math.abs(endX - startX) || 10, height: Math.abs(endY - startY) || 10,
-        startX, startY, endX, endY, routingStyle: activeRoutingStyle, lineStyle: activeLineStyle,
+        startX, startY, endX, endY,
+        routingStyle: initialRouting,
+        isUserRoutingStyle: false,
+        lineStyle: activeLineStyle,
         arrowheadStyle: activeTool === 'arrow' ? activeArrowheadStyle : undefined,
         startArrowheadStyle: activeTool === 'arrow' ? activeStartArrowheadStyle : undefined,
         arrowheadColor: activeTool === 'arrow' ? strokeHex : undefined,

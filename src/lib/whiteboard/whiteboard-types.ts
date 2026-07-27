@@ -72,6 +72,7 @@ export interface ArrowElement extends BaseElement {
   endX: number;
   endY: number;
   routingStyle?: RoutingStyle;
+  isUserRoutingStyle?: boolean;
   lineStyle?: LineStyle;
   arrowheadStyle?: ArrowheadStyle;
   startArrowheadStyle?: ArrowheadStyle;
@@ -95,6 +96,7 @@ export interface LineElement extends BaseElement {
   endX: number;
   endY: number;
   routingStyle?: RoutingStyle;
+  isUserRoutingStyle?: boolean;
   lineStyle?: LineStyle;
   label?: string;
   labelFontSize?: number;

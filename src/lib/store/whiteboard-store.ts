@@ -9,7 +9,7 @@ import type {
   PortDirection,
 } from '@/lib/whiteboard/whiteboard-types';
 import { WHITEBOARD_COLORS, isConnectorElement, getShapePorts, ArrowheadStyle, RoutingStyle } from '@/lib/whiteboard/whiteboard-types';
-import { getOptimalPortPair, getOptimalSinglePort } from '@/lib/whiteboard/orthogonal-routing';
+import { getOptimalPortPair, getOptimalSinglePort, determineAutoRoutingStyle } from '@/lib/whiteboard/orthogonal-routing';
 import { generateId } from '@/lib/utils';
 
 interface HistoryState {
@@ -143,7 +143,7 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
   activeLineStyle: 'solid',
   activeArrowheadStyle: 'arrow',
   activeStartArrowheadStyle: 'none',
-  activeRoutingStyle: 'orthogonal',
+  activeRoutingStyle: 'straight',
   activeIsAnimated: false,
   activeCornerRadius: 6,
   elements: [],
@@ -156,7 +156,13 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
   canUndo: false,
   canRedo: false,
 
-  setActiveTool: (tool) => set({ activeTool: tool }),
+  setActiveTool: (tool) => {
+    if (tool === 'arrow') {
+      set({ activeTool: tool, activeStartArrowheadStyle: 'none', activeArrowheadStyle: 'arrow' });
+    } else {
+      set({ activeTool: tool });
+    }
+  },
   setActiveColor: (color) => {
     const preset = WHITEBOARD_COLORS[color];
     set({ activeColor: color, activeStrokeHex: preset.border, activeFillHex: preset.bg });
@@ -260,7 +266,10 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
         const toEl = el.toElementId ? updatedElements.find((item) => item.id === el.toElementId) : undefined;
         if (fromEl && toEl) {
           const optimal = getOptimalPortPair(fromEl, toEl);
-          return { ...el, startX: optimal.fromPos.x, startY: optimal.fromPos.y, endX: optimal.toPos.x, endY: optimal.toPos.y, fromPort: optimal.fromPort, toPort: optimal.toPort, waypoint };
+          const autoRouting = (!el.isUserRoutingStyle && el.routingStyle !== 'curved')
+            ? determineAutoRoutingStyle(optimal.fromPos, optimal.toPos, optimal.fromPort, optimal.toPort)
+            : el.routingStyle;
+          return { ...el, startX: optimal.fromPos.x, startY: optimal.fromPos.y, endX: optimal.toPos.x, endY: optimal.toPos.y, fromPort: optimal.fromPort, toPort: optimal.toPort, routingStyle: autoRouting, waypoint };
         } else if (fromEl) {
           const optimal = getOptimalSinglePort(fromEl, { x: el.endX, y: el.endY });
           return { ...el, startX: optimal.x, startY: optimal.y, fromPort: optimal.port, waypoint };
@@ -589,10 +598,18 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
         const boundsY = Math.min(newStartY, newEndY);
         const boundsW = Math.max(10, Math.abs(newEndX - newStartX));
         const boundsH = Math.max(10, Math.abs(newEndY - newStartY));
+
+        const fromPort = endpoint === 'start' ? targetPort : el.fromPort;
+        const toPort = endpoint === 'end' ? targetPort : el.toPort;
+        const isUserChoice = el.isUserRoutingStyle || el.routingStyle === 'curved';
+        const newRouting = !isUserChoice
+          ? determineAutoRoutingStyle({ x: newStartX, y: newStartY }, { x: newEndX, y: newEndY }, fromPort, toPort)
+          : el.routingStyle;
+
         if (endpoint === 'start') {
-          return { ...el, x: boundsX, y: boundsY, width: boundsW, height: boundsH, startX: targetPos.x, startY: targetPos.y, fromElementId: targetElementId, fromPort: targetPort };
+          return { ...el, x: boundsX, y: boundsY, width: boundsW, height: boundsH, startX: targetPos.x, startY: targetPos.y, fromElementId: targetElementId, fromPort: targetPort, routingStyle: newRouting };
         } else {
-          return { ...el, x: boundsX, y: boundsY, width: boundsW, height: boundsH, endX: targetPos.x, endY: targetPos.y, toElementId: targetElementId, toPort: targetPort };
+          return { ...el, x: boundsX, y: boundsY, width: boundsW, height: boundsH, endX: targetPos.x, endY: targetPos.y, toElementId: targetElementId, toPort: targetPort, routingStyle: newRouting };
         }
       });
 

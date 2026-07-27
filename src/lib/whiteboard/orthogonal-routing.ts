@@ -229,6 +229,39 @@ export function getOptimalSinglePort(
   return best;
 }
 
+export function determineAutoRoutingStyle(
+  fromPos: Point,
+  toPos: Point,
+  fromPort?: PortDirection,
+  toPort?: PortDirection
+): 'straight' | 'orthogonal' {
+  if (fromPort && toPort) {
+    const dx = Math.abs(fromPos.x - toPos.x);
+    const dy = Math.abs(fromPos.y - toPos.y);
+
+    if (
+      (fromPort === 'right' && toPort === 'left') ||
+      (fromPort === 'left' && toPort === 'right')
+    ) {
+      if (dy < 24) return 'straight';
+      return 'orthogonal';
+    }
+    if (
+      (fromPort === 'bottom' && toPort === 'top') ||
+      (fromPort === 'top' && toPort === 'bottom')
+    ) {
+      if (dx < 24) return 'straight';
+      return 'orthogonal';
+    }
+    return 'orthogonal';
+  }
+
+  const dx = Math.abs(fromPos.x - toPos.x);
+  const dy = Math.abs(fromPos.y - toPos.y);
+  if (dx < 20 || dy < 20) return 'straight';
+  return 'orthogonal';
+}
+
 export function findNearestShapePort(
   pt: { x: number; y: number },
   elements: WhiteboardElement[],

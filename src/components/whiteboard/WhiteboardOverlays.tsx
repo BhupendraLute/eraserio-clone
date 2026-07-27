@@ -14,10 +14,11 @@ import {
   inferCardinalDirection,
   getOppositePort,
   getArrowMidpoint,
+  determineAutoRoutingStyle,
   ShapePortSnap,
 } from '@/lib/whiteboard/orthogonal-routing';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
-import { getMarkerId } from '@/components/whiteboard/WhiteboardElements';
+import { getMarkerId, getStartMarkerId } from '@/components/whiteboard/WhiteboardElements';
 
 /* CSS variable helpers for theme-aware canvas chrome */
 const BG = () => 'var(--background)' as const;
@@ -107,17 +108,22 @@ export function WhiteboardOverlays({
               </g>
             )}
             {(activeTool === 'arrow' || activeTool === 'line') && (() => {
-              const routingStyle = useWhiteboardStore.getState().activeRoutingStyle;
-              const pathD = routingStyle === 'straight'
+              const activeRS = useWhiteboardStore.getState().activeRoutingStyle;
+              const activeStartAh = useWhiteboardStore.getState().activeStartArrowheadStyle;
+              const activeEndAh = useWhiteboardStore.getState().activeArrowheadStyle;
+              const activeStrokeHex = useWhiteboardStore.getState().activeStrokeHex;
+              const liveRoutingStyle = activeRS === 'curved' ? 'curved' : determineAutoRoutingStyle(start, targetPt, fromPort, toPort);
+              const pathD = liveRoutingStyle === 'straight'
                 ? `M ${start.x} ${start.y} L ${targetPt.x} ${targetPt.y}`
-                : routingStyle === 'curved'
+                : liveRoutingStyle === 'curved'
                   ? getCurvedPathD(start.x, start.y, targetPt.x, targetPt.y)
                   : getDirectionalOrthogonalPathD(start.x, start.y, targetPt.x, targetPt.y, fromPort, toPort);
               return (
                 <path
                   d={pathD}
                   fill="none" stroke="var(--canvas-accent)" strokeWidth={2} strokeDasharray="4 4"
-                  markerEnd={activeTool === 'arrow' ? 'url(#wb-arrowhead)' : undefined} />
+                  markerEnd={activeTool === 'arrow' ? (getMarkerId(activeEndAh, activeStrokeHex) || undefined) : undefined}
+                  markerStart={activeTool === 'arrow' ? (getStartMarkerId(activeStartAh, activeStrokeHex) || undefined) : undefined} />
               );
             })()}
             {activeTool === 'pencil' && points.length > 0 && (
@@ -145,10 +151,14 @@ export function WhiteboardOverlays({
       {quickConnectDragState && (() => {
         const targetPt = activeSnap ? { x: activeSnap.x, y: activeSnap.y } : quickConnectDragState.currentPos;
         const toPort = activeSnap ? activeSnap.port : getOppositePort(quickConnectDragState.fromPort);
-        const routingStyle = useWhiteboardStore.getState().activeRoutingStyle;
-        const pathD = routingStyle === 'straight'
+        const activeRS = useWhiteboardStore.getState().activeRoutingStyle;
+        const activeStartAh = useWhiteboardStore.getState().activeStartArrowheadStyle;
+        const activeEndAh = useWhiteboardStore.getState().activeArrowheadStyle;
+        const activeStrokeHex = useWhiteboardStore.getState().activeStrokeHex;
+        const liveRoutingStyle = activeRS === 'curved' ? 'curved' : determineAutoRoutingStyle(quickConnectDragState.startPos, targetPt, quickConnectDragState.fromPort, toPort);
+        const pathD = liveRoutingStyle === 'straight'
           ? `M ${quickConnectDragState.startPos.x} ${quickConnectDragState.startPos.y} L ${targetPt.x} ${targetPt.y}`
-          : routingStyle === 'curved'
+          : liveRoutingStyle === 'curved'
             ? getCurvedPathD(quickConnectDragState.startPos.x, quickConnectDragState.startPos.y, targetPt.x, targetPt.y)
             : getDirectionalOrthogonalPathD(
                 quickConnectDragState.startPos.x,
@@ -167,7 +177,8 @@ export function WhiteboardOverlays({
               stroke="var(--canvas-accent)"
               strokeWidth={2}
               strokeDasharray="4 4"
-              markerEnd="url(#wb-arrowhead)"
+              markerEnd={getMarkerId(activeEndAh, activeStrokeHex) || undefined}
+              markerStart={getStartMarkerId(activeStartAh, activeStrokeHex) || undefined}
             />
           </g>
         );
@@ -198,9 +209,13 @@ export function WhiteboardOverlays({
           ? (activeSnap ? activeSnap.port : inferCardinalDirection(endPt.x, endPt.y, startPt.x, startPt.y))
           : (arrow.toElementId ? (arrow.toPort || 'left') : inferCardinalDirection(endPt.x, endPt.y, startPt.x, startPt.y));
 
-        const pathD = arrow.routingStyle === 'straight'
+        const liveRoutingStyle = (arrow.isUserRoutingStyle || arrow.routingStyle === 'curved')
+          ? arrow.routingStyle
+          : determineAutoRoutingStyle(startPt, endPt, fromPort, toPort);
+
+        const pathD = liveRoutingStyle === 'straight'
           ? (waypointPt ? `M ${startPt.x} ${startPt.y} L ${waypointPt.x} ${waypointPt.y} L ${endPt.x} ${endPt.y}` : `M ${startPt.x} ${startPt.y} L ${endPt.x} ${endPt.y}`)
-          : arrow.routingStyle === 'curved'
+          : liveRoutingStyle === 'curved'
             ? getCurvedPathD(startPt.x, startPt.y, endPt.x, endPt.y, waypointPt)
             : getDirectionalOrthogonalPathD(
                 startPt.x,
@@ -240,6 +255,7 @@ export function WhiteboardOverlays({
               strokeWidth={2}
               strokeDasharray="4 4"
               markerEnd={arrow.type === 'arrow' ? (getMarkerId((arrow as any).arrowheadStyle, arrow.strokeColor) || undefined) : undefined}
+              markerStart={arrow.type === 'arrow' ? (getStartMarkerId((arrow as any).startArrowheadStyle, arrow.strokeColor) || undefined) : undefined}
             />
             {label && (
               <g className="pointer-events-none select-none">

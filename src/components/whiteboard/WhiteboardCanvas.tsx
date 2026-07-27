@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useWhiteboardStore, GRID_SIZE } from '@/lib/store/whiteboard-store';
 import { WHITEBOARD_COLORS } from '@/lib/whiteboard/whiteboard-types';
-import { Trash2, Plus, Minus, Maximize, Grid3X3, Download, Copy, Clipboard, Group, Ungroup, ZoomIn } from 'lucide-react';
+import { Trash2, Plus, Minus, Maximize, Grid3X3, Download, Copy, CopyPlus, Clipboard, Group, Ungroup, ZoomIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { usePanZoom } from '@/lib/hooks/usePanZoom';
@@ -234,33 +234,33 @@ export function WhiteboardCanvas() {
               <circle cx={GRID_SIZE / 2} cy={GRID_SIZE / 2} r={1} fill="currentColor" className="text-foreground/10" />
             </pattern>
           )}
-          {/* Standard open arrowhead fallback */}
-          <marker id="wb-arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-            <path d="M 0 0 L 9 5 L 0 10 z" fill="currentColor" />
+          {/* Fallback markers */}
+          <marker id="wb-arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M 2 1.5 L 8.5 5 L 2 8.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </marker>
-          <marker id="wb-arrowhead-triangle" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-            <path d="M 2 1 L 9 5 L 2 9 z" fill="currentColor" />
+          <marker id="wb-arrowhead-triangle" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M 1.5 1.5 L 8.5 5 L 1.5 8.5 z" fill="currentColor" stroke="currentColor" strokeLinejoin="round" />
           </marker>
-          <marker id="wb-arrowhead-diamond" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="6" markerHeight="6" orient="auto">
-            <path d="M 3 6 L 6 2 L 9 6 L 6 10 z" fill="currentColor" />
+          <marker id="wb-arrowhead-diamond" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+            <path d="M 1 5 L 5 1.5 L 9 5 L 5 8.5 z" fill="currentColor" stroke="currentColor" strokeLinejoin="round" />
           </marker>
-          <marker id="wb-arrowhead-circle" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <marker id="wb-arrowhead-circle" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto">
             <circle cx="5" cy="5" r="4" fill="currentColor" />
           </marker>
           <marker id="wb-arrowhead-none" viewBox="0 0 1 1" refX="0" refY="0" markerWidth="0" markerHeight="0" orient="auto">
             <path d="" />
           </marker>
 
-          <marker id="wb-arrowhead-start" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-            <path d="M 10 0 L 1 5 L 10 10 z" fill="currentColor" />
+          <marker id="wb-arrowhead-start" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M 8 1.5 L 1.5 5 L 8 8.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </marker>
-          <marker id="wb-arrowhead-start-triangle" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-            <path d="M 8 1 L 1 5 L 8 9 z" fill="currentColor" />
+          <marker id="wb-arrowhead-start-triangle" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M 8.5 1.5 L 1.5 5 L 8.5 8.5 z" fill="currentColor" stroke="currentColor" strokeLinejoin="round" />
           </marker>
-          <marker id="wb-arrowhead-start-diamond" viewBox="0 0 12 12" refX="3" refY="6" markerWidth="6" markerHeight="6" orient="auto">
-            <path d="M 9 6 L 6 2 L 3 6 L 6 10 z" fill="currentColor" />
+          <marker id="wb-arrowhead-start-diamond" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+            <path d="M 9 5 L 5 1.5 L 1 5 L 5 8.5 z" fill="currentColor" stroke="currentColor" strokeLinejoin="round" />
           </marker>
-          <marker id="wb-arrowhead-start-circle" viewBox="0 0 10 10" refX="3" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <marker id="wb-arrowhead-start-circle" viewBox="0 0 10 10" refX="3" refY="5" markerWidth="7" markerHeight="7" orient="auto">
             <circle cx="5" cy="5" r="4" fill="currentColor" />
           </marker>
 
@@ -281,29 +281,34 @@ export function WhiteboardCanvas() {
             const cId = color.replace(/[^a-zA-Z0-9]/g, '');
             return (
               <React.Fragment key={cId}>
-                <marker id={`wb-arrowhead-${cId}`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-                  <path d="M 0 0 L 9 5 L 0 10 z" fill={color} stroke={color} />
+                {/* Open Arrowhead (Unfilled V-Chevron) */}
+                <marker id={`wb-arrowhead-${cId}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                  <path d="M 2 1.5 L 8.5 5 L 2 8.5" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 </marker>
-                <marker id={`wb-arrowhead-triangle-${cId}`} viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-                  <path d="M 2 1 L 9 5 L 2 9 z" fill={color} stroke={color} />
+                {/* Solid Triangle */}
+                <marker id={`wb-arrowhead-triangle-${cId}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                  <path d="M 1.5 1.5 L 8.5 5 L 1.5 8.5 z" fill={color} stroke={color} strokeLinejoin="round" />
                 </marker>
-                <marker id={`wb-arrowhead-diamond-${cId}`} viewBox="0 0 12 12" refX="9" refY="6" markerWidth="6" markerHeight="6" orient="auto">
-                  <path d="M 3 6 L 6 2 L 9 6 L 6 10 z" fill={color} stroke={color} />
+                {/* Enlarged Diamond */}
+                <marker id={`wb-arrowhead-diamond-${cId}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+                  <path d="M 1 5 L 5 1.5 L 9 5 L 5 8.5 z" fill={color} stroke={color} strokeLinejoin="round" />
                 </marker>
-                <marker id={`wb-arrowhead-circle-${cId}`} viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                {/* Circle Dot */}
+                <marker id={`wb-arrowhead-circle-${cId}`} viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto">
                   <circle cx="5" cy="5" r="4" fill={color} stroke={color} />
                 </marker>
 
-                <marker id={`wb-arrowhead-start-${cId}`} viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-                  <path d="M 10 0 L 1 5 L 10 10 z" fill={color} stroke={color} />
+                {/* Start Markers */}
+                <marker id={`wb-arrowhead-start-${cId}`} viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                  <path d="M 8 1.5 L 1.5 5 L 8 8.5" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 </marker>
-                <marker id={`wb-arrowhead-start-triangle-${cId}`} viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-                  <path d="M 8 1 L 1 5 L 8 9 z" fill={color} stroke={color} />
+                <marker id={`wb-arrowhead-start-triangle-${cId}`} viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                  <path d="M 8.5 1.5 L 1.5 5 L 8.5 8.5 z" fill={color} stroke={color} strokeLinejoin="round" />
                 </marker>
-                <marker id={`wb-arrowhead-start-diamond-${cId}`} viewBox="0 0 12 12" refX="3" refY="6" markerWidth="6" markerHeight="6" orient="auto">
-                  <path d="M 9 6 L 6 2 L 3 6 L 6 10 z" fill={color} stroke={color} />
+                <marker id={`wb-arrowhead-start-diamond-${cId}`} viewBox="0 0 10 10" refX="1" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+                  <path d="M 9 5 L 5 1.5 L 1 5 L 5 8.5 z" fill={color} stroke={color} strokeLinejoin="round" />
                 </marker>
-                <marker id={`wb-arrowhead-start-circle-${cId}`} viewBox="0 0 10 10" refX="3" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                <marker id={`wb-arrowhead-start-circle-${cId}`} viewBox="0 0 10 10" refX="3" refY="5" markerWidth="7" markerHeight="7" orient="auto">
                   <circle cx="5" cy="5" r="4" fill={color} stroke={color} />
                 </marker>
               </React.Fragment>
@@ -418,14 +423,14 @@ export function WhiteboardCanvas() {
             onClick={() => setShowGrid(!showGrid)} title="Toggle Grid">
             <Grid3X3 className={`h-4 w-4 ${showGrid ? 'text-primary' : 'text-muted-foreground'}`} />
           </Button>
-          <div className="h-px w-full bg-border" />
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={duplicateSelected} title="Duplicate (Ctrl+D)">
-            <Copy className="h-4 w-4" />
-          </Button>
           {selectedIds.length > 0 && (
             <>
+              <div className="h-px w-full bg-border" />
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={duplicateSelected} title="Duplicate (Ctrl+D)">
+                <CopyPlus className="h-4 w-4" />
+              </Button>
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={copyToClipboard} title="Copy (Ctrl+C)">
-                <Copy className="h-3 w-3" />
+                <Copy className="h-3.5 w-3.5" />
               </Button>
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={pasteFromClipboard} title="Paste (Ctrl+V)">
                 <Clipboard className="h-3.5 w-3.5" />

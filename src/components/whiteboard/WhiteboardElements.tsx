@@ -34,6 +34,7 @@ export function getMarkerId(ahStyle: ArrowheadStyle | undefined, color?: string)
     case 'triangle': return `url(#wb-arrowhead-triangle${cSuffix})`;
     case 'diamond': return `url(#wb-arrowhead-diamond${cSuffix})`;
     case 'circle': return `url(#wb-arrowhead-circle${cSuffix})`;
+    case 'arrow': return `url(#wb-arrowhead${cSuffix})`;
     case 'none': return '';
     default: return `url(#wb-arrowhead${cSuffix})`;
   }
@@ -45,8 +46,9 @@ export function getStartMarkerId(ahStyle: ArrowheadStyle | undefined, color?: st
     case 'triangle': return `url(#wb-arrowhead-start-triangle${cSuffix})`;
     case 'diamond': return `url(#wb-arrowhead-start-diamond${cSuffix})`;
     case 'circle': return `url(#wb-arrowhead-start-circle${cSuffix})`;
+    case 'arrow': return `url(#wb-arrowhead-start${cSuffix})`;
     case 'none': return '';
-    default: return `url(#wb-arrowhead-start${cSuffix})`;
+    default: return '';
   }
 }
 
