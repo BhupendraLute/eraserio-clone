@@ -18,8 +18,8 @@ import {
   AlignRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { WhiteboardTool, WhiteboardColor } from '@/lib/whiteboard/whiteboard-types';
-import { WHITEBOARD_COLORS } from '@/lib/whiteboard/whiteboard-types';
+import type { WhiteboardTool } from '@/lib/whiteboard/whiteboard-types';
+import { WHITEBOARD_COLORS, WHITEBOARD_COLOR_KEYS } from '@/lib/whiteboard/whiteboard-types';
 import { SHARED_TOOLS } from '@/lib/whiteboard/tool-definitions';
 import { CloudIconPicker } from './CloudIconPicker';
 
@@ -54,7 +54,7 @@ export function WhiteboardToolbar() {
     { tool: 'diagram', label: 'Diagram Embed', icon: GitBranch },
   ];
 
-  const colors: WhiteboardColor[] = ['blue', 'green', 'amber', 'purple', 'rose', 'gray'];
+  const colors = WHITEBOARD_COLOR_KEYS;
 
   return (
     <>

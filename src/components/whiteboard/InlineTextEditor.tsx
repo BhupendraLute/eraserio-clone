@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useCallback } from 'react';
 import type { WhiteboardElement } from '@/lib/whiteboard/whiteboard-types';
-import { WHITEBOARD_COLORS } from '@/lib/whiteboard/whiteboard-types';
+import { WHITEBOARD_COLORS, computeShapeAutoHeight } from '@/lib/whiteboard/whiteboard-types';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { getArrowMidpoint } from '@/lib/whiteboard/orthogonal-routing';
 
@@ -63,9 +63,13 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
     textColor = WHITEBOARD_COLORS[colorKey as keyof typeof WHITEBOARD_COLORS]?.text ?? 'var(--foreground)';
   } else if (isShape) {
     textValue = (element as any).label ?? '';
-    fontSize = 13;
+    fontSize = (element as any).labelFontSize ?? (element as any).fontSize ?? 14;
+    fontFamily = (element as any).labelFontFamily ?? (element as any).fontFamily ?? 'inherit';
+    textAlign = (element as any).textAlign ?? 'center';
+    textColor = (element as any).labelColor ?? 'currentColor';
     fontWeight = '500' as any;
     placeholder = 'Type label...';
+    isMultiline = true;
   } else if (isConnector) {
     textValue = (element as any).label ?? '';
     fontSize = (element as any).labelFontSize ?? 12;
@@ -87,9 +91,13 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
     if (isText) updateElement(element.id, { text: value } as any);
     else if (isSticky) updateElement(element.id, { text: value } as any);
     else if (isComment) updateElement(element.id, { text: value } as any);
-    else if (isShape || isConnector) updateElement(element.id, { label: value } as any);
+    else if (isShape) {
+      const newHeight = computeShapeAutoHeight(value, element.width, element.height, fontSize);
+      updateElement(element.id, { label: value, height: newHeight } as any);
+    }
+    else if (isConnector) updateElement(element.id, { label: value } as any);
     else if (isFrame) updateElement(element.id, { title: value } as any);
-  }, [element.id, updateElement, isText, isSticky, isComment, isShape, isConnector, isFrame]);
+  }, [element.id, element.width, element.height, fontSize, updateElement, isText, isSticky, isComment, isShape, isConnector, isFrame]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!isMultiline && e.key === 'Enter') {
@@ -144,11 +152,11 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
     foW = width;
     foH = height;
   } else if (isShape) {
-    // For shapes, position the label editor centered
-    foX = element.x;
-    foY = element.y + element.height / 2 - 14;
-    foW = element.width;
-    foH = 28;
+    // For shapes, span internal shape padding area
+    foX = element.x + 12;
+    foY = element.y + 8;
+    foW = Math.max(10, element.width - 24);
+    foH = Math.max(10, element.height - 16);
   } else if (isFrame) {
     foX = element.x + 8;
     foY = element.y + 4;

@@ -10,6 +10,7 @@ interface WorkspaceState {
   aiChatOpen: boolean;
   diagramCodeOpen: boolean;
   insertItemOpen: boolean;
+  insertItemCategory: 'main' | 'shapes' | 'icons' | 'frames';
 
   setViewMode: (mode: WorkspaceViewMode) => void;
   setActiveTab: (tab: WorkspaceTab) => void;
@@ -19,6 +20,7 @@ interface WorkspaceState {
   setDiagramCodeOpen: (open: boolean) => void;
   toggleDiagramCode: () => void;
   setInsertItemOpen: (open: boolean) => void;
+  setInsertItemCategory: (cat: 'main' | 'shapes' | 'icons' | 'frames') => void;
   toggleInsertItem: () => void;
 }
 
@@ -29,6 +31,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   aiChatOpen: false,
   diagramCodeOpen: false,
   insertItemOpen: false,
+  insertItemCategory: 'main',
 
   setViewMode: (viewMode) => set({ viewMode }),
   setActiveTab: (activeTab) => set({ activeTab }),
@@ -38,5 +41,6 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   setDiagramCodeOpen: (diagramCodeOpen) => set({ diagramCodeOpen }),
   toggleDiagramCode: () => set((s) => ({ diagramCodeOpen: !s.diagramCodeOpen })),
   setInsertItemOpen: (insertItemOpen) => set({ insertItemOpen }),
-  toggleInsertItem: () => set((s) => ({ insertItemOpen: !s.insertItemOpen })),
+  setInsertItemCategory: (insertItemCategory) => set({ insertItemCategory }),
+  toggleInsertItem: () => set((s) => ({ insertItemOpen: !s.insertItemOpen, insertItemCategory: 'main' })),
 }));

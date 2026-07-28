@@ -1,7 +1,7 @@
 'use client';
 
 import type { WhiteboardElement, ArrowElement, LineElement, CloudIconKind, LineStyle, ArrowheadStyle, Point, PortDirection } from '@/lib/whiteboard/whiteboard-types';
-import { WHITEBOARD_COLORS, LINE_DASH } from '@/lib/whiteboard/whiteboard-types';
+import { WHITEBOARD_COLORS, LINE_DASH, isPolygonShapeType } from '@/lib/whiteboard/whiteboard-types';
 import { ICON_MAP } from '@/lib/icons/icon-catalog';
 import { DiagramPreview } from '@/components/docs/DiagramPreview';
 import { useDiagramRegistry } from '@/lib/store/diagram-registry';
@@ -217,78 +217,149 @@ export function WhiteboardElements({
         const isSelected = selectedIds.includes(el.id);
         const dashArray = getStrokeDasharray(el);
 
-        if (el.type === 'rectangle') {
-          const cornerRad = el.cornerRadius ?? 6;
-          return (
-            <g key={el.id} onPointerDown={(e) => onElementPointerDown(e, el)} onClick={(e) => onElementClick(e, el)} onDoubleClick={(e) => onElementDoubleClick(e, el)} onContextMenu={(e) => onElementContextMenu?.(e, el)}>
-              <rect x={el.x} y={el.y} width={el.width} height={el.height} rx={cornerRad}
-                fill={el.fillColor ?? 'transparent'} stroke={el.strokeColor} strokeWidth={el.strokeWidth}
-                strokeDasharray={dashArray} className="cursor-pointer" />
-              {el.label && (
-                <text x={el.x + el.width / 2} y={el.y + el.height / 2} textAnchor="middle" dominantBaseline="central"
-                  className="pointer-events-none select-none" fill="currentColor" fontSize={13} fontWeight={500}>
-                  {el.label}
-                </text>
-              )}
-            </g>
-          );
-        }
+        if (isPolygonShapeType(el.type)) {
+          const fillStyleMode = (el as any).fillStyle || 'plain';
+          const strokeColor = el.strokeColor;
+          const fillColor = el.fillColor ?? 'transparent';
+          const strokeWidth = el.strokeWidth;
+          const label = el.label;
 
-        if (el.type === 'circle') {
-          return (
-            <g key={el.id} onPointerDown={(e) => onElementPointerDown(e, el)} onClick={(e) => onElementClick(e, el)} onDoubleClick={(e) => onElementDoubleClick(e, el)} onContextMenu={(e) => onElementContextMenu?.(e, el)}>
-              <ellipse cx={el.x + el.width / 2} cy={el.y + el.height / 2} rx={el.width / 2} ry={el.height / 2}
-                fill={el.fillColor ?? 'transparent'} stroke={el.strokeColor} strokeWidth={el.strokeWidth}
-                strokeDasharray={dashArray} className="cursor-pointer" />
-              {el.label && (
-                <text x={el.x + el.width / 2} y={el.y + el.height / 2} textAnchor="middle" dominantBaseline="central"
-                  className="pointer-events-none select-none" fill="currentColor" fontSize={13} fontWeight={500}>
-                  {el.label}
-                </text>
-              )}
-            </g>
-          );
-        }
+          const fillOpacity = fillStyleMode === 'watercolor' ? 0.75 : 1.0;
 
-        if (el.type === 'diamond') {
           const cx = el.x + el.width / 2;
           const cy = el.y + el.height / 2;
-          const points = `${cx},${el.y} ${el.x + el.width},${cy} ${cx},${el.y + el.height} ${el.x},${cy}`;
-          return (
-            <g key={el.id} onPointerDown={(e) => onElementPointerDown(e, el)} onClick={(e) => onElementClick(e, el)} onDoubleClick={(e) => onElementDoubleClick(e, el)} onContextMenu={(e) => onElementContextMenu?.(e, el)}>
-              <polygon points={points} fill={el.fillColor ?? 'transparent'} stroke={el.strokeColor}
-                strokeWidth={el.strokeWidth} strokeDasharray={dashArray} className="cursor-pointer" />
-              {el.label && (
-                <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central"
-                  className="pointer-events-none select-none" fill="currentColor" fontSize={13} fontWeight={500}>
-                  {el.label}
-                </text>
-              )}
-            </g>
-          );
-        }
 
-        if (el.type === 'cylinder') {
-          const rx = el.width / 2;
-          const ry = Math.min(16, el.height / 4);
+          let shapeContent: React.ReactNode = null;
+
+          if (el.type === 'rectangle' || el.type === 'square') {
+            shapeContent = (
+              <rect x={el.x} y={el.y} width={el.width} height={el.height} rx={4}
+                fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth}
+                strokeDasharray={dashArray} fillOpacity={fillOpacity} className="cursor-pointer" />
+            );
+          } else if (el.type === 'circle') {
+            shapeContent = (
+              <ellipse cx={cx} cy={cy} rx={el.width / 2} ry={el.height / 2}
+                fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth}
+                strokeDasharray={dashArray} fillOpacity={fillOpacity} className="cursor-pointer" />
+            );
+          } else if (el.type === 'diamond') {
+            const points = `${cx},${el.y} ${el.x + el.width},${cy} ${cx},${el.y + el.height} ${el.x},${cy}`;
+            shapeContent = (
+              <polygon points={points} fill={fillColor} stroke={strokeColor}
+                strokeWidth={strokeWidth} strokeDasharray={dashArray} fillOpacity={fillOpacity} className="cursor-pointer" />
+            );
+          } else if (el.type === 'triangle') {
+            const points = `${cx},${el.y} ${el.x + el.width},${el.y + el.height} ${el.x},${el.y + el.height}`;
+            shapeContent = (
+              <polygon points={points} fill={fillColor} stroke={strokeColor}
+                strokeWidth={strokeWidth} strokeDasharray={dashArray} fillOpacity={fillOpacity} className="cursor-pointer" />
+            );
+          } else if (el.type === 'parallelogram') {
+            const w = el.width; const h = el.height;
+            const points = `${el.x + w * 0.25},${el.y} ${el.x + w},${el.y} ${el.x + w * 0.75},${el.y + h} ${el.x},${el.y + h}`;
+            shapeContent = (
+              <polygon points={points} fill={fillColor} stroke={strokeColor}
+                strokeWidth={strokeWidth} strokeDasharray={dashArray} fillOpacity={fillOpacity} className="cursor-pointer" />
+            );
+          } else if (el.type === 'trapezoid') {
+            const w = el.width; const h = el.height;
+            const points = `${el.x + w * 0.2},${el.y} ${el.x + w * 0.8},${el.y} ${el.x + w},${el.y + h} ${el.x},${el.y + h}`;
+            shapeContent = (
+              <polygon points={points} fill={fillColor} stroke={strokeColor}
+                strokeWidth={strokeWidth} strokeDasharray={dashArray} fillOpacity={fillOpacity} className="cursor-pointer" />
+            );
+          } else if (el.type === 'cylinder') {
+            const rx = el.width / 2;
+            const ry = Math.min(16, el.height / 4);
+            shapeContent = (
+              <>
+                <rect x={el.x} y={el.y + ry} width={el.width} height={el.height - ry * 2}
+                  fill={fillColor} stroke="none" strokeWidth={0} fillOpacity={fillOpacity} />
+                <ellipse cx={el.x + rx} cy={el.y + ry} rx={rx} ry={ry}
+                  fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} strokeDasharray={dashArray} fillOpacity={fillOpacity} />
+                <path d={`M ${el.x} ${el.y + ry} L ${el.x} ${el.y + el.height - ry}`}
+                  stroke={strokeColor} strokeWidth={strokeWidth} fill="none" />
+                <path d={`M ${el.x + el.width} ${el.y + ry} L ${el.x + el.width} ${el.y + el.height - ry}`}
+                  stroke={strokeColor} strokeWidth={strokeWidth} fill="none" />
+                <ellipse cx={el.x + rx} cy={el.y + el.height - ry} rx={rx} ry={ry}
+                  fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth} strokeDasharray={dashArray} fillOpacity={fillOpacity} />
+              </>
+            );
+          } else if (el.type === 'capsule') {
+            const rx = Math.min(el.width, el.height) / 2;
+            shapeContent = (
+              <rect x={el.x} y={el.y} width={el.width} height={el.height} rx={rx}
+                fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth}
+                strokeDasharray={dashArray} fillOpacity={fillOpacity} className="cursor-pointer" />
+            );
+          } else if (el.type === 'hexagon') {
+            const w = el.width; const h = el.height;
+            const points = `${el.x + w * 0.25},${el.y} ${el.x + w * 0.75},${el.y} ${el.x + w},${cy} ${el.x + w * 0.75},${el.y + h} ${el.x + w * 0.25},${el.y + h} ${el.x},${cy}`;
+            shapeContent = (
+              <polygon points={points} fill={fillColor} stroke={strokeColor}
+                strokeWidth={strokeWidth} strokeDasharray={dashArray} fillOpacity={fillOpacity} className="cursor-pointer" />
+            );
+          } else if (el.type === 'star') {
+            const w = el.width; const h = el.height;
+            const outerRx = w / 2; const outerRy = h / 2;
+            const innerRx = w * 0.2; const innerRy = h * 0.2;
+            const starPts: string[] = [];
+            for (let i = 0; i < 10; i++) {
+              const angle = (i * Math.PI) / 5 - Math.PI / 2;
+              const rxVal = i % 2 === 0 ? outerRx : innerRx;
+              const ryVal = i % 2 === 0 ? outerRy : innerRy;
+              starPts.push(`${cx + rxVal * Math.cos(angle)},${cy + ryVal * Math.sin(angle)}`);
+            }
+            shapeContent = (
+              <polygon points={starPts.join(' ')} fill={fillColor} stroke={strokeColor}
+                strokeWidth={strokeWidth} strokeDasharray={dashArray} fillOpacity={fillOpacity} className="cursor-pointer" />
+            );
+          }
+
           return (
-            <g key={el.id} onPointerDown={(e) => onElementPointerDown(e, el)} onClick={(e) => onElementClick(e, el)} onDoubleClick={(e) => onElementDoubleClick(e, el)} onContextMenu={(e) => onElementContextMenu?.(e, el)}>
-              <rect x={el.x} y={el.y + ry} width={el.width} height={el.height - ry * 2}
-                fill={el.fillColor ?? 'transparent'} stroke="none" strokeWidth={0} />
-              <ellipse cx={el.x + rx} cy={el.y + ry} rx={rx} ry={ry}
-                fill={el.fillColor ?? 'transparent'} stroke={el.strokeColor} strokeWidth={el.strokeWidth} strokeDasharray={dashArray} />
-              <path d={`M ${el.x} ${el.y + ry} L ${el.x} ${el.y + el.height - ry}`}
-                stroke={el.strokeColor} strokeWidth={el.strokeWidth} fill="none" />
-              <path d={`M ${el.x + el.width} ${el.y + ry} L ${el.x + el.width} ${el.y + el.height - ry}`}
-                stroke={el.strokeColor} strokeWidth={el.strokeWidth} fill="none" />
-              <ellipse cx={el.x + rx} cy={el.y + el.height - ry} rx={rx} ry={ry}
-                fill={el.fillColor ?? 'transparent'} stroke={el.strokeColor} strokeWidth={el.strokeWidth} strokeDasharray={dashArray} />
-              {el.label && (
-                <text x={el.x + rx} y={el.y + el.height / 2} textAnchor="middle" dominantBaseline="central"
-                  className="pointer-events-none select-none" fill="currentColor" fontSize={13} fontWeight={500}>
-                  {el.label}
-                </text>
-              )}
+            <g key={el.id}
+              onPointerDown={(e) => onElementPointerDown(e, el)}
+              onClick={(e) => onElementClick(e, el)}
+              onDoubleClick={(e) => onElementDoubleClick(e, el)}
+              onContextMenu={(e) => onElementContextMenu?.(e, el)}>
+              {shapeContent}
+              {label && editingElementId !== el.id && (() => {
+                const align = (el as any).textAlign ?? 'center';
+                const fontSize = (el as any).labelFontSize ?? (el as any).fontSize ?? 14;
+                const fontFamily = (el as any).labelFontFamily ?? (el as any).fontFamily ?? 'inherit';
+                const labelColor = (el as any).labelColor ?? 'currentColor';
+
+                const padX = 12;
+                const padY = 8;
+
+                return (
+                  <foreignObject
+                    x={el.x + padX}
+                    y={el.y + padY}
+                    width={Math.max(10, el.width - padX * 2)}
+                    height={Math.max(10, el.height - padY * 2)}
+                    className="pointer-events-none select-none overflow-hidden"
+                  >
+                    <div
+                      className="h-full w-full flex flex-col justify-center transition-colors"
+                      style={{
+                        color: labelColor,
+                        fontSize: `${fontSize}px`,
+                        fontFamily,
+                        textAlign: align,
+                        wordBreak: 'break-word',
+                        overflowWrap: 'break-word',
+                        whiteSpace: 'pre-wrap',
+                        lineHeight: 1.35,
+                        fontWeight: 500,
+                      }}
+                    >
+                      {label}
+                    </div>
+                  </foreignObject>
+                );
+              })()}
             </g>
           );
         }
@@ -378,9 +449,11 @@ export function WhiteboardElements({
               <rect x={el.x} y={el.y} width={el.width} height={el.height} rx={4}
                 fill={el.frameBg ?? 'var(--background)'} fillOpacity={0.5} stroke={el.frameColor ?? el.strokeColor}
                 strokeWidth={el.strokeWidth} strokeDasharray={dashArray} className="cursor-pointer" />
-              <foreignObject x={el.x + 8} y={el.y + 4} width={el.width - 16} height={24}>
-                <span className="text-[11px] font-bold text-muted-foreground select-none pointer-events-none">{el.title}</span>
-              </foreignObject>
+              {editingElementId !== el.id && (
+                <foreignObject x={el.x + 8} y={el.y + 4} width={el.width - 16} height={24}>
+                  <span className="text-[11px] font-bold text-muted-foreground select-none pointer-events-none">{el.title}</span>
+                </foreignObject>
+              )}
             </g>
           );
         }

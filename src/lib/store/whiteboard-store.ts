@@ -7,6 +7,7 @@ import type {
   WhiteboardElement,
   LineStyle,
   PortDirection,
+  FillStyleMode,
 } from '@/lib/whiteboard/whiteboard-types';
 import { WHITEBOARD_COLORS, isConnectorElement, getShapePorts, ArrowheadStyle, RoutingStyle } from '@/lib/whiteboard/whiteboard-types';
 import { getOptimalPortPair, getOptimalSinglePort, determineAutoRoutingStyle } from '@/lib/whiteboard/orthogonal-routing';
@@ -73,6 +74,7 @@ interface WhiteboardStore {
   activeRoutingStyle: RoutingStyle;
   activeIsAnimated: boolean;
   activeCornerRadius: number;
+  activeFillStyle: FillStyleMode;
   elements: WhiteboardElement[];
   selectedIds: string[];
   history: HistoryState[];
@@ -93,6 +95,7 @@ interface WhiteboardStore {
   setActiveRoutingStyle: (style: RoutingStyle) => void;
   setActiveIsAnimated: (animated: boolean) => void;
   setActiveCornerRadius: (radius: number) => void;
+  setActiveFillStyle: (style: FillStyleMode) => void;
   setShowGrid: (show: boolean) => void;
 
   addElement: (element: WhiteboardElement) => void;
@@ -146,8 +149,8 @@ function pushHistory(state: { history: HistoryState[]; elements: WhiteboardEleme
 export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
   activeTool: 'select',
   activeColor: 'blue',
-  activeStrokeHex: '#3b82f6',
-  activeFillHex: '#dbeafe',
+  activeStrokeHex: 'currentColor',
+  activeFillHex: 'transparent',
   activeCloudIcon: 'iconify-aws-ec2',
   activeStrokeWidth: 2,
   activeLineWidthSize: 'M',
@@ -157,6 +160,7 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
   activeRoutingStyle: 'straight',
   activeIsAnimated: false,
   activeCornerRadius: 6,
+  activeFillStyle: 'plain',
   elements: [],
   selectedIds: [],
   history: [],
@@ -193,6 +197,7 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
   setActiveRoutingStyle: (style) => set({ activeRoutingStyle: style }),
   setActiveIsAnimated: (animated) => set({ activeIsAnimated: animated }),
   setActiveCornerRadius: (radius) => set({ activeCornerRadius: radius }),
+  setActiveFillStyle: (style) => set({ activeFillStyle: style }),
   setShowGrid: (show) => set({ showGrid: show }),
 
   hydrate: () => {

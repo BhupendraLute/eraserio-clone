@@ -82,31 +82,70 @@ export function WhiteboardOverlays({
 
         return (
           <g className="pointer-events-none">
-            {activeTool === 'rectangle' && w > 0 && h > 0 && (
-              <rect x={minX} y={minY} width={w} height={h} rx={6}
-                fill="none" stroke="var(--canvas-accent)" strokeWidth={2} strokeDasharray="4 4" />
+            {(activeTool === 'rectangle' || activeTool === 'square') && w > 0 && h > 0 && (
+              <rect x={minX} y={minY} width={activeTool === 'square' ? Math.max(w, h) : w} height={activeTool === 'square' ? Math.max(w, h) : h} rx={4}
+                fill="none" stroke="currentColor" strokeWidth={2} strokeDasharray="4 4" />
             )}
             {activeTool === 'circle' && w > 0 && h > 0 && (
               <ellipse cx={cx} cy={cy} rx={w / 2} ry={h / 2}
-                fill="none" stroke="var(--canvas-accent)" strokeWidth={2} strokeDasharray="4 4" />
+                fill="none" stroke="currentColor" strokeWidth={2} strokeDasharray="4 4" />
             )}
             {activeTool === 'diamond' && w > 0 && h > 0 && (
               <polygon
                 points={`${cx},${minY} ${minX + w},${cy} ${cx},${minY + h} ${minX},${cy}`}
-                fill="none" stroke="var(--canvas-accent)" strokeWidth={2} strokeDasharray="4 4" />
+                fill="none" stroke="currentColor" strokeWidth={2} strokeDasharray="4 4" />
             )}
+            {activeTool === 'triangle' && w > 0 && h > 0 && (
+              <polygon
+                points={`${cx},${minY} ${minX + w},${minY + h} ${minX},${minY + h}`}
+                fill="none" stroke="currentColor" strokeWidth={2} strokeDasharray="4 4" />
+            )}
+            {activeTool === 'parallelogram' && w > 0 && h > 0 && (
+              <polygon
+                points={`${minX + w * 0.25},${minY} ${minX + w},${minY} ${minX + w * 0.75},${minY + h} ${minX},${minY + h}`}
+                fill="none" stroke="currentColor" strokeWidth={2} strokeDasharray="4 4" />
+            )}
+            {activeTool === 'trapezoid' && w > 0 && h > 0 && (
+              <polygon
+                points={`${minX + w * 0.2},${minY} ${minX + w * 0.8},${minY} ${minX + w},${minY + h} ${minX},${minY + h}`}
+                fill="none" stroke="currentColor" strokeWidth={2} strokeDasharray="4 4" />
+            )}
+            {activeTool === 'capsule' && w > 0 && h > 0 && (
+              <rect x={minX} y={minY} width={w} height={h} rx={Math.min(w, h) / 2}
+                fill="none" stroke="currentColor" strokeWidth={2} strokeDasharray="4 4" />
+            )}
+            {activeTool === 'hexagon' && w > 0 && h > 0 && (
+              <polygon
+                points={`${minX + w * 0.25},${minY} ${minX + w * 0.75},${minY} ${minX + w},${cy} ${minX + w * 0.75},${minY + h} ${minX + w * 0.25},${minY + h} ${minX},${cy}`}
+                fill="none" stroke="currentColor" strokeWidth={2} strokeDasharray="4 4" />
+            )}
+            {activeTool === 'star' && w > 0 && h > 0 && (() => {
+              const outerRx = w / 2; const outerRy = h / 2;
+              const innerRx = w * 0.2; const innerRy = h * 0.2;
+              const starPts: string[] = [];
+              for (let i = 0; i < 10; i++) {
+                const angle = (i * Math.PI) / 5 - Math.PI / 2;
+                const rxVal = i % 2 === 0 ? outerRx : innerRx;
+                const ryVal = i % 2 === 0 ? outerRy : innerRy;
+                starPts.push(`${cx + rxVal * Math.cos(angle)},${cy + ryVal * Math.sin(angle)}`);
+              }
+              return (
+                <polygon points={starPts.join(' ')}
+                  fill="none" stroke="currentColor" strokeWidth={2} strokeDasharray="4 4" />
+              );
+            })()}
             {activeTool === 'cylinder' && w > 0 && h > 0 && (
               <g>
                 <rect x={minX} y={minY + Math.min(16, h / 4)} width={w} height={h - Math.min(16, h / 4) * 2}
                   fill="none" stroke="none" />
                 <ellipse cx={cx} cy={minY + Math.min(16, h / 4)} rx={w / 2} ry={Math.min(16, h / 4)}
-                  fill="none" stroke="var(--canvas-accent)" strokeWidth={2} strokeDasharray="4 4" />
+                  fill="none" stroke="currentColor" strokeWidth={2} strokeDasharray="4 4" />
                 <path d={`M ${minX} ${minY + Math.min(16, h / 4)} L ${minX} ${minY + h - Math.min(16, h / 4)}`}
-                  stroke="var(--canvas-accent)" strokeWidth={2} strokeDasharray="4 4" />
+                  stroke="currentColor" strokeWidth={2} strokeDasharray="4 4" />
                 <path d={`M ${minX + w} ${minY + Math.min(16, h / 4)} L ${minX + w} ${minY + h - Math.min(16, h / 4)}`}
-                  stroke="var(--canvas-accent)" strokeWidth={2} strokeDasharray="4 4" />
+                  stroke="currentColor" strokeWidth={2} strokeDasharray="4 4" />
                 <ellipse cx={cx} cy={minY + h - Math.min(16, h / 4)} rx={w / 2} ry={Math.min(16, h / 4)}
-                  fill="none" stroke="var(--canvas-accent)" strokeWidth={2} strokeDasharray="4 4" />
+                  fill="none" stroke="currentColor" strokeWidth={2} strokeDasharray="4 4" />
               </g>
             )}
             {(activeTool === 'arrow' || activeTool === 'line') && (() => {

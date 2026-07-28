@@ -8,7 +8,7 @@ import type {
   Point,
   PortDirection,
 } from '@/lib/whiteboard/whiteboard-types';
-import { WHITEBOARD_COLORS, isConnectorElement, getElementBounds, getShapePorts } from '@/lib/whiteboard/whiteboard-types';
+import { WHITEBOARD_COLORS, isConnectorElement, getElementBounds, getShapePorts, isPolygonShapeType } from '@/lib/whiteboard/whiteboard-types';
 import {
   findNearestShapePort,
   getOptimalPortPair,
@@ -490,18 +490,28 @@ export function useWhiteboardInteractions({
     const width = Math.max(30, Math.abs(current.x - start.x));
     const height = Math.max(30, Math.abs(current.y - start.y));
 
-    const strokeHex = activeStrokeHex || WHITEBOARD_COLORS[activeColor].border;
-    const fillHex = activeFillHex && activeFillHex !== 'transparent' ? activeFillHex : WHITEBOARD_COLORS[activeColor].bg;
+    const strokeHex = activeStrokeHex || 'currentColor';
+    const fillHex = activeFillHex || 'transparent';
     const id = generateId();
 
-    if (activeTool === 'rectangle') {
-      addElement({ id, type: 'rectangle', x: minX, y: minY, width, height, cornerRadius: activeCornerRadius, strokeColor: strokeHex, fillColor: fillHex, strokeWidth: activeStrokeWidth });
-    } else if (activeTool === 'circle') {
-      addElement({ id, type: 'circle', x: minX, y: minY, width, height, strokeColor: strokeHex, fillColor: fillHex, strokeWidth: activeStrokeWidth });
-    } else if (activeTool === 'diamond') {
-      addElement({ id, type: 'diamond', x: minX, y: minY, width, height, strokeColor: strokeHex, fillColor: fillHex, strokeWidth: activeStrokeWidth });
-    } else if (activeTool === 'cylinder') {
-      addElement({ id, type: 'cylinder', x: minX, y: minY, width, height, strokeColor: strokeHex, fillColor: fillHex, strokeWidth: activeStrokeWidth });
+    if (isPolygonShapeType(activeTool)) {
+      const activeFillStyle = useWhiteboardStore.getState().activeFillStyle || 'plain';
+      const activeLineStyle = useWhiteboardStore.getState().activeLineStyle || 'solid';
+      const shapeW = activeTool === 'square' ? Math.max(width, height) : width;
+      const shapeH = activeTool === 'square' ? Math.max(width, height) : height;
+      addElement({
+        id,
+        type: activeTool as any,
+        x: minX,
+        y: minY,
+        width: shapeW,
+        height: shapeH,
+        strokeColor: strokeHex,
+        fillColor: fillHex,
+        strokeWidth: activeStrokeWidth,
+        lineStyle: activeLineStyle,
+        fillStyle: activeFillStyle,
+      });
     } else if (activeTool === 'arrow' || activeTool === 'line') {
       const fromPortSnap = findNearestShapePort(start, elements);
       const toPortSnap = findNearestShapePort(current, elements);
@@ -579,9 +589,9 @@ export function useWhiteboardInteractions({
         fillColor: fillHex,
         strokeWidth: activeStrokeWidth,
       });
-      setSelectedIds([id]);
     }
 
+    setSelectedIds([id]);
     setDrawingState(null);
     setActiveSnap(null);
     setActiveTool('select');

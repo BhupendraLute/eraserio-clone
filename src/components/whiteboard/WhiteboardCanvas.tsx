@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useWhiteboardStore, GRID_SIZE } from '@/lib/store/whiteboard-store';
-import { WHITEBOARD_COLORS } from '@/lib/whiteboard/whiteboard-types';
+import { WHITEBOARD_COLORS, isPolygonShapeType, WHITEBOARD_COLOR_KEYS } from '@/lib/whiteboard/whiteboard-types';
 import { Trash2, Plus, Minus, Maximize, Grid3X3, Download, Copy, CopyPlus, Clipboard, Group, Ungroup, ZoomIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -16,6 +16,7 @@ import { ToolSubOptions } from './ToolSubOptions';
 import { InlineTextEditor } from './InlineTextEditor';
 import { ArrowToolbar } from './ArrowToolbar';
 import { IconToolbar } from './IconToolbar';
+import { ShapeToolbar } from './ShapeToolbar';
 
 export function WhiteboardCanvas() {
   const updateElement = useWhiteboardStore((s) => s.updateElement);
@@ -120,12 +121,12 @@ export function WhiteboardCanvas() {
     };
   }, []);
 
-  const isOnlyArrowSelection = selectedElements.length > 0 && selectedElements.every(el => el.type === 'arrow' || el.type === 'line');
+  const isBottomToolbarSelection = selectedElements.length > 0 && selectedElements.every(el => el.type === 'arrow' || el.type === 'line' || isPolygonShapeType(el.type));
 
   return (
     <div className="relative h-full w-full select-none overflow-hidden bg-background">
-      {/* Floating Rich Text Formatting Toolbar (hidden when only arrows are selected, since ArrowToolbar subtool panel handles arrows) */}
-      {hasSelection && !isOnlyArrowSelection && (
+      {/* Floating Rich Text Formatting Toolbar (hidden when selection is handled by ArrowToolbar / ShapeToolbar) */}
+      {hasSelection && !isBottomToolbarSelection && (
         <div className="absolute top-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-1.5 rounded-xl border bg-muted/90 p-1.5 shadow-2xl backdrop-blur animate-in fade-in zoom-in-95">
           <select
             value={activeFontFamily}
@@ -155,7 +156,7 @@ export function WhiteboardCanvas() {
           </div>
 
           <div className="flex items-center gap-1 border-r pr-2">
-            {(['blue', 'green', 'amber', 'purple', 'rose', 'gray'] as const).map((colorKey) => {
+            {WHITEBOARD_COLOR_KEYS.map((colorKey) => {
               const c = WHITEBOARD_COLORS[colorKey];
               return (
                 <button
@@ -213,6 +214,7 @@ export function WhiteboardCanvas() {
       {/* Special bottom toolbars (eraser.io style) */}
       <ArrowToolbar />
       <IconToolbar />
+      <ShapeToolbar />
 
       {/* SVG Canvas Workspace */}
       <svg

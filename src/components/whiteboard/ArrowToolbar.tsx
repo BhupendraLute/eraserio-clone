@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
-import { WHITEBOARD_COLORS } from '@/lib/whiteboard/whiteboard-types';
+import { WHITEBOARD_COLORS, WHITEBOARD_COLOR_KEYS } from '@/lib/whiteboard/whiteboard-types';
 import { cn } from '@/lib/utils';
+import { LabelTypographyToolbar } from './LabelTypographyToolbar';
 import type {
   ArrowElement,
   LineElement,
@@ -329,7 +330,16 @@ export function ArrowToolbar() {
           {openPopup === 'color' && (
             <div className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded-lg border bg-muted/95 p-2 shadow-xl backdrop-blur">
               <div className="flex items-center gap-1.5">
-                {(['blue', 'green', 'amber', 'purple', 'rose', 'gray'] as const).map((colorKey) => {
+                {/* Theme Default Swatch */}
+                <button
+                  onClick={() => handleCustomColorChange('currentColor')}
+                  className={cn(
+                    'h-5 w-5 rounded-full border border-border bg-foreground transition-transform hover:scale-110 shrink-0',
+                    (currentStrokeHex === 'currentColor' || !currentStrokeHex) && 'ring-2 ring-primary ring-offset-1'
+                  )}
+                  title="Theme Default (Whitish Gray in dark, Dark Gray in light)"
+                />
+                {WHITEBOARD_COLOR_KEYS.map((colorKey) => {
                   const c = WHITEBOARD_COLORS[colorKey];
                   return (
                     <button
@@ -592,82 +602,15 @@ export function ArrowToolbar() {
           </svg>
         </button>
 
-        {/* Label Editable Tools (Only visible when selected arrow has a label) */}
+        {/* Label Editable Tools (Only visible when selected connector has a label) */}
         {hasLabel && (
           <>
-            <div className="h-5 w-px bg-border" />
-
-            {/* Label Typography / Font Family */}
-            <div className="relative">
-              <button
-                onClick={() => togglePopup('labelFont')}
-                className="flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-medium transition-colors hover:bg-accent"
-                title="Label Typography"
-              >
-                <span className="truncate max-w-[70px]">
-                  {currentLabelFontFamily.includes('serif') ? 'Serif' : currentLabelFontFamily.includes('mono') ? 'Mono' : currentLabelFontFamily.includes('Caveat') ? 'Hand' : 'Sans'}
-                </span>
-                <svg width="8" height="8" viewBox="0 0 10 10" fill="currentColor">
-                  <path d="M2 3.5L5 7L8 3.5" />
-                </svg>
-              </button>
-              {openPopup === 'labelFont' && (
-                <div className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded-lg border bg-muted/95 p-1.5 shadow-xl backdrop-blur">
-                  <div className="flex flex-col gap-0.5 min-w-[110px]">
-                    {[
-                      { name: 'Sans-Serif', val: 'Inter, sans-serif' },
-                      { name: 'Serif', val: 'Georgia, serif' },
-                      { name: 'Monospace', val: "'Courier New', monospace" },
-                      { name: 'Handdrawn', val: "'Caveat', cursive, sans-serif" },
-                    ].map((f) => (
-                      <button
-                        key={f.name}
-                        onClick={() => handleSelectLabelFont(f.val)}
-                        className={cn(
-                          'flex h-7 items-center rounded-md px-2 text-xs font-medium transition-colors text-left',
-                          currentLabelFontFamily === f.val ? 'bg-primary/10 text-primary' : 'hover:bg-accent'
-                        )}
-                        style={{ fontFamily: f.val }}
-                      >
-                        {f.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Label Font Size */}
-            <div className="relative">
-              <button
-                onClick={() => togglePopup('labelSize')}
-                className="flex h-8 items-center gap-1 rounded-lg px-1.5 text-xs font-semibold transition-colors hover:bg-accent"
-                title="Label Font Size"
-              >
-                <span>{currentLabelFontSize}px</span>
-                <svg width="8" height="8" viewBox="0 0 10 10" fill="currentColor">
-                  <path d="M2 3.5L5 7L8 3.5" />
-                </svg>
-              </button>
-              {openPopup === 'labelSize' && (
-                <div className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded-lg border bg-muted/95 p-1.5 shadow-xl backdrop-blur">
-                  <div className="flex flex-col gap-0.5">
-                    {[9, 11, 13, 16, 20, 24].map((sz) => (
-                      <button
-                        key={sz}
-                        onClick={() => handleSelectLabelSize(sz)}
-                        className={cn(
-                          'flex h-7 items-center justify-center rounded-md px-3 text-xs font-semibold transition-colors',
-                          currentLabelFontSize === sz ? 'bg-primary/10 text-primary' : 'hover:bg-accent'
-                        )}
-                      >
-                        {sz}px
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            <LabelTypographyToolbar
+              selectedElements={selectedArrows}
+              openPopup={openPopup}
+              togglePopup={togglePopup}
+              setOpenPopup={setOpenPopup}
+            />
 
             {/* Label Color */}
             <div className="relative">
@@ -681,7 +624,7 @@ export function ArrowToolbar() {
               {openPopup === 'labelColor' && (
                 <div className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded-lg border bg-muted/95 p-2 shadow-xl backdrop-blur">
                   <div className="flex items-center gap-1.5">
-                    {(['blue', 'green', 'amber', 'purple', 'rose', 'gray'] as const).map((colorKey) => {
+                    {WHITEBOARD_COLOR_KEYS.map((colorKey) => {
                       const c = WHITEBOARD_COLORS[colorKey];
                       return (
                         <button

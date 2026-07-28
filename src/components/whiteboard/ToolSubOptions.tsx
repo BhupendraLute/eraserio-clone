@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
-import { WHITEBOARD_COLORS } from '@/lib/whiteboard/whiteboard-types';
+import { WHITEBOARD_COLORS, isPolygonShapeType } from '@/lib/whiteboard/whiteboard-types';
 import { cn } from '@/lib/utils';
 import type { LineWidthSize } from '@/lib/store/whiteboard-store';
 
@@ -25,78 +25,13 @@ export function ToolSubOptions() {
   const setActiveLineWidthSize = useWhiteboardStore((s) => s.setActiveLineWidthSize);
   const setActiveColor = useWhiteboardStore((s) => s.setActiveColor);
 
-  // Arrow/line tools use ArrowToolbar (bottom bar) instead
+  // Arrow, line, and shape tools use bottom toolbars (ArrowToolbar / ShapeToolbar) instead
   if (activeTool === 'select') return null;
   if (activeTool === 'arrow' || activeTool === 'line') return null;
+  if (isPolygonShapeType(activeTool)) return null;
 
   return (
     <div className="absolute top-full left-0 mt-1 z-50 flex items-center gap-1.5 rounded-lg border bg-muted/90 p-1.5 shadow-lg backdrop-blur animate-in fade-in zoom-in-95">
-      {/* Rectangle sub-options: corner radius + fill */}
-      {activeTool === 'rectangle' && (
-        <div className="flex items-center gap-1.5">
-          <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Radius</span>
-          {[0, 4, 8, 12, 20].map((r) => (
-            <button
-              key={r}
-              onClick={() => setActiveCornerRadius(r)}
-              className={cn(
-                'flex h-6 w-6 items-center justify-center rounded-md text-[10px] font-medium transition-colors',
-                activeCornerRadius === r
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-              )}
-              title={`${r}px radius`}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2">
-                <rect x="1" y="1" width="12" height="12" rx={r / 2} />
-              </svg>
-            </button>
-          ))}
-          <div className="mx-1 h-5 w-px bg-border" />
-
-          {/* Fill toggle */}
-          <div className="flex items-center gap-0.5">
-            <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider mr-1">Fill</span>
-            <button
-              onClick={() => setActiveFillHex(activeFillHex === 'transparent' ? activeStrokeHex + '33' : 'transparent')}
-              className={cn(
-                'flex h-6 items-center gap-1 rounded-md px-1.5 text-[10px] font-medium transition-colors',
-                activeFillHex === 'transparent'
-                  ? 'bg-accent text-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-              )}
-            >
-              <div className="h-3 w-3 rounded-sm border border-current" style={{
-                backgroundColor: activeFillHex !== 'transparent' ? activeFillHex : undefined
-              }} />
-              <span>{activeFillHex === 'transparent' ? 'Outline' : 'Filled'}</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Circle / Diamond / Cylinder sub-options: fill toggle */}
-      {(activeTool === 'circle' || activeTool === 'diamond' || activeTool === 'cylinder') && (
-        <div className="flex items-center gap-1.5">
-          <div className="flex items-center gap-0.5">
-            <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider mr-1">Fill</span>
-            <button
-              onClick={() => setActiveFillHex(activeFillHex === 'transparent' ? activeStrokeHex + '33' : 'transparent')}
-              className={cn(
-                'flex h-6 items-center gap-1 rounded-md px-1.5 text-[10px] font-medium transition-colors',
-                activeFillHex === 'transparent'
-                  ? 'bg-accent text-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-              )}
-            >
-              <div className="h-3 w-3 rounded-sm border border-current" style={{
-                backgroundColor: activeFillHex !== 'transparent' ? activeFillHex : undefined
-              }} />
-              <span>{activeFillHex === 'transparent' ? 'Outline' : 'Filled'}</span>
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Text sub-options: font size presets */}
       {activeTool === 'text' && (

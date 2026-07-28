@@ -1,9 +1,16 @@
 export type WhiteboardTool =
   | 'select'
   | 'rectangle'
+  | 'square'
   | 'circle'
   | 'diamond'
+  | 'triangle'
+  | 'parallelogram'
+  | 'trapezoid'
   | 'cylinder'
+  | 'capsule'
+  | 'hexagon'
+  | 'star'
   | 'arrow'
   | 'line'
   | 'sticky'
@@ -18,6 +25,8 @@ export type WhiteboardTool =
 
 export type WhiteboardColor = 'blue' | 'green' | 'amber' | 'purple' | 'rose' | 'gray';
 
+export type FillStyleMode = 'plain' | 'watercolor';
+
 export type CloudIconKind = string;
 
 export type ResizeHandle = 'tl' | 'tc' | 'tr' | 'ml' | 'mr' | 'bl' | 'bc' | 'br';
@@ -29,6 +38,26 @@ export type ArrowheadStyle = 'arrow' | 'triangle' | 'diamond' | 'circle' | 'none
 export type RoutingStyle = 'orthogonal' | 'straight' | 'curved';
 
 export type PortDirection = 'top' | 'bottom' | 'left' | 'right';
+
+export const POLYGON_SHAPE_TYPES = [
+  'rectangle',
+  'square',
+  'circle',
+  'diamond',
+  'triangle',
+  'parallelogram',
+  'trapezoid',
+  'cylinder',
+  'capsule',
+  'hexagon',
+  'star',
+] as const;
+
+export type PolygonShapeType = (typeof POLYGON_SHAPE_TYPES)[number];
+
+export function isPolygonShapeType(type: string): type is PolygonShapeType {
+  return (POLYGON_SHAPE_TYPES as readonly string[]).includes(type);
+}
 
 export interface Point {
   x: number;
@@ -48,21 +77,57 @@ export interface BaseElement {
   label?: string;
 }
 
-export interface RectangleElement extends BaseElement {
-  type: 'rectangle';
+export interface BaseShapeElement extends BaseElement {
+  lineStyle?: LineStyle;
+  fillStyle?: FillStyleMode;
   cornerRadius?: number;
+  labelFontSize?: number;
+  labelFontFamily?: string;
+  labelColor?: string;
 }
 
-export interface CircleElement extends BaseElement {
+export interface RectangleElement extends BaseShapeElement {
+  type: 'rectangle';
+}
+
+export interface SquareElement extends BaseShapeElement {
+  type: 'square';
+}
+
+export interface CircleElement extends BaseShapeElement {
   type: 'circle';
 }
 
-export interface DiamondElement extends BaseElement {
+export interface DiamondElement extends BaseShapeElement {
   type: 'diamond';
 }
 
-export interface CylinderElement extends BaseElement {
+export interface TriangleElement extends BaseShapeElement {
+  type: 'triangle';
+}
+
+export interface ParallelogramElement extends BaseShapeElement {
+  type: 'parallelogram';
+}
+
+export interface TrapezoidElement extends BaseShapeElement {
+  type: 'trapezoid';
+}
+
+export interface CylinderElement extends BaseShapeElement {
   type: 'cylinder';
+}
+
+export interface CapsuleElement extends BaseShapeElement {
+  type: 'capsule';
+}
+
+export interface HexagonElement extends BaseShapeElement {
+  type: 'hexagon';
+}
+
+export interface StarElement extends BaseShapeElement {
+  type: 'star';
 }
 
 export interface ArrowElement extends BaseElement {
@@ -170,9 +235,16 @@ export interface CommentElement extends BaseElement {
 
 export type WhiteboardElement =
   | RectangleElement
+  | SquareElement
   | CircleElement
   | DiamondElement
+  | TriangleElement
+  | ParallelogramElement
+  | TrapezoidElement
   | CylinderElement
+  | CapsuleElement
+  | HexagonElement
+  | StarElement
   | ArrowElement
   | LineElement
   | StickyElement
@@ -183,6 +255,8 @@ export type WhiteboardElement =
   | CloudIconElement
   | DiagramElement
   | CommentElement;
+
+export const WHITEBOARD_COLOR_KEYS: WhiteboardColor[] = ['blue', 'green', 'amber', 'purple', 'rose', 'gray'];
 
 export const WHITEBOARD_COLORS: Record<
   WhiteboardColor,
@@ -195,6 +269,26 @@ export const WHITEBOARD_COLORS: Record<
   rose: { bg: 'rgba(244, 63, 94, 0.12)', border: '#f43f5e', text: 'var(--foreground)' },
   gray: { bg: 'rgba(107, 114, 128, 0.12)', border: '#6b7280', text: 'var(--foreground)' },
 };
+
+/** Centralized Color Palette Constants for the entire Whiteboard engine */
+export const STROKE_COLOR_PALETTE = [
+  '#ffffff',
+  '#374151',
+  '#3b82f6',
+  '#22c55e',
+  '#a855f7',
+  '#ef4444',
+  '#f59e0b',
+] as const;
+
+export const FILL_COLOR_PALETTE = [
+  '#ffffff',
+  '#bbf7d0',
+  '#bfdbfe',
+  '#e9d5ff',
+  '#fecdd3',
+  '#374151',
+] as const;
 
 export const  LINE_DASH: Record<LineStyle, string> = {
   solid: '',
@@ -232,4 +326,33 @@ export function getElementBounds(el: WhiteboardElement): { x: number; y: number;
     return { x: minX, y: minY, width: w, height: h };
   }
   return { x: el.x, y: el.y, width: el.width, height: el.height };
+}
+
+/** Calculate shape height automatically to fit multi-line wrapped text inside shape bounds */
+export function computeShapeAutoHeight(
+  text: string | undefined,
+  width: number,
+  currentHeight: number,
+  fontSize: number = 14,
+  minHeight: number = 40
+): number {
+  if (!text || text.trim() === '') return Math.max(minHeight, currentHeight);
+
+  const availableWidth = Math.max(30, width - 24);
+  const avgCharWidth = fontSize * 0.55;
+  const lines = text.split('\n');
+
+  let totalLines = 0;
+  for (const line of lines) {
+    if (line.length === 0) {
+      totalLines += 1;
+    } else {
+      const linePixelWidth = line.length * avgCharWidth;
+      const wrappedLines = Math.ceil(linePixelWidth / availableWidth);
+      totalLines += Math.max(1, wrappedLines);
+    }
+  }
+
+  const calculatedHeight = Math.ceil(totalLines * (fontSize * 1.35) + 24);
+  return Math.max(minHeight, currentHeight, calculatedHeight);
 }
