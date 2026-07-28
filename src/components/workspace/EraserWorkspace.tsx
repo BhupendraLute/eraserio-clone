@@ -16,6 +16,7 @@ import { usePipelineWorker } from '@/lib/hooks/usePipelineWorker';
 import { Button } from '@/components/ui/button';
 import { Sparkles, X, Code2, GripHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 
 export function EraserWorkspace() {
   usePipelineWorker();
@@ -25,6 +26,7 @@ export function EraserWorkspace() {
   const setAiChatOpen = useWorkspaceStore((s) => s.setAiChatOpen);
   const diagramCodeOpen = useWorkspaceStore((s) => s.diagramCodeOpen);
   const toggleDiagramCode = useWorkspaceStore((s) => s.toggleDiagramCode);
+  const hideUI = useWhiteboardStore((s) => s.hideUI);
 
   // Draggable Code Drawer State
   const [drawerPos, setDrawerPos] = useState({ x: 20, y: 12 });
@@ -115,7 +117,7 @@ export function EraserWorkspace() {
               'relative flex flex-1 flex-col overflow-hidden bg-muted/10',
             )}
           >
-            <CanvasVerticalToolbar />
+            {!hideUI && <CanvasVerticalToolbar />}
 
             {/* Draggable CodeMirror DSL Code Editor Drawer */}
             {diagramCodeOpen && (

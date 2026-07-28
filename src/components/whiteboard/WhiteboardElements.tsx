@@ -204,7 +204,7 @@ export function WhiteboardElements({
         onDoubleClick={(e) => onElementDoubleClick(e, el)}
         onContextMenu={(e) => onElementContextMenu?.(e, el)}>
         {/* Invisible wide hit area */}
-        <path d={pathD} fill="none" stroke="rgba(0,0,0,0.001)" strokeWidth={24} style={{ pointerEvents: endpointDragState ? 'none' : 'stroke' }} className={endpointDragState ? 'cursor-grabbing' : 'cursor-pointer'} />
+        <path d={pathD} fill="none" stroke="rgba(0,0,0,0.001)" strokeWidth={24} style={{ pointerEvents: (isHandMode || endpointDragState) ? 'none' : 'stroke' }} className={shapeCursorClass} />
         {/* Visible path */}
         {!isBeingDragged && (
           <path d={pathD} fill="none" stroke={el.strokeColor} strokeWidth={el.strokeWidth}
@@ -220,7 +220,9 @@ export function WhiteboardElements({
     );
   };
 
-  const shapeCursorClass = endpointDragState ? 'cursor-grabbing' : 'cursor-pointer';
+  const activeTool = useWhiteboardStore((s) => s.activeTool);
+  const isHandMode = activeTool === 'hand';
+  const shapeCursorClass = isHandMode ? 'cursor-grab' : endpointDragState ? 'cursor-grabbing' : 'cursor-pointer';
 
   return (
     <>

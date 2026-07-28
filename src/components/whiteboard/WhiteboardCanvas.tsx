@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useWhiteboardStore, GRID_SIZE } from '@/lib/store/whiteboard-store';
 import { WHITEBOARD_COLORS, isPolygonShapeType, WHITEBOARD_COLOR_KEYS, STROKE_COLOR_PALETTE } from '@/lib/whiteboard/whiteboard-types';
-import { Trash2, Plus, Minus, Maximize, Grid3X3, Download, Copy, CopyPlus, Clipboard, Group, Ungroup, ZoomIn } from 'lucide-react';
+import { Trash2, Plus, Minus, Maximize, Grid3X3, Download, Copy, CopyPlus, Clipboard, Group, Ungroup, ZoomIn, ChevronDown, Hand, Focus, EyeOff, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { usePanZoom } from '@/lib/hooks/usePanZoom';
@@ -17,6 +17,7 @@ import { InlineTextEditor } from './InlineTextEditor';
 import { ArrowToolbar } from './ArrowToolbar';
 import { IconToolbar } from './IconToolbar';
 import { ShapeToolbar } from './ShapeToolbar';
+import { ZoomPanMenu } from './ZoomPanMenu';
 import { useTheme } from 'next-themes';
 
 const SELECT_CURSOR_LIGHT = `url("data:image/svg+xml,%3Csvg width='24px' height='24px' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 21L4 4L21 11L14.7353 13.6849C14.2633 13.8872 13.8872 14.2633 13.6849 14.7353L11 21Z' stroke='%23292929' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E") 4 4, url('/cursor/select-cursor.svg') 4 4, default`;
@@ -91,6 +92,8 @@ export function WhiteboardCanvas() {
   });
 
   const [showExport, setShowExport] = useState(false);
+  const hideUI = useWhiteboardStore((s) => s.hideUI);
+  const setHideUI = useWhiteboardStore((s) => s.setHideUI);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; context: 'canvas' | 'element' | 'multi' } | null>(null);
 
   // Elements sorted by z-order (later in array = on top)
@@ -140,7 +143,7 @@ export function WhiteboardCanvas() {
   return (
     <div className="relative h-full w-full select-none overflow-hidden bg-background">
       {/* Floating Rich Text Formatting Toolbar (hidden when selection is handled by ArrowToolbar / ShapeToolbar) */}
-      {hasSelection && !isBottomToolbarSelection && (
+      {!hideUI && hasSelection && !isBottomToolbarSelection && (
         <div className="absolute top-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-1.5 rounded-xl border bg-muted/90 p-1.5 shadow-2xl backdrop-blur animate-in fade-in zoom-in-95">
           <select
             value={activeFontFamily}
@@ -220,15 +223,17 @@ export function WhiteboardCanvas() {
         </div>
       )}
 
-      {/* Sub-tool options bar — appears below the left toolbar when a drawing tool is active */}
-      <div className="absolute top-4 left-[58px] z-40">
-        <ToolSubOptions />
-      </div>
-
-      {/* Special bottom toolbars (eraser.io style) */}
-      <ArrowToolbar />
-      <IconToolbar />
-      <ShapeToolbar />
+      {/* Sub-tool options bar & bottom toolbars (eraser.io style) */}
+      {!hideUI && (
+        <>
+          <div className="absolute top-4 left-[58px] z-40">
+            <ToolSubOptions />
+          </div>
+          <ArrowToolbar />
+          <IconToolbar />
+          <ShapeToolbar />
+        </>
+      )}
 
       {/* SVG Canvas Workspace */}
       <svg
@@ -238,7 +243,7 @@ export function WhiteboardCanvas() {
         style={{
           cursor: isPanning
             ? 'grabbing'
-            : isSpacePressed
+            : (isSpacePressed || activeTool === 'hand')
             ? 'grab'
             : (endpointDragState || quickConnectDragState || isDraggingShape)
             ? 'grabbing'
@@ -422,87 +427,63 @@ export function WhiteboardCanvas() {
       )}
 
       {/* Floating Actions Toolbar */}
-      <div className="absolute bottom-4 right-4 z-40 flex flex-col items-end gap-2">
-        {/* Export Menu */}
-        {showExport && <ExportMenu svgRef={svgRef} onClose={() => setShowExport(false)} />}
+      {!hideUI && (
+        <div className="absolute bottom-4 right-4 z-40 flex flex-col items-end gap-2">
+          {/* Export Menu */}
+          {showExport && <ExportMenu svgRef={svgRef} onClose={() => setShowExport(false)} />}
 
-        {/* Zoom & Utility Controls */}
-        <div className="flex flex-col gap-1 rounded-lg border bg-muted/90 p-1 shadow-lg backdrop-blur">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomIn} title="Zoom In (+)">
-            <Plus className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomOut} title="Zoom Out (-)">
-            <Minus className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleFitContent} title="Fit All">
-            <Maximize className="h-4 w-4" />
-          </Button>
-          {selectedIds.length > 0 && (
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleFitSelection} title="Fit Selection">
-              <ZoomIn className="h-4 w-4" />
+          {/* Utility Controls */}
+          <div className="flex flex-col gap-1 rounded-lg border bg-muted/90 p-1 shadow-lg backdrop-blur">
+            <Button variant="ghost" size="icon" className="h-8 w-8"
+              onClick={() => setShowGrid(!showGrid)} title="Toggle Grid">
+              <Grid3X3 className={`h-4 w-4 ${showGrid ? 'text-primary' : 'text-muted-foreground'}`} />
             </Button>
-          )}
-          <div className="h-px w-full bg-border" />
-          <Button variant="ghost" size="icon" className="h-8 w-8"
-            onClick={() => setShowGrid(!showGrid)} title="Toggle Grid">
-            <Grid3X3 className={`h-4 w-4 ${showGrid ? 'text-primary' : 'text-muted-foreground'}`} />
-          </Button>
-          {selectedIds.length > 0 && (
-            <>
-              <div className="h-px w-full bg-border" />
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={duplicateSelected} title="Duplicate (Ctrl+D)">
-                <CopyPlus className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={copyToClipboard} title="Copy (Ctrl+C)">
-                <Copy className="h-3.5 w-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={pasteFromClipboard} title="Paste (Ctrl+V)">
-                <Clipboard className="h-3.5 w-3.5" />
-              </Button>
-            </>
-          )}
-          {selectedIds.length > 1 && (
-            <>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={groupSelected} title="Group (Ctrl+G)">
-                <Group className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={ungroupSelected} title="Ungroup (Ctrl+Shift+G)">
-                <Ungroup className="h-4 w-4" />
-              </Button>
-            </>
-          )}
-          <div className="h-px w-full bg-border" />
-          <Button variant="ghost" size="icon" className="h-8 w-8"
-            onClick={() => setShowExport(!showExport)} title="Export (PNG/SVG/PDF)">
-            <Download className="h-4 w-4" />
-          </Button>
+            {selectedIds.length > 0 && (
+              <>
+                <div className="h-px w-full bg-border" />
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={duplicateSelected} title="Duplicate (Ctrl+D)">
+                  <CopyPlus className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={copyToClipboard} title="Copy (Ctrl+C)">
+                  <Copy className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={pasteFromClipboard} title="Paste (Ctrl+V)">
+                  <Clipboard className="h-3.5 w-3.5" />
+                </Button>
+              </>
+            )}
+            {selectedIds.length > 1 && (
+              <>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={groupSelected} title="Group (Ctrl+G)">
+                  <Group className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={ungroupSelected} title="Ungroup (Ctrl+Shift+G)">
+                  <Ungroup className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+            <div className="h-px w-full bg-border" />
+            <Button variant="ghost" size="icon" className="h-8 w-8"
+              onClick={() => setShowExport(!showExport)} title="Export (PNG/SVG/PDF)">
+              <Download className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Zoom Level Badge with Animation */}
-      <div
-        className={`absolute bottom-4 left-4 z-40 rounded-lg border px-2.5 py-1 text-xs font-semibold shadow-md backdrop-blur transition-all duration-300 ${
-          zoomAnimState === 'pop-in'
-            ? 'scale-125 border-primary/60 bg-primary/10 text-primary shadow-primary/20'
-            : zoomAnimState === 'pop-out'
-              ? 'scale-100 border-border/80 bg-muted/90 text-muted-foreground'
-              : 'border-border bg-muted/90 text-muted-foreground'
-        }`}
-      >
-        <span className="flex items-center gap-1.5">
-          <span className={`inline-block transition-transform duration-200 ${
-            zoomAnimState === 'pop-in' ? 'scale-100 opacity-100' : 'scale-0 opacity-0'
-          }`}>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              <line x1="11" y1="8" x2="11" y2="14" />
-              <line x1="8" y1="11" x2="14" y2="11" />
-            </svg>
-          </span>
-          {Math.round(transform.scale * 100)}%
-        </span>
-      </div>
+      {/* Top-Right Eraser.io Zoom & View Options Dropdown Component */}
+      <ZoomPanMenu
+        scale={transform.scale}
+        onZoomIn={zoomIn}
+        onZoomOut={zoomOut}
+        onZoomFitContent={handleFitContent}
+        onZoomFitSelection={handleFitSelection}
+        onZoomReset={reset}
+        activeTool={activeTool}
+        onToggleHandTool={() => useWhiteboardStore.getState().setActiveTool(activeTool === 'hand' ? 'select' : 'hand')}
+        hideUI={hideUI}
+        onToggleHideUI={() => setHideUI(!hideUI)}
+      />
 
     </div>
   );

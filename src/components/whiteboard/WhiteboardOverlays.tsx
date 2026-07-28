@@ -65,6 +65,8 @@ export function WhiteboardOverlays({
   onQuickConnectDragStart,
   onPortHover,
 }: WhiteboardOverlaysProps) {
+  if (activeTool === 'hand') return null;
+
   return (
     <>
       {/* Live Active Drawing Preview */}

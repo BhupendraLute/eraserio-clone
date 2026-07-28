@@ -81,6 +81,7 @@ interface WhiteboardStore {
   future: HistoryState[];
   clipboard: WhiteboardElement[];
   showGrid: boolean;
+  hideUI: boolean;
 
   setActiveTool: (tool: WhiteboardTool) => void;
   setActiveColor: (color: WhiteboardColor) => void;
@@ -97,6 +98,7 @@ interface WhiteboardStore {
   setActiveCornerRadius: (radius: number) => void;
   setActiveFillStyle: (style: FillStyleMode) => void;
   setShowGrid: (show: boolean) => void;
+  setHideUI: (hide: boolean) => void;
 
   addElement: (element: WhiteboardElement) => void;
   updateElement: (id: string, patch: Partial<WhiteboardElement>) => void;
@@ -167,6 +169,7 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
   future: [],
   clipboard: [],
   showGrid: true,
+  hideUI: false,
 
   canUndo: false,
   canRedo: false,
@@ -199,6 +202,7 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
   setActiveCornerRadius: (radius) => set({ activeCornerRadius: radius }),
   setActiveFillStyle: (style) => set({ activeFillStyle: style }),
   setShowGrid: (show) => set({ showGrid: show }),
+  setHideUI: (hide) => set({ hideUI: hide }),
 
   hydrate: () => {
     if (typeof window === 'undefined') return;

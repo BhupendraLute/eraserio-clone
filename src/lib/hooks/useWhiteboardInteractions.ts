@@ -76,6 +76,7 @@ export function useWhiteboardInteractions({
   const redo = useWhiteboardStore((s) => s.redo);
 
   const [isSpacePressed, setIsSpacePressed] = useState(false);
+  const [isPanningState, setIsPanningState] = useState(false);
   const isPanningRef = useRef(false);
   const panStartRef = useRef<{ pointerX: number; pointerY: number; startX: number; startY: number } | null>(null);
 
@@ -187,6 +188,10 @@ export function useWhiteboardInteractions({
             e.preventDefault();
             if (e.shiftKey) ungroupSelected(); else groupSelected();
             return;
+          case '0':
+            e.preventDefault();
+            reset();
+            return;
           case 'a':
             if (!isInputFocused) {
               e.preventDefault();
@@ -197,11 +202,25 @@ export function useWhiteboardInteractions({
         return;
       }
 
+      if (e.shiftKey) {
+        if (e.key === '!' || e.key === '1') {
+          e.preventDefault();
+          handleFitContent();
+          return;
+        }
+        if (e.key === '@' || e.key === '2') {
+          e.preventDefault();
+          handleFitSelection();
+          return;
+        }
+      }
+
       if (isInputFocused) return;
 
       // Tool shortcuts
       switch (e.key.toLowerCase()) {
         case 'v': setActiveTool('select'); return;
+        case 'h': setActiveTool(activeTool === 'hand' ? 'select' : 'hand'); return;
         case 'r': setActiveTool('rectangle'); return;
         case 'o': setActiveTool('circle'); return;
         case 'd': setActiveTool('diamond'); return;
@@ -268,9 +287,10 @@ export function useWhiteboardInteractions({
   );
 
   const handlePointerDown = (e: React.PointerEvent) => {
-    if (e.button === 1 || isSpacePressed) {
+    if (e.button === 1 || isSpacePressed || activeTool === 'hand') {
       e.preventDefault();
       isPanningRef.current = true;
+      setIsPanningState(true);
       panStartRef.current = {
         pointerX: e.clientX,
         pointerY: e.clientY,
@@ -309,10 +329,12 @@ export function useWhiteboardInteractions({
     if (isPanningRef.current && panStartRef.current) {
       const dx = e.clientX - panStartRef.current.pointerX;
       const dy = e.clientY - panStartRef.current.pointerY;
+      const sx = panStartRef.current.startX;
+      const sy = panStartRef.current.startY;
       setTransform((prev) => ({
         ...prev,
-        x: panStartRef.current!.startX + dx,
-        y: panStartRef.current!.startY + dy,
+        x: sx + dx,
+        y: sy + dy,
       }));
       return;
     }
@@ -410,6 +432,7 @@ export function useWhiteboardInteractions({
   const handlePointerUp = (e: React.PointerEvent) => {
     if (isPanningRef.current) {
       isPanningRef.current = false;
+      setIsPanningState(false);
       panStartRef.current = null;
       try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { }
       return;
@@ -676,7 +699,7 @@ export function useWhiteboardInteractions({
     activeFontSize,
     setActiveFontSize,
     isSpacePressed,
-    isPanning: isPanningRef.current,
+    isPanning: isPanningState,
     isDraggingShape: dragState.isDragging,
     drawingState,
     selectionBox,

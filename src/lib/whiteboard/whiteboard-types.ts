@@ -1,5 +1,6 @@
 export type WhiteboardTool =
   | 'select'
+  | 'hand'
   | 'rectangle'
   | 'square'
   | 'circle'
