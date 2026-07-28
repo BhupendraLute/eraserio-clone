@@ -521,13 +521,13 @@ export function useWhiteboardInteractions({
           fromPort = optimal.fromPort; toPort = optimal.toPort;
         }
       }
-      const initialRouting = determineAutoRoutingStyle({ x: startX, y: startY }, { x: endX, y: endY }, fromPort, toPort);
+      const initialRouting = activeTool === 'line' ? 'straight' : determineAutoRoutingStyle({ x: startX, y: startY }, { x: endX, y: endY }, fromPort, toPort);
       addElement({
         id, type: activeTool, x: Math.min(startX, endX), y: Math.min(startY, endY),
         width: Math.abs(endX - startX) || 10, height: Math.abs(endY - startY) || 10,
         startX, startY, endX, endY,
-        routingStyle: initialRouting,
-        isUserRoutingStyle: false,
+        routingStyle: activeTool === 'line' ? 'straight' : initialRouting,
+        isUserRoutingStyle: activeTool === 'line' ? true : false,
         lineStyle: activeLineStyle,
         arrowheadStyle: activeTool === 'arrow' ? activeArrowheadStyle : undefined,
         startArrowheadStyle: activeTool === 'arrow' ? activeStartArrowheadStyle : undefined,

@@ -280,7 +280,9 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
         const toEl = el.toElementId ? idMap.get(el.toElementId) : undefined;
         if (fromEl && toEl) {
           const optimal = getOptimalPortPair(fromEl, toEl);
-          const autoRouting = (!el.isUserRoutingStyle && el.routingStyle !== 'curved')
+          const autoRouting = el.type === 'line'
+            ? 'straight'
+            : (!el.isUserRoutingStyle && el.routingStyle !== 'curved')
             ? determineAutoRoutingStyle(optimal.fromPos, optimal.toPos, optimal.fromPort, optimal.toPort)
             : el.routingStyle;
           return { ...el, startX: optimal.fromPos.x, startY: optimal.fromPos.y, endX: optimal.toPos.x, endY: optimal.toPos.y, fromPort: optimal.fromPort, toPort: optimal.toPort, routingStyle: autoRouting, waypoint };
@@ -649,7 +651,9 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
         const fromPort = endpoint === 'start' ? targetPort : el.fromPort;
         const toPort = endpoint === 'end' ? targetPort : el.toPort;
         const isUserChoice = el.isUserRoutingStyle || el.routingStyle === 'curved';
-        const newRouting = !isUserChoice
+        const newRouting = el.type === 'line'
+          ? 'straight'
+          : !isUserChoice
           ? determineAutoRoutingStyle({ x: newStartX, y: newStartY }, { x: newEndX, y: newEndY }, fromPort, toPort)
           : el.routingStyle;
 

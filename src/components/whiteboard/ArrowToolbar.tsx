@@ -141,16 +141,23 @@ export function ArrowToolbar() {
     ? (firstSelectedArrow.strokeColor || activeStrokeHex)
     : activeStrokeHex;
 
-  const currentRoutingStyle = firstSelectedArrow
-    ? (firstSelectedArrow.routingStyle || 'orthogonal')
-    : activeRoutingStyle;
+  const isLine = firstSelectedArrow
+    ? firstSelectedArrow.type === 'line'
+    : activeTool === 'line';
+
+  const isArrow = firstSelectedArrow
+    ? firstSelectedArrow.type === 'arrow'
+    : activeTool === 'arrow';
+
+  const currentRoutingStyle = isLine
+    ? 'straight'
+    : firstSelectedArrow
+      ? (firstSelectedArrow.routingStyle || 'orthogonal')
+      : activeRoutingStyle;
 
   const currentLineWidthSize = firstSelectedArrow
     ? strokeWidthToSize(firstSelectedArrow.strokeWidth)
     : activeLineWidthSize;
-
-  const isArrowToolOrSelected =
-    activeTool === 'arrow' || (firstSelectedArrow ? firstSelectedArrow.type === 'arrow' : isDrawingArrowOrLine);
 
   const currentStartArrowheadStyle = firstSelectedArrow
     ? (firstSelectedArrow.type === 'arrow' ? (firstSelectedArrow.startArrowheadStyle || 'none') : 'none')
@@ -353,37 +360,42 @@ export function ArrowToolbar() {
 
         <div className="h-5 w-px bg-border" />
 
-        {/* Routing Style */}
-        <div className="relative">
-          <button
-            onClick={() => togglePopup('routing')}
-            className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-accent"
-            title={`Routing: ${currentRoutingStyle}`}
-          >
-            <RoutingIcon style={currentRoutingStyle} />
-          </button>
-          {openPopup === 'routing' && (
-            <div className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded-lg border bg-muted/95 p-1.5 shadow-xl backdrop-blur">
-              <div className="flex flex-col gap-0.5">
-                {(['orthogonal', 'curved', 'straight'] as RoutingStyle[]).map((rs) => (
-                  <button
-                    key={rs}
-                    onClick={() => handleSelectRoutingStyle(rs)}
-                    className={cn(
-                      'flex h-7 items-center gap-2 rounded-md px-2 text-xs font-medium transition-colors',
-                      currentRoutingStyle === rs
-                        ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                    )}
-                  >
-                    <RoutingIcon style={rs} className="h-3.5 w-3.5" />
-                    <span className="capitalize">{rs}</span>
-                  </button>
-                ))}
-              </div>
+        {/* Routing Style (Arrows only, lines are compulsory straight) */}
+        {isArrow && (
+          <>
+            <div className="h-5 w-px bg-border" />
+            <div className="relative">
+              <button
+                onClick={() => togglePopup('routing')}
+                className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-accent"
+                title={`Routing: ${currentRoutingStyle}`}
+              >
+                <RoutingIcon style={currentRoutingStyle} />
+              </button>
+              {openPopup === 'routing' && (
+                <div className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded-lg border bg-muted/95 p-1.5 shadow-xl backdrop-blur">
+                  <div className="flex flex-col gap-0.5">
+                    {(['orthogonal', 'curved', 'straight'] as RoutingStyle[]).map((rs) => (
+                      <button
+                        key={rs}
+                        onClick={() => handleSelectRoutingStyle(rs)}
+                        className={cn(
+                          'flex h-7 items-center gap-2 rounded-md px-2 text-xs font-medium transition-colors',
+                          currentRoutingStyle === rs
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                        )}
+                      >
+                        <RoutingIcon style={rs} className="h-3.5 w-3.5" />
+                        <span className="capitalize">{rs}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
 
         <div className="h-5 w-px bg-border" />
 
@@ -422,7 +434,8 @@ export function ArrowToolbar() {
           )}
         </div>
 
-        {isArrowToolOrSelected && (
+        {/* Arrowheads (Arrows only, lines do not have arrowheads) */}
+        {isArrow && (
           <>
             <div className="h-5 w-px bg-border" />
 

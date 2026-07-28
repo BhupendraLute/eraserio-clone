@@ -114,7 +114,7 @@ export function WhiteboardOverlays({
               const activeStartAh = useWhiteboardStore.getState().activeStartArrowheadStyle;
               const activeEndAh = useWhiteboardStore.getState().activeArrowheadStyle;
               const activeStrokeHex = useWhiteboardStore.getState().activeStrokeHex;
-              const liveRoutingStyle = activeRS === 'curved' ? 'curved' : determineAutoRoutingStyle(start, targetPt, fromPort, toPort);
+              const liveRoutingStyle = activeTool === 'line' ? 'straight' : (activeRS === 'curved' ? 'curved' : determineAutoRoutingStyle(start, targetPt, fromPort, toPort));
               const pathD = liveRoutingStyle === 'straight'
                 ? `M ${start.x} ${start.y} L ${targetPt.x} ${targetPt.y}`
                 : liveRoutingStyle === 'curved'
@@ -243,7 +243,9 @@ export function WhiteboardOverlays({
           ? (activeSnap ? activeSnap.port : inferCardinalDirection(endPt.x, endPt.y, startPt.x, startPt.y))
           : (arrow.toElementId ? (arrow.toPort || 'left') : inferCardinalDirection(endPt.x, endPt.y, startPt.x, startPt.y));
 
-        const liveRoutingStyle = (arrow.isUserRoutingStyle || arrow.routingStyle === 'curved')
+        const liveRoutingStyle = arrow.type === 'line'
+          ? 'straight'
+          : (arrow.isUserRoutingStyle || arrow.routingStyle === 'curved')
           ? arrow.routingStyle
           : determineAutoRoutingStyle(startPt, endPt, fromPort, toPort);
 
