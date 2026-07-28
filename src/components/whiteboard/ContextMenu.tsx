@@ -17,7 +17,7 @@ import {
   AlignStartVertical,
   AlignCenterVertical,
   AlignEndVertical,
-  StickyNote,
+  CheckSquare,
   Link,
   Scissors,
 } from 'lucide-react';
@@ -217,7 +217,7 @@ export function ContextMenu({ x, y, onClose, context }: ContextMenuProps) {
             <span className="ml-auto text-[10px] text-muted-foreground">Ctrl+V</span>
           </button>
           <button className={menuItemClass} onClick={() => { setSelectedIds(elements.map((el) => el.id)); onClose(); }}>
-            <StickyNote className="h-3.5 w-3.5 text-muted-foreground" />
+            <CheckSquare className="h-3.5 w-3.5 text-muted-foreground" />
             <span>Select All</span>
             <span className="ml-auto text-[10px] text-muted-foreground">Ctrl+A</span>
           </button>

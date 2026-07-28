@@ -13,7 +13,6 @@ export type WhiteboardTool =
   | 'star'
   | 'arrow'
   | 'line'
-  | 'sticky'
   | 'pencil'
   | 'text'
   | 'frame'
@@ -175,17 +174,6 @@ export interface LineElement extends BaseElement {
   isAnimated?: boolean;
 }
 
-export interface StickyElement extends BaseElement {
-  type: 'sticky';
-  text: string;
-  color: WhiteboardColor;
-  fontFamily?: string;
-  fontSize?: number;
-  fontWeight?: 'normal' | 'bold';
-  fontStyle?: 'normal' | 'italic';
-  textAlign?: 'left' | 'center' | 'right';
-}
-
 export interface PencilElement extends BaseElement {
   type: 'pencil';
   points: Point[];
@@ -247,7 +235,6 @@ export type WhiteboardElement =
   | StarElement
   | ArrowElement
   | LineElement
-  | StickyElement
   | PencilElement
   | TextElement
   | FrameElement

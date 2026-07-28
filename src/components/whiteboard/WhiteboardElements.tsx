@@ -373,32 +373,12 @@ export function WhiteboardElements({
           return renderConnector(lineEl, false);
         }
 
-        if (el.type === 'sticky') {
-          const style = WHITEBOARD_COLORS[el.color];
-          return (
-            <g key={el.id} onPointerDown={(e) => onElementPointerDown(e, el)} onClick={(e) => onElementClick(e, el)} onDoubleClick={(e) => onElementDoubleClick(e, el)} onContextMenu={(e) => onElementContextMenu?.(e, el)}>
-              <rect x={el.x} y={el.y} width={el.width} height={el.height} rx={8}
-                fill={style.bg} stroke={style.border} strokeWidth={2} className="cursor-pointer shadow-md" />
-              {editingElementId !== el.id && (
-                <foreignObject x={el.x + 8} y={el.y + 8} width={el.width - 16} height={el.height - 16}>
-                  <textarea
-                    value={el.text}
-                    onChange={(evt) => updateElement(el.id, { text: evt.target.value })}
-                    className="h-full w-full resize-none bg-transparent font-medium outline-none select-none"
-                    style={{ color: style.text, fontSize: `${el.fontSize ?? 12}px`, fontFamily: el.fontFamily ?? 'inherit', fontWeight: el.fontWeight ?? 'normal', fontStyle: el.fontStyle ?? 'normal', textAlign: el.textAlign ?? 'center' }}
-                  />
-                </foreignObject>
-              )}
-            </g>
-          );
-        }
-
         if (el.type === 'pencil') {
           const strokePoints = (el as any).strokePoints as number[][] | undefined;
           if (strokePoints && strokePoints.length > 0) {
             const outlinePoints = strokePoints;
             if (outlinePoints.length > 0) {
-              const pathData = outlinePoints.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt[0]} ${pt[1]}`).join(' ') + ' Z';
+              const pathData = outlinePoints.map((pt: number[], i: number) => `${i === 0 ? 'M' : 'L'} ${pt[0]} ${pt[1]}`).join(' ') + ' Z';
               return (
                 <g key={el.id} onPointerDown={(e) => onElementPointerDown(e, el)} onClick={(e) => onElementClick(e, el)} onContextMenu={(e) => onElementContextMenu?.(e, el)}>
                   <path d={pathData} fill={el.strokeColor} stroke={el.strokeColor} strokeWidth={1} fillOpacity={0.8} className="cursor-pointer" />
@@ -406,7 +386,7 @@ export function WhiteboardElements({
               );
             }
           }
-          const pathData = el.points.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ');
+          const pathData = el.points.map((pt: Point, i: number) => `${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ');
           return (
             <g key={el.id} onPointerDown={(e) => onElementPointerDown(e, el)} onClick={(e) => onElementClick(e, el)} onContextMenu={(e) => onElementContextMenu?.(e, el)}>
               <path d={pathData} fill="none" stroke={el.strokeColor} strokeWidth={el.strokeWidth} strokeLinecap="round" strokeLinejoin="round" className="cursor-pointer" />
@@ -480,7 +460,7 @@ export function WhiteboardElements({
         }
 
         if (el.type === 'comment') {
-          const style = WHITEBOARD_COLORS[el.color];
+          const style = WHITEBOARD_COLORS[el.color as keyof typeof WHITEBOARD_COLORS] ?? WHITEBOARD_COLORS.blue;
           return (
             <g key={el.id} onPointerDown={(e) => onElementPointerDown(e, el)} onClick={(e) => onElementClick(e, el)} onDoubleClick={(e) => onElementDoubleClick(e, el)} onContextMenu={(e) => onElementContextMenu?.(e, el)}>
               <rect x={el.x} y={el.y} width={el.width} height={el.height} rx={8}

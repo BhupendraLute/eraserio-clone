@@ -74,7 +74,7 @@ export function ToolSubOptions() {
       )}
 
       {/* Custom Color Picker — appears for all drawing tools except those with fixed colors */}
-      {activeTool !== 'frame' && activeTool !== 'badge' && activeTool !== 'diagram' && activeTool !== 'comment' && activeTool !== 'sticky' && (
+      {activeTool !== 'frame' && activeTool !== 'badge' && activeTool !== 'diagram' && activeTool !== 'comment' && (
         <>
           <div className="mx-1 h-5 w-px bg-border" />
           <div className="flex items-center gap-1">

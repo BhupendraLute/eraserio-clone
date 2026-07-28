@@ -10,7 +10,7 @@ import {
   AlignCenter,
   AlignRight,
 } from 'lucide-react';
-import type { StickyElement, TextElement } from '@/lib/whiteboard/whiteboard-types';
+import type { TextElement } from '@/lib/whiteboard/whiteboard-types';
 
 export function TextFormattingToolbar() {
   const selectedIds = useWhiteboardStore((s) => s.selectedIds);
@@ -20,12 +20,12 @@ export function TextFormattingToolbar() {
   if (selectedIds.length !== 1) return null;
 
   const selectedEl = elements.find((el) => el.id === selectedIds[0]);
-  if (!selectedEl || (selectedEl.type !== 'text' && selectedEl.type !== 'sticky')) {
+  if (!selectedEl || selectedEl.type !== 'text') {
     return null;
   }
 
-  const target = selectedEl as TextElement | StickyElement;
-  const currentFontSize = target.fontSize ?? (target.type === 'text' ? 16 : 12);
+  const target = selectedEl as TextElement;
+  const currentFontSize = target.fontSize ?? 16;
   const currentFontFamily = target.fontFamily ?? 'sans-serif';
   const isBold = target.fontWeight === 'bold';
   const isItalic = target.fontStyle === 'italic';

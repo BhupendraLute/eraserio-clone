@@ -210,7 +210,6 @@ export function useWhiteboardInteractions({
         case 'l': setActiveTool('line'); return;
         case 'p': setActiveTool('pencil'); return;
         case 't': setActiveTool('text'); return;
-        case 'n': setActiveTool('sticky'); return;
         case 'f': setActiveTool('frame'); return;
         case 'c': setActiveTool('comment'); return;
         case 'e': setActiveTool('eraser'); return;
@@ -547,12 +546,6 @@ export function useWhiteboardInteractions({
         strokeColor: strokeHex, strokeWidth: activeStrokeWidth,
         isAnimated: activeIsAnimated,
       });
-    } else if (activeTool === 'sticky') {
-      addElement({
-        id, type: 'sticky', x: start.x, y: start.y, width: 180, height: 180,
-        text: 'New Sticky Note', color: activeColor,
-        strokeColor: strokeHex, fillColor: fillHex, strokeWidth: 1,
-      });
     } else if (activeTool === 'pencil') {
       addElement({
         id, type: 'pencil', x: minX, y: minY, width, height, points,
@@ -618,7 +611,7 @@ export function useWhiteboardInteractions({
 
   const handleElementDoubleClick = (e: React.MouseEvent, el: WhiteboardElement) => {
     e.stopPropagation();
-    if (['text', 'sticky', 'frame', 'comment'].includes(el.type)) {
+    if (['text', 'frame', 'comment'].includes(el.type)) {
       setEditingElementId(el.id);
     } else if (['rectangle', 'circle', 'diamond', 'cylinder', 'arrow', 'line'].includes(el.type)) {
       setEditingElementId(el.id);

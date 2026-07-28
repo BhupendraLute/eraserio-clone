@@ -172,10 +172,6 @@ export function WhiteboardOverlays({
                 d={points.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ')}
                 fill="none" stroke="var(--canvas-accent)" strokeWidth={2} strokeDasharray="4 4" />
             )}
-            {activeTool === 'sticky' && (
-              <rect x={start.x} y={start.y} width={180} height={180} rx={8}
-                fill="none" stroke="var(--canvas-accent)" strokeWidth={2} strokeDasharray="4 4" />
-            )}
             {activeTool === 'text' && (
               <rect x={start.x} y={start.y} width={160} height={40} rx={4}
                 fill="none" stroke="var(--canvas-accent)" strokeWidth={1.5} strokeDasharray="4 4" />
@@ -458,7 +454,7 @@ export function WhiteboardOverlays({
             },
           ].map((qc) => {
             const isHovered =
-              hoveredPort?.elementId === singleSelectedShape.id && hoveredPort.dir === qc.dir;
+              hoveredPort?.elementId === singleSelectedShape.id && hoveredPort?.dir === qc.dir;
 
             return (
               <g key={`qc-${qc.dir}`}>

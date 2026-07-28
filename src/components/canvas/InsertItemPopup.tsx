@@ -298,20 +298,13 @@ export function InsertItemPopup({
           </div>
 
           {/* Bottom Grid Actions */}
-          <div className="mt-2 grid grid-cols-2 gap-1.5 pt-2 border-t">
+          <div className="mt-2 grid grid-cols-1 gap-1.5 pt-2 border-t">
             <button
               onClick={() => handleSelectShape('frame')}
               className="flex flex-col items-center justify-center rounded-lg border p-2 text-center transition-colors hover:bg-accent"
             >
               <Shapes className="h-4 w-4 text-muted-foreground mb-1" />
               <span className="text-[10px] font-medium text-foreground">Figure</span>
-            </button>
-            <button
-              onClick={() => handleSelectShape('sticky')}
-              className="flex flex-col items-center justify-center rounded-lg border p-2 text-center transition-colors hover:bg-accent"
-            >
-              <ImageIcon className="h-4 w-4 text-muted-foreground mb-1" />
-              <span className="text-[10px] font-medium text-foreground">Sticky Note</span>
             </button>
           </div>
         </>

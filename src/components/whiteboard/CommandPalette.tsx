@@ -54,7 +54,6 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     { id: 'tool-line', label: 'Line', shortcut: 'L', icon: Minus, category: 'Tools', action: () => setActiveTool('line') },
     { id: 'tool-pencil', label: 'Pencil', shortcut: 'P', icon: Pencil, category: 'Tools', action: () => setActiveTool('pencil') },
     { id: 'tool-text', label: 'Text', shortcut: 'T', icon: Type, category: 'Tools', action: () => setActiveTool('text') },
-    { id: 'tool-sticky', label: 'Sticky Note', shortcut: 'N', icon: StickyNote, category: 'Tools', action: () => setActiveTool('sticky') },
     { id: 'tool-frame', label: 'Frame', shortcut: 'F', icon: Frame, category: 'Tools', action: () => setActiveTool('frame') },
     { id: 'tool-comment', label: 'Comment', shortcut: 'C', icon: MessageSquare, category: 'Tools', action: () => setActiveTool('comment') },
     { id: 'tool-eraser', label: 'Eraser', shortcut: 'E', icon: Eraser, category: 'Tools', action: () => setActiveTool('eraser') },

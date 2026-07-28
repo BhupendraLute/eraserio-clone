@@ -16,7 +16,6 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
   const inputRef = useRef<HTMLTextAreaElement | HTMLInputElement>(null);
 
   const isText = element.type === 'text';
-  const isSticky = element.type === 'sticky';
   const isComment = element.type === 'comment';
   const isFrame = element.type === 'frame';
   const isShape = ['rectangle', 'circle', 'diamond', 'cylinder'].includes(element.type);
@@ -43,16 +42,6 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
     textColor = element.strokeColor;
     isMultiline = false;
     placeholder = 'Type text...';
-  } else if (isSticky) {
-    textValue = (element as any).text ?? '';
-    fontSize = (element as any).fontSize ?? 12;
-    fontFamily = (element as any).fontFamily ?? 'inherit';
-    fontWeight = (element as any).fontWeight ?? 'normal';
-    fontStyle = (element as any).fontStyle ?? 'normal';
-    textAlign = (element as any).textAlign ?? 'center';
-    const colorKey = (element as any).color ?? 'blue';
-    textColor = WHITEBOARD_COLORS[colorKey as keyof typeof WHITEBOARD_COLORS]?.text ?? 'var(--foreground)';
-    placeholder = 'Type your note...';
   } else if (isComment) {
     textValue = (element as any).text ?? '';
     fontSize = 11;
@@ -89,7 +78,6 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
 
   const handleChange = useCallback((value: string) => {
     if (isText) updateElement(element.id, { text: value } as any);
-    else if (isSticky) updateElement(element.id, { text: value } as any);
     else if (isComment) updateElement(element.id, { text: value } as any);
     else if (isShape) {
       const newHeight = computeShapeAutoHeight(value, element.width, element.height, fontSize);
@@ -97,7 +85,7 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
     }
     else if (isConnector) updateElement(element.id, { label: value } as any);
     else if (isFrame) updateElement(element.id, { title: value } as any);
-  }, [element.id, element.width, element.height, fontSize, updateElement, isText, isSticky, isComment, isShape, isConnector, isFrame]);
+  }, [element.id, element.width, element.height, fontSize, updateElement, isText, isComment, isShape, isConnector, isFrame]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!isMultiline && e.key === 'Enter') {
@@ -180,7 +168,7 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
     fontStyle,
     textAlign: isConnector ? 'center' : textAlign,
     lineHeight: '1.4',
-    padding: isConnector ? '0 4px' : isText ? '4px' : isSticky ? '0' : isShape ? '0' : '2px',
+    padding: isConnector ? '0 4px' : isText ? '4px' : isShape ? '0' : '2px',
     whiteSpace: isMultiline ? 'pre-wrap' : 'nowrap',
     boxShadow: isConnector ? '0 2px 8px rgba(0,0,0,0.15)' : undefined,
   };
