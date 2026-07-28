@@ -520,6 +520,12 @@ export function useWhiteboardInteractions({
       let endY = toPortSnap ? toPortSnap.y : current.y;
       let fromPort: 'top' | 'bottom' | 'left' | 'right' = fromPortSnap?.port || 'bottom';
       let toPort: 'top' | 'bottom' | 'left' | 'right' = toPortSnap?.port || 'top';
+
+      const dragDist = Math.hypot(endX - startX, endY - startY);
+      if (dragDist < 15 && !fromPortSnap && !toPortSnap) {
+        endX = startX + 100;
+        endY = startY;
+      }
       if (fromPortSnap && toPortSnap) {
         const fromEl = elements.find((el) => el.id === fromPortSnap.elementId);
         const toEl = elements.find((el) => el.id === toPortSnap.elementId);

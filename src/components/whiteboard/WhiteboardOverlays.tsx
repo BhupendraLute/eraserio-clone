@@ -429,7 +429,7 @@ export function WhiteboardOverlays({
       ))}
 
       {/* Eraser.io Dynamic Side-Hover Quick-Connect Flow Handles (+) */}
-      {!isDraggingShape && singleSelectedShape && (
+      {!isDraggingShape && !endpointDragState && singleSelectedShape && (
         <g key={`quick-connect-${singleSelectedShape.id}`}>
           {[
             {

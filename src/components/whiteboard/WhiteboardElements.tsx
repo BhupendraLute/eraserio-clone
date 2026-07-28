@@ -132,22 +132,31 @@ export function WhiteboardElements({
 
   const renderConnectorHandles = (el: ArrowElement | LineElement) => {
     const isCurved = el.routingStyle === 'curved';
-    const waypoint = isCurved ? el.waypoint : undefined;
-    const mid = getArrowMidpoint(el.startX, el.startY, el.endX, el.endY, waypoint);
+    const isDraggingThis = endpointDragState?.arrowId === el.id;
+    const draggingEndpoint = isDraggingThis ? endpointDragState?.endpoint : null;
+
+    const startPos = isDraggingThis && draggingEndpoint === 'start' ? endpointDragState!.currentPos : { x: el.startX, y: el.startY };
+    const endPos = isDraggingThis && draggingEndpoint === 'end' ? endpointDragState!.currentPos : { x: el.endX, y: el.endY };
+    const waypointPos = isDraggingThis && draggingEndpoint === 'waypoint' ? endpointDragState!.currentPos : (isCurved ? el.waypoint : undefined);
+
+    const mid = getArrowMidpoint(startPos.x, startPos.y, endPos.x, endPos.y, waypointPos);
+
     return (
-      <>
+      <g key={`handles-${el.id}`}>
         {/* Start Handle */}
-        <circle cx={el.startX} cy={el.startY} r={6} fill="var(--canvas-accent)" stroke="var(--background)" strokeWidth={2}
-          className="cursor-grab hover:scale-125 transition-transform" style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
-          onPointerDown={(evt) => onEndpointPointerDown(evt, el.id, 'start', { x: el.startX, y: el.startY })} />
+        <circle cx={startPos.x} cy={startPos.y} r={6} fill="var(--canvas-accent)" stroke="var(--background)" strokeWidth={2}
+          className={cn('transition-transform', isDraggingThis && draggingEndpoint === 'start' ? 'cursor-grabbing scale-125' : 'cursor-grab hover:scale-125')}
+          style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+          onPointerDown={(evt) => onEndpointPointerDown(evt, el.id, 'start', startPos)} />
         {/* End Handle */}
-        <circle cx={el.endX} cy={el.endY} r={6} fill="var(--canvas-accent)" stroke="var(--background)" strokeWidth={2}
-          className="cursor-grab hover:scale-125 transition-transform" style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
-          onPointerDown={(evt) => onEndpointPointerDown(evt, el.id, 'end', { x: el.endX, y: el.endY })} />
+        <circle cx={endPos.x} cy={endPos.y} r={6} fill="var(--canvas-accent)" stroke="var(--background)" strokeWidth={2}
+          className={cn('transition-transform', isDraggingThis && draggingEndpoint === 'end' ? 'cursor-grabbing scale-125' : 'cursor-grab hover:scale-125')}
+          style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
+          onPointerDown={(evt) => onEndpointPointerDown(evt, el.id, 'end', endPos)} />
         {/* Waypoint / Middle Drag Handle (Only for curved arrows) */}
         {isCurved && (
           <g
-            className="cursor-move group"
+            className={cn('group', isDraggingThis && draggingEndpoint === 'waypoint' ? 'cursor-grabbing' : 'cursor-grab')}
             onPointerDown={(evt) => {
               evt.stopPropagation();
               onEndpointPointerDown(evt, el.id, 'waypoint', mid);
@@ -163,7 +172,7 @@ export function WhiteboardElements({
             <circle cx={mid.x} cy={mid.y} r={2.5} fill="var(--canvas-accent)" />
           </g>
         )}
-      </>
+      </g>
     );
   };
 
@@ -195,7 +204,7 @@ export function WhiteboardElements({
         onDoubleClick={(e) => onElementDoubleClick(e, el)}
         onContextMenu={(e) => onElementContextMenu?.(e, el)}>
         {/* Invisible wide hit area */}
-        <path d={pathD} fill="none" stroke="rgba(0,0,0,0.001)" strokeWidth={24} style={{ pointerEvents: 'stroke' }} className="cursor-pointer" />
+        <path d={pathD} fill="none" stroke="rgba(0,0,0,0.001)" strokeWidth={24} style={{ pointerEvents: endpointDragState ? 'none' : 'stroke' }} className={endpointDragState ? 'cursor-grabbing' : 'cursor-pointer'} />
         {/* Visible path */}
         {!isBeingDragged && (
           <path d={pathD} fill="none" stroke={el.strokeColor} strokeWidth={el.strokeWidth}
@@ -206,10 +215,12 @@ export function WhiteboardElements({
             style={(markerEnd || markerStart) ? { color: arrowColor } : undefined} />
         )}
         {el.label && !isBeingDragged && renderLabel(el, el.label, mid.x, mid.y)}
-        {isSelected && !isBeingDragged && renderConnectorHandles(el)}
+        {isSelected && renderConnectorHandles(el)}
       </g>
     );
   };
+
+  const shapeCursorClass = endpointDragState ? 'cursor-grabbing' : 'cursor-pointer';
 
   return (
     <>
@@ -235,39 +246,39 @@ export function WhiteboardElements({
             shapeContent = (
               <rect x={el.x} y={el.y} width={el.width} height={el.height} rx={4}
                 fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth}
-                strokeDasharray={dashArray} fillOpacity={fillOpacity} className="cursor-pointer" />
+                strokeDasharray={dashArray} fillOpacity={fillOpacity} className={shapeCursorClass} />
             );
           } else if (el.type === 'circle') {
             shapeContent = (
               <ellipse cx={cx} cy={cy} rx={el.width / 2} ry={el.height / 2}
                 fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth}
-                strokeDasharray={dashArray} fillOpacity={fillOpacity} className="cursor-pointer" />
+                strokeDasharray={dashArray} fillOpacity={fillOpacity} className={shapeCursorClass} />
             );
           } else if (el.type === 'diamond') {
             const points = `${cx},${el.y} ${el.x + el.width},${cy} ${cx},${el.y + el.height} ${el.x},${cy}`;
             shapeContent = (
               <polygon points={points} fill={fillColor} stroke={strokeColor}
-                strokeWidth={strokeWidth} strokeDasharray={dashArray} fillOpacity={fillOpacity} className="cursor-pointer" />
+                strokeWidth={strokeWidth} strokeDasharray={dashArray} fillOpacity={fillOpacity} className={shapeCursorClass} />
             );
           } else if (el.type === 'triangle') {
             const points = `${cx},${el.y} ${el.x + el.width},${el.y + el.height} ${el.x},${el.y + el.height}`;
             shapeContent = (
               <polygon points={points} fill={fillColor} stroke={strokeColor}
-                strokeWidth={strokeWidth} strokeDasharray={dashArray} fillOpacity={fillOpacity} className="cursor-pointer" />
+                strokeWidth={strokeWidth} strokeDasharray={dashArray} fillOpacity={fillOpacity} className={shapeCursorClass} />
             );
           } else if (el.type === 'parallelogram') {
             const w = el.width; const h = el.height;
             const points = `${el.x + w * 0.25},${el.y} ${el.x + w},${el.y} ${el.x + w * 0.75},${el.y + h} ${el.x},${el.y + h}`;
             shapeContent = (
               <polygon points={points} fill={fillColor} stroke={strokeColor}
-                strokeWidth={strokeWidth} strokeDasharray={dashArray} fillOpacity={fillOpacity} className="cursor-pointer" />
+                strokeWidth={strokeWidth} strokeDasharray={dashArray} fillOpacity={fillOpacity} className={shapeCursorClass} />
             );
           } else if (el.type === 'trapezoid') {
             const w = el.width; const h = el.height;
             const points = `${el.x + w * 0.2},${el.y} ${el.x + w * 0.8},${el.y} ${el.x + w},${el.y + h} ${el.x},${el.y + h}`;
             shapeContent = (
               <polygon points={points} fill={fillColor} stroke={strokeColor}
-                strokeWidth={strokeWidth} strokeDasharray={dashArray} fillOpacity={fillOpacity} className="cursor-pointer" />
+                strokeWidth={strokeWidth} strokeDasharray={dashArray} fillOpacity={fillOpacity} className={shapeCursorClass} />
             );
           } else if (el.type === 'cylinder') {
             const rx = el.width / 2;
@@ -291,14 +302,14 @@ export function WhiteboardElements({
             shapeContent = (
               <rect x={el.x} y={el.y} width={el.width} height={el.height} rx={rx}
                 fill={fillColor} stroke={strokeColor} strokeWidth={strokeWidth}
-                strokeDasharray={dashArray} fillOpacity={fillOpacity} className="cursor-pointer" />
+                strokeDasharray={dashArray} fillOpacity={fillOpacity} className={shapeCursorClass} />
             );
           } else if (el.type === 'hexagon') {
             const w = el.width; const h = el.height;
             const points = `${el.x + w * 0.25},${el.y} ${el.x + w * 0.75},${el.y} ${el.x + w},${cy} ${el.x + w * 0.75},${el.y + h} ${el.x + w * 0.25},${el.y + h} ${el.x},${cy}`;
             shapeContent = (
               <polygon points={points} fill={fillColor} stroke={strokeColor}
-                strokeWidth={strokeWidth} strokeDasharray={dashArray} fillOpacity={fillOpacity} className="cursor-pointer" />
+                strokeWidth={strokeWidth} strokeDasharray={dashArray} fillOpacity={fillOpacity} className={shapeCursorClass} />
             );
           } else if (el.type === 'star') {
             const w = el.width; const h = el.height;
@@ -313,7 +324,7 @@ export function WhiteboardElements({
             }
             shapeContent = (
               <polygon points={starPts.join(' ')} fill={fillColor} stroke={strokeColor}
-                strokeWidth={strokeWidth} strokeDasharray={dashArray} fillOpacity={fillOpacity} className="cursor-pointer" />
+                strokeWidth={strokeWidth} strokeDasharray={dashArray} fillOpacity={fillOpacity} className={shapeCursorClass} />
             );
           }
 

@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useWhiteboardStore, GRID_SIZE } from '@/lib/store/whiteboard-store';
-import { WHITEBOARD_COLORS, isPolygonShapeType, WHITEBOARD_COLOR_KEYS } from '@/lib/whiteboard/whiteboard-types';
+import { WHITEBOARD_COLORS, isPolygonShapeType, WHITEBOARD_COLOR_KEYS, STROKE_COLOR_PALETTE } from '@/lib/whiteboard/whiteboard-types';
 import { Trash2, Plus, Minus, Maximize, Grid3X3, Download, Copy, CopyPlus, Clipboard, Group, Ungroup, ZoomIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -17,8 +17,22 @@ import { InlineTextEditor } from './InlineTextEditor';
 import { ArrowToolbar } from './ArrowToolbar';
 import { IconToolbar } from './IconToolbar';
 import { ShapeToolbar } from './ShapeToolbar';
+import { useTheme } from 'next-themes';
+
+const SELECT_CURSOR_LIGHT = `url("data:image/svg+xml,%3Csvg width='24px' height='24px' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 21L4 4L21 11L14.7353 13.6849C14.2633 13.8872 13.8872 14.2633 13.6849 14.7353L11 21Z' stroke='%23292929' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E") 4 4, url('/cursor/select-cursor.svg') 4 4, default`;
+
+const SELECT_CURSOR_DARK = `url("data:image/svg+xml,%3Csvg width='24px' height='24px' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 21L4 4L21 11L14.7353 13.6849C14.2633 13.8872 13.8872 14.2633 13.6849 14.7353L11 21Z' stroke='%23e4e4e7' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E") 4 4, url('/cursor/select-cursor.svg') 4 4, default`;
 
 export function WhiteboardCanvas() {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const selectCursor = mounted && resolvedTheme === 'dark' ? SELECT_CURSOR_DARK : SELECT_CURSOR_LIGHT;
+
   const updateElement = useWhiteboardStore((s) => s.updateElement);
   const showGrid = useWhiteboardStore((s) => s.showGrid);
   const setShowGrid = useWhiteboardStore((s) => s.setShowGrid);
@@ -219,8 +233,21 @@ export function WhiteboardCanvas() {
       {/* SVG Canvas Workspace */}
       <svg
         ref={svgRef}
+        suppressHydrationWarning
         className="h-full w-full touch-none"
-        style={{ cursor: isPanning ? 'grabbing' : isSpacePressed ? 'grab' : 'crosshair' }}
+        style={{
+          cursor: isPanning
+            ? 'grabbing'
+            : isSpacePressed
+            ? 'grab'
+            : (endpointDragState || quickConnectDragState || isDraggingShape)
+            ? 'grabbing'
+            : activeTool === 'select'
+            ? selectCursor
+            : activeTool === 'text'
+            ? 'text'
+            : 'crosshair',
+        }}
         onWheel={handlers.onWheel}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -271,14 +298,7 @@ export function WhiteboardCanvas() {
           {/* Color-specific arrowhead markers */}
           {Array.from(
             new Set([
-              '#3b82f6',
-              '#10b981',
-              '#f59e0b',
-              '#8b5cf6',
-              '#f43f5e',
-              '#6b7280',
-              '#000000',
-              '#ffffff',
+              ...STROKE_COLOR_PALETTE,
               ...elements.map((el) => el.strokeColor).filter(Boolean),
             ])
           ).map((color) => {
