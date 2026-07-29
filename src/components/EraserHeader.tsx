@@ -9,7 +9,6 @@ import {
   Search,
   MessageSquare,
   MoreHorizontal,
-  ChevronDown,
   Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -123,11 +122,6 @@ export function EraserHeader() {
           </Button>
         </Link>
 
-        {/* Zoom Indicator */}
-        <div className="flex items-center gap-0.5 text-xs text-muted-foreground font-medium px-1">
-          <span>100%</span>
-          <ChevronDown className="h-3 w-3" />
-        </div>
       </div>
 
       {/* Command Palette Modal */}

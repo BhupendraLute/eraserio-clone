@@ -671,21 +671,19 @@ export function useWhiteboardInteractions({
 
   const handleFitContent = () => {
     if (elements.length === 0) { reset(); return; }
-    const nodes = elements.map((el) => ({
-      id: el.id, label: el.id, x: el.x, y: el.y,
-      width: el.width || 100, height: el.height || 100,
-      lines: [], attrs: {},
-    }));
+    const nodes = elements.map((el) => {
+      const b = getElementBounds(el);
+      return { id: el.id, label: el.id, x: b.x, y: b.y, width: b.width, height: b.height, lines: [], attrs: {} };
+    });
     fitToContent(nodes);
   };
 
   const handleFitSelection = () => {
     if (selectedElements.length === 0) { handleFitContent(); return; }
-    const nodes = selectedElements.map((el) => ({
-      id: el.id, label: el.id, x: el.x, y: el.y,
-      width: el.width || 100, height: el.height || 100,
-      lines: [], attrs: {},
-    }));
+    const nodes = selectedElements.map((el) => {
+      const b = getElementBounds(el);
+      return { id: el.id, label: el.id, x: b.x, y: b.y, width: b.width, height: b.height, lines: [], attrs: {} };
+    });
     fitToContent(nodes);
   };
 

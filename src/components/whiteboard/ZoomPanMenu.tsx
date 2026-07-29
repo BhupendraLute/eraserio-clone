@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   ChevronDown,
   Minus,
@@ -41,13 +41,26 @@ export function ZoomPanMenu({
   onToggleHideUI,
 }: ZoomPanMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const zoomPercent = Math.round(scale * 100);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
 
   return (
     <>
       {/* Top-Right Eraser.io Zoom & View Options Dropdown Trigger */}
       {!hideUI && (
-        <div className="absolute top-4 right-4 z-40">
+        <div ref={containerRef} className="absolute top-4 right-4 z-40">
           <button
             onClick={() => setIsOpen(!isOpen)}
             className="flex h-8 items-center gap-1.5 rounded-lg border bg-muted/90 px-2.5 text-xs font-semibold shadow-md backdrop-blur transition-colors hover:bg-accent"

@@ -313,7 +313,16 @@ export function getElementBounds(el: WhiteboardElement): { x: number; y: number;
     const h = Math.max(10, Math.abs(el.endY - el.startY));
     return { x: minX, y: minY, width: w, height: h };
   }
-  return { x: el.x, y: el.y, width: el.width, height: el.height };
+  if (el.type === 'pencil' && el.points.length > 0) {
+    const xs = el.points.map((p) => p.x);
+    const ys = el.points.map((p) => p.y);
+    const minX = Math.min(...xs);
+    const minY = Math.min(...ys);
+    const w = Math.max(10, Math.max(...xs) - minX);
+    const h = Math.max(10, Math.max(...ys) - minY);
+    return { x: minX, y: minY, width: w, height: h };
+  }
+  return { x: el.x, y: el.y, width: Math.max(10, el.width), height: Math.max(10, el.height) };
 }
 
 /** Calculate shape height automatically to fit multi-line wrapped text inside shape bounds */

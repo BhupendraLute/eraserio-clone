@@ -7,6 +7,9 @@ const MIN_SCALE = 0.2;
 const MAX_SCALE = 3;
 const ZOOM_SENSITIVITY = 0.001;
 const FIT_PADDING = 60; // px of breathing room around the diagram when fitting
+const FIT_MAX_SCALE = 2; // max zoom-in for fit operations (small diagrams fill viewport up to 2×)
+const ANIM_LERP = 0.12;
+const ANIM_SNAP_THRESHOLD = 0.3;
 
 export interface PanZoomState {
    scale: number;
@@ -36,6 +39,53 @@ export function usePanZoom(initial: PanZoomState = { scale: 1, x: 0, y: 0 }) {
    const scrollRafRef = useRef<number | null>(null);
    const SCROLL_EASE_LERP = 0.12;
    const SCROLL_SNAP_THRESHOLD = 0.5;
+
+   // --- Animated transition state (for fit / reset / button zoom) ---
+   const animTargetRef = useRef<PanZoomState | null>(null);
+   const animRafRef = useRef<number | null>(null);
+
+   function cancelAnim() {
+      if (animRafRef.current !== null) {
+         cancelAnimationFrame(animRafRef.current);
+         animRafRef.current = null;
+      }
+      animTargetRef.current = null;
+   }
+
+   /** Smoothly animate from the current transform to a target transform. */
+   function animateTo(target: PanZoomState) {
+      cancelSmoothScroll();
+      cancelAnim();
+      animTargetRef.current = target;
+
+      const step = () => {
+         setTransform((prev) => {
+            const t = animTargetRef.current;
+            if (!t) return prev;
+
+            const dx = t.x - prev.x;
+            const dy = t.y - prev.y;
+            const ds = t.scale - prev.scale;
+            const dist = Math.sqrt(dx * dx + dy * dy + (ds * 500) ** 2);
+
+            if (dist < ANIM_SNAP_THRESHOLD) {
+               animRafRef.current = null;
+               animTargetRef.current = null;
+               return { scale: t.scale, x: t.x, y: t.y };
+            }
+
+            const ease = Math.min(0.25, ANIM_LERP + dist * 0.002);
+            animRafRef.current = requestAnimationFrame(step);
+            return {
+               scale: prev.scale + ds * ease,
+               x: prev.x + dx * ease,
+               y: prev.y + dy * ease,
+            };
+         });
+      };
+
+      animRafRef.current = requestAnimationFrame(step);
+   }
 
    function cancelSmoothScroll() {
       if (scrollRafRef.current !== null) {
@@ -163,9 +213,12 @@ export function usePanZoom(initial: PanZoomState = { scale: 1, x: 0, y: 0 }) {
       };
    }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
 
-   // Cleanup smooth scroll animation on unmount
+   // Cleanup animations on unmount
    useEffect(() => {
-      return () => cancelSmoothScroll();
+      return () => {
+         cancelSmoothScroll();
+         cancelAnim();
+      };
    }, []);
 
    // Zoom while keeping the point under the cursor visually fixed.
@@ -243,25 +296,38 @@ export function usePanZoom(initial: PanZoomState = { scale: 1, x: 0, y: 0 }) {
 
    const zoomBy = useCallback((factor: number) => {
       cancelSmoothScroll();
-      setTransform((prev) => ({
-         ...prev,
-         scale: clampScale(prev.scale * factor),
-      }));
+      cancelAnim();
+      const svg = svgRef.current;
+      setTransform((prev) => {
+         const nextScale = clampScale(prev.scale * factor);
+         if (nextScale === prev.scale) return prev;
+
+         // Zoom toward viewport center so content doesn't drift to top-left
+         const rect = svg?.getBoundingClientRect();
+         const cx = (rect?.width ?? 0) / 2;
+         const cy = (rect?.height ?? 0) / 2;
+
+         const diagramX = (cx - prev.x) / prev.scale;
+         const diagramY = (cy - prev.y) / prev.scale;
+
+         return {
+            scale: nextScale,
+            x: cx - diagramX * nextScale,
+            y: cy - diagramY * nextScale,
+         };
+      });
    }, []);
 
    const reset = useCallback(() => {
-      cancelSmoothScroll();
-      setTransform({ scale: 1, x: 0, y: 0 });
+      animateTo({ scale: 1, x: 0, y: 0 });
    }, []);
 
    // Fits all given nodes' bounding box into the current viewport, with
-   // padding, centered. Never zooms in past 1x just because a small
-   // diagram would technically "fit" bigger.
+   // padding, centered. For small diagrams, zooms in up to FIT_MAX_SCALE.
    const fitToContent = useCallback((nodes: LaidOutNode[]) => {
-      cancelSmoothScroll();
       const svg = svgRef.current;
       if (!svg || nodes.length === 0) {
-         setTransform({ scale: 1, x: 0, y: 0 });
+         animateTo({ scale: 1, x: 0, y: 0 });
          return;
       }
 
@@ -270,8 +336,9 @@ export function usePanZoom(initial: PanZoomState = { scale: 1, x: 0, y: 0 }) {
       const maxX = Math.max(...nodes.map((n) => n.x + n.width));
       const maxY = Math.max(...nodes.map((n) => n.y + n.height));
 
-      const contentWidth = maxX - minX;
-      const contentHeight = maxY - minY;
+      // Guarantee a minimum content size to prevent Infinity / NaN from zero-area elements
+      const contentWidth = Math.max(maxX - minX, 10);
+      const contentHeight = Math.max(maxY - minY, 10);
 
       const viewport = svg.getBoundingClientRect();
       const availableWidth = viewport.width - FIT_PADDING * 2;
@@ -279,7 +346,7 @@ export function usePanZoom(initial: PanZoomState = { scale: 1, x: 0, y: 0 }) {
 
       const scaleToFitWidth = availableWidth / contentWidth;
       const scaleToFitHeight = availableHeight / contentHeight;
-      const rawScale = Math.min(scaleToFitWidth, scaleToFitHeight, 1);
+      const rawScale = Math.min(scaleToFitWidth, scaleToFitHeight, FIT_MAX_SCALE);
       const scale = clampScale(rawScale);
 
       const contentCenterX = minX + contentWidth / 2;
@@ -288,7 +355,7 @@ export function usePanZoom(initial: PanZoomState = { scale: 1, x: 0, y: 0 }) {
       const x = viewport.width / 2 - contentCenterX * scale;
       const y = viewport.height / 2 - contentCenterY * scale;
 
-      setTransform({ scale, x, y });
+      animateTo({ scale, x, y });
    }, []);
 
    // Fits a known width x height content box into the viewport, centered.
@@ -296,10 +363,9 @@ export function usePanZoom(initial: PanZoomState = { scale: 1, x: 0, y: 0 }) {
    // that already produce an overall bounding box rather than a node list.
    const fitBounds = useCallback(
       (contentWidth: number, contentHeight: number) => {
-         cancelSmoothScroll();
          const svg = svgRef.current;
          if (!svg || contentWidth <= 0 || contentHeight <= 0) {
-            setTransform({ scale: 1, x: 0, y: 0 });
+            animateTo({ scale: 1, x: 0, y: 0 });
             return;
          }
 
@@ -309,13 +375,13 @@ export function usePanZoom(initial: PanZoomState = { scale: 1, x: 0, y: 0 }) {
 
          const scaleToFitWidth = availableWidth / contentWidth;
          const scaleToFitHeight = availableHeight / contentHeight;
-         const rawScale = Math.min(scaleToFitWidth, scaleToFitHeight, 1);
+         const rawScale = Math.min(scaleToFitWidth, scaleToFitHeight, FIT_MAX_SCALE);
          const scale = clampScale(rawScale);
 
          const x = viewport.width / 2 - (contentWidth / 2) * scale;
          const y = viewport.height / 2 - (contentHeight / 2) * scale;
 
-         setTransform({ scale, x, y });
+         animateTo({ scale, x, y });
       },
       [],
    );

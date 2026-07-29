@@ -427,6 +427,14 @@ export function WhiteboardCanvas() {
               onClick={() => setShowGrid(!showGrid)} title="Toggle Grid">
               <Grid3X3 className={`h-4 w-4 ${showGrid ? 'text-primary' : 'text-muted-foreground'}`} />
             </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8"
+              onClick={handleFitContent} title="Zoom to Fit (Shift+1)">
+              <Maximize className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8"
+              onClick={handleFitSelection} title="Zoom to Selection (Shift+2)">
+              <Focus className="h-4 w-4" />
+            </Button>
             {selectedIds.length > 0 && (
               <>
                 <div className="h-px w-full bg-border" />
