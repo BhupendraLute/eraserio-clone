@@ -401,18 +401,7 @@ export function WhiteboardCanvas() {
             onPortHover={setHoveredPort}
           />
 
-          {/* Infinite canvas origin crosshair — gives spatial orientation */}
-          <g className="pointer-events-none">
-            {/* Axes lines extending far in all directions */}
-            <line x1={-1000000} y1={0} x2={1000000} y2={0} stroke="currentColor" strokeWidth={0.5} className="text-foreground/[0.04]" />
-            <line x1={0} y1={-1000000} x2={0} y2={1000000} stroke="currentColor" strokeWidth={0.5} className="text-foreground/[0.04]" />
-            {/* Origin dot */}
-            <circle cx={0} cy={0} r={2.5} fill="currentColor" className="text-foreground/15" />
-            {/* Origin label */}
-            <text x={5} y={-5} fontSize={9} fill="currentColor" className="text-foreground/25 select-none" fontFamily="monospace" fontStyle="italic">
-              (0, 0)
-            </text>
-          </g>
+
         </g>
       </svg>
 
