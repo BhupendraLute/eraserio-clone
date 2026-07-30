@@ -84,9 +84,9 @@ export function WhiteboardOverlays({
 
         return (
           <g className="pointer-events-none">
-            {(activeTool === 'rectangle' || activeTool === 'square') && w > 0 && h > 0 && (
+            {(activeTool === 'rectangle' || activeTool === 'square' || activeTool === 'text') && w > 0 && h > 0 && (
               <rect x={minX} y={minY} width={activeTool === 'square' ? Math.max(w, h) : w} height={activeTool === 'square' ? Math.max(w, h) : h} rx={4}
-                fill="none" stroke="currentColor" strokeWidth={2} strokeDasharray="4 4" />
+                fill="var(--canvas-accent)" fillOpacity={0.06} stroke="var(--canvas-accent)" strokeWidth={1.5} strokeDasharray="4 4" />
             )}
             {activeTool === 'circle' && w > 0 && h > 0 && (
               <ellipse cx={cx} cy={cy} rx={w / 2} ry={h / 2}
@@ -174,10 +174,7 @@ export function WhiteboardOverlays({
                 d={points.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ')}
                 fill="none" stroke="var(--canvas-accent)" strokeWidth={2} strokeDasharray="4 4" />
             )}
-            {activeTool === 'text' && (
-              <rect x={start.x} y={start.y} width={160} height={40} rx={4}
-                fill="none" stroke="var(--canvas-accent)" strokeWidth={1.5} strokeDasharray="4 4" />
-            )}
+
             {activeTool === 'comment' && (
               <rect x={start.x - 16} y={start.y - 16} width={200} height={80} rx={8}
                 fill="none" stroke="var(--canvas-accent)" strokeWidth={1.5} strokeDasharray="4 4" />
@@ -401,6 +398,7 @@ export function WhiteboardOverlays({
             stroke="var(--canvas-accent)"
             strokeWidth={1.5}
             strokeDasharray="4 4"
+            className="cursor-move"
           />
           {[
             { handle: 'tl', x: el.x - 5, y: el.y - 5, cursor: 'cursor-nwse-resize' },

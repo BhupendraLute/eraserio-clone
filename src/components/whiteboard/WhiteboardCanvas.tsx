@@ -2,10 +2,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useWhiteboardStore, GRID_SIZE } from '@/lib/store/whiteboard-store';
-import { WHITEBOARD_COLORS, isPolygonShapeType, WHITEBOARD_COLOR_KEYS, STROKE_COLOR_PALETTE } from '@/lib/whiteboard/whiteboard-types';
+import { WHITEBOARD_COLORS, isPolygonShapeType, WHITEBOARD_COLOR_KEYS, STROKE_COLOR_PALETTE, computeTextElementSize } from '@/lib/whiteboard/whiteboard-types';
 import { Trash2, Plus, Minus, Maximize, Grid3X3, Download, Copy, CopyPlus, Clipboard, Group, Ungroup, ZoomIn, ChevronDown, Hand, Focus, EyeOff, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn, generateId } from '@/lib/utils';
 import { usePanZoom } from '@/lib/hooks/usePanZoom';
 import { useWhiteboardInteractions } from '@/lib/hooks/useWhiteboardInteractions';
 import { WhiteboardElements } from './WhiteboardElements';
@@ -17,8 +17,11 @@ import { InlineTextEditor } from './InlineTextEditor';
 import { ArrowToolbar } from './ArrowToolbar';
 import { IconToolbar } from './IconToolbar';
 import { ShapeToolbar } from './ShapeToolbar';
+import { PencilToolbar } from './PencilToolbar';
+import { TextFormattingToolbar } from './TextFormattingToolbar';
 import { ZoomPanMenu } from './ZoomPanMenu';
 import { useTheme } from 'next-themes';
+import type { TextElement } from '@/lib/whiteboard/whiteboard-types';
 
 const SELECT_CURSOR_LIGHT = `url("data:image/svg+xml,%3Csvg width='24px' height='24px' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 21L4 4L21 11L14.7353 13.6849C14.2633 13.8872 13.8872 14.2633 13.6849 14.7353L11 21Z' stroke='%23292929' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E") 4 4, url('/cursor/select-cursor.svg') 4 4, default`;
 
@@ -35,6 +38,8 @@ export function WhiteboardCanvas() {
   const selectCursor = mounted && resolvedTheme === 'dark' ? SELECT_CURSOR_DARK : SELECT_CURSOR_LIGHT;
 
   const updateElement = useWhiteboardStore((s) => s.updateElement);
+  const addElement = useWhiteboardStore((s) => s.addElement);
+  const setSelectedIds = useWhiteboardStore((s) => s.setSelectedIds);
   const showGrid = useWhiteboardStore((s) => s.showGrid);
   const setShowGrid = useWhiteboardStore((s) => s.setShowGrid);
   const duplicateSelected = useWhiteboardStore((s) => s.duplicateSelected);
@@ -138,100 +143,53 @@ export function WhiteboardCanvas() {
     };
   }, []);
 
-  const isBottomToolbarSelection = selectedElements.length > 0 && selectedElements.every(el => el.type === 'arrow' || el.type === 'line' || isPolygonShapeType(el.type));
+  const isBottomToolbarSelection = selectedElements.length > 0 && selectedElements.every(el => el.type === 'arrow' || el.type === 'line' || el.type === 'pencil' || isPolygonShapeType(el.type));
+
+  const handleCanvasDoubleClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    const targetTag = (e.target as HTMLElement).tagName.toLowerCase();
+    if (targetTag === 'svg' || targetTag === 'rect' || targetTag === 'path' || targetTag === 'pattern' || targetTag === 'circle') {
+      if (svgRef.current) {
+        const rect = svgRef.current.getBoundingClientRect();
+        const screenX = e.clientX - rect.left;
+        const screenY = e.clientY - rect.top;
+        const canvasX = (screenX - transform.x) / transform.scale;
+        const canvasY = (screenY - transform.y) / transform.scale;
+
+        const initialSize = computeTextElementSize('', 24, 'text');
+        const newText: TextElement = {
+          id: generateId(),
+          type: 'text',
+          x: Math.round(canvasX),
+          y: Math.round(canvasY),
+          width: initialSize.width,
+          height: initialSize.height,
+          text: '',
+          fontSize: 24,
+          strokeColor: activeStrokeHex || 'var(--foreground)',
+          strokeWidth: 1,
+          mode: 'text',
+          language: 'Auto detect',
+        };
+
+        addElement(newText);
+        setSelectedIds([newText.id]);
+        setEditingElementId(newText.id);
+      }
+    }
+  };
 
   return (
     <div className="relative h-full w-full select-none overflow-hidden bg-background">
-      {/* Floating Rich Text Formatting Toolbar (hidden when selection is handled by ArrowToolbar / ShapeToolbar) */}
-      {!hideUI && hasSelection && !isBottomToolbarSelection && (
-        <div className="absolute top-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-1.5 rounded-xl border bg-muted/90 p-1.5 shadow-2xl backdrop-blur animate-in fade-in zoom-in-95">
-          <select
-            value={activeFontFamily}
-            onChange={(e) => {
-              setActiveFontFamily(e.target.value);
-              selectedIds.forEach((id) => updateElement(id, { fontFamily: e.target.value }));
-            }}
-            className="h-7 rounded-md border bg-muted/30 px-2 text-xs font-medium text-foreground outline-none"
-          >
-            <option value="Inter, sans-serif">Sans-Serif</option>
-            <option value="Roboto, sans-serif">Roboto</option>
-            <option value="'Courier New', monospace">Monospace</option>
-            <option value="Georgia, serif">Serif</option>
-          </select>
-
-          <div className="flex items-center gap-1 border-x px-2">
-            <span className="text-[10px] font-semibold text-muted-foreground">Size:</span>
-            <input
-              type="number" min={8} max={72} value={activeFontSize}
-              onChange={(e) => {
-                const val = Number(e.target.value);
-                setActiveFontSize(val);
-                selectedIds.forEach((id) => updateElement(id, { fontSize: val }));
-              }}
-              className="h-7 w-12 rounded-md border bg-muted/30 px-1.5 text-center text-xs font-semibold text-foreground outline-none"
-            />
-          </div>
-
-          <div className="flex items-center gap-1 border-r pr-2">
-            {WHITEBOARD_COLOR_KEYS.map((colorKey) => {
-              const c = WHITEBOARD_COLORS[colorKey];
-              return (
-                <button
-                  key={colorKey}
-                  onClick={() => selectedIds.forEach((id) => updateElement(id, { strokeColor: c.border, fillColor: c.bg }))}
-                  className={cn('h-4 w-4 rounded-full border transition-transform hover:scale-110', 
-                    selectedIds.length === 1 && elements.find(e => e.id === selectedIds[0])?.strokeColor === c.border && 'ring-2 ring-primary ring-offset-1'
-                  )}
-                  style={{ backgroundColor: c.border }}
-                />
-              );
-            })}
-            {/* Custom hex color pickers for selected element colors */}
-            <div className="flex items-center gap-0.5 border-l pl-1.5 ml-1.5">
-              <input
-                type="color"
-                value={selectedIds.length === 1 ? (elements.find(e => e.id === selectedIds[0])?.strokeColor ?? activeStrokeHex) : activeStrokeHex}
-                onChange={(e) => selectedIds.forEach((id) => updateElement(id, { strokeColor: e.target.value }))}
-                className="h-5 w-5 cursor-pointer rounded border-0 bg-transparent p-0"
-                title="Custom stroke color"
-              />
-              <input
-                type="color"
-                value={selectedIds.length === 1 ? (elements.find(e => e.id === selectedIds[0])?.fillColor ?? activeFillHex) : activeFillHex}
-                onChange={(e) => selectedIds.forEach((id) => updateElement(id, { fillColor: e.target.value }))}
-                className="h-5 w-5 cursor-pointer rounded border-0 bg-transparent p-0"
-                title="Custom fill color"
-              />
-            </div>
-          </div>
-
-          {/* Line style selector */}
-          <div className="flex items-center gap-0.5 border-r pr-2">
-            {(['solid', 'dashed', 'dotted'] as const).map((ls) => (
-              <button key={ls} title={ls}
-                onClick={() => selectedIds.forEach((id) => updateElement(id, { lineStyle: ls }))}
-                className="h-6 w-6 rounded border bg-muted/30 flex items-center justify-center hover:bg-accent">
-                <div className="w-4 border-b-2" style={{ borderStyle: ls === 'solid' ? 'solid' : ls === 'dashed' ? 'dashed' : 'dotted' }} />
-              </button>
-            ))}
-          </div>
-
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
-            onClick={() => deleteElements(selectedIds)} title="Delete Selected">
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
 
       {/* Sub-tool options bar & bottom toolbars (eraser.io style) */}
       {!hideUI && (
         <>
-          <div className="absolute top-4 left-[58px] z-40">
-            <ToolSubOptions />
-          </div>
+
           <ArrowToolbar />
           <IconToolbar />
           <ShapeToolbar />
+          <PencilToolbar />
+          <TextFormattingToolbar />
         </>
       )}
 
@@ -257,6 +215,7 @@ export function WhiteboardCanvas() {
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onDoubleClick={handleCanvasDoubleClick}
         onContextMenu={(e) => {
           e.preventDefault();
           const context = selectedIds.length > 1 ? 'multi' : selectedIds.length === 1 ? 'element' : 'canvas';

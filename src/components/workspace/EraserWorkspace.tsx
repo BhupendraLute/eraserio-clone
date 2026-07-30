@@ -159,20 +159,6 @@ export function EraserWorkspace() {
             <div className="relative flex-1 overflow-hidden">
               <WhiteboardCanvas />
             </div>
-
-            {/* Shortcut Banner */}
-            <div className="absolute bottom-4 right-16 z-20">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs gap-2 border-dashed text-muted-foreground bg-background/80 backdrop-blur"
-                onClick={toggleDiagramCode}
-              >
-                <Sparkles className="h-3.5 w-3.5 text-purple-500" />
-                <span>Diagram Code (DSL)</span>
-                <span className="rounded bg-muted px-1 py-0.5 text-[10px]">Ctrl J</span>
-              </Button>
-            </div>
           </div>
         );
     }

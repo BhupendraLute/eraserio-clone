@@ -181,6 +181,29 @@ export interface PencilElement extends BaseElement {
   strokePoints?: number[][];
 }
 
+export const ERASER_CODE_LANGUAGES = [
+  'Auto detect',
+  'JSON',
+  'YAML',
+  'TypeScript',
+  'JavaScript',
+  'Markdown',
+  'Python',
+  'Java',
+  'SQL',
+  'C',
+  'C#',
+  'CSS',
+  'HTML / XML',
+  'Bash',
+  'Shell',
+  'PHP',
+  'Go',
+  'Kotlin',
+  'Rust',
+  'HCL',
+] as const;
+
 export interface TextElement extends BaseElement {
   type: 'text';
   text: string;
@@ -189,6 +212,53 @@ export interface TextElement extends BaseElement {
   fontWeight?: 'normal' | 'bold';
   fontStyle?: 'normal' | 'italic';
   textAlign?: 'left' | 'center' | 'right';
+  mode?: 'text' | 'code';
+  language?: string;
+  textWrap?: boolean;
+}
+
+export function computeTextElementSize(
+  text: string,
+  fontSize: number = 16,
+  mode: 'text' | 'code' = 'text'
+): { width: number; height: number } {
+  const val = text || (mode === 'code' ? 'print("Hello world");' : '');
+  const lines = val.split('\n');
+  const maxLineLength = Math.max(...lines.map((l) => l.length), mode === 'code' ? 12 : 1);
+
+  if (mode === 'code') {
+    const charWidth = fontSize * 0.62;
+    const paddingX = 40;
+    const paddingY = 28;
+    const lineHeight = fontSize * 1.5;
+
+    const maxW = 1200;
+    const maxCharsPerLine = Math.max(10, Math.floor((maxW - paddingX) / charWidth));
+    const totalVisualLines = lines.reduce(
+      (acc, l) => acc + Math.max(1, Math.ceil((l.length || 1) / maxCharsPerLine)),
+      0
+    );
+
+    const width = Math.max(240, Math.min(maxW, Math.ceil(maxLineLength * charWidth + paddingX)));
+    const height = Math.max(64, Math.ceil(totalVisualLines * lineHeight + paddingY));
+    return { width, height };
+  } else {
+    const charWidth = fontSize * 0.58;
+    const paddingX = 20;
+    const paddingY = 14;
+    const lineHeight = fontSize * 1.35;
+
+    const maxW = 900;
+    const maxCharsPerLine = Math.max(10, Math.floor((maxW - paddingX) / charWidth));
+    const totalVisualLines = lines.reduce(
+      (acc, l) => acc + Math.max(1, Math.ceil((l.length || 1) / maxCharsPerLine)),
+      0
+    );
+
+    const width = Math.max(60, Math.min(maxW, Math.ceil(maxLineLength * charWidth + paddingX)));
+    const height = Math.max(36, Math.ceil(totalVisualLines * lineHeight + paddingY));
+    return { width, height };
+  }
 }
 
 export interface FrameElement extends BaseElement {
@@ -321,6 +391,15 @@ export function getElementBounds(el: WhiteboardElement): { x: number; y: number;
     const w = Math.max(10, Math.max(...xs) - minX);
     const h = Math.max(10, Math.max(...ys) - minY);
     return { x: minX, y: minY, width: w, height: h };
+  }
+  if (el.type === 'text') {
+    if ((el as any).isUserResized) {
+      return { x: el.x, y: el.y, width: Math.max(60, el.width), height: Math.max(30, el.height) };
+    }
+    const isCodeMode = el.mode === 'code';
+    const fontSize = el.fontSize ?? (isCodeMode ? 16 : 24);
+    const computed = computeTextElementSize(el.text, fontSize, isCodeMode ? 'code' : 'text');
+    return { x: el.x, y: el.y, width: computed.width, height: computed.height };
   }
   return { x: el.x, y: el.y, width: Math.max(10, el.width), height: Math.max(10, el.height) };
 }

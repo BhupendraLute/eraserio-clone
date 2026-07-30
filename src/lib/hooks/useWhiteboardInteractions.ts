@@ -8,7 +8,7 @@ import type {
   Point,
   PortDirection,
 } from '@/lib/whiteboard/whiteboard-types';
-import { WHITEBOARD_COLORS, isConnectorElement, getElementBounds, getShapePorts, isPolygonShapeType } from '@/lib/whiteboard/whiteboard-types';
+import { WHITEBOARD_COLORS, isConnectorElement, getElementBounds, getShapePorts, isPolygonShapeType, computeTextElementSize } from '@/lib/whiteboard/whiteboard-types';
 import {
   findNearestShapePort,
   getOptimalPortPair,
@@ -313,7 +313,22 @@ export function useWhiteboardInteractions({
       return;
     }
 
+    if (activeTool === 'eraser') {
+      const hit = elements.find((el) => {
+        const b = getElementBounds(el);
+        return coords.x >= b.x - 8 && coords.x <= b.x + b.width + 8 && coords.y >= b.y - 8 && coords.y <= b.y + b.height + 8;
+      });
+      if (hit) {
+        deleteElements([hit.id]);
+      }
+      setDrawingState({ start: coords, current: coords, points: [coords] });
+      return;
+    }
+
     if (['rectangle', 'circle', 'diamond', 'cylinder', 'arrow', 'line', 'sticky', 'pencil', 'text', 'frame', 'cloud', 'comment'].includes(activeTool)) {
+      try {
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      } catch {}
       setDrawingState({ start: coords, current: coords, points: [coords] });
     }
   };
@@ -375,6 +390,7 @@ export function useWhiteboardInteractions({
       const dx = coords.x - resizeState.lastPos.x;
       const dy = coords.y - resizeState.lastPos.y;
       resizeElement(resizeState.targetId, resizeState.handle, dx, dy);
+      updateElement(resizeState.targetId, { isUserResized: true } as any);
       setResizeState({ ...resizeState, lastPos: coords });
       return;
     }
@@ -390,6 +406,16 @@ export function useWhiteboardInteractions({
     }
 
     if (drawingState) {
+      if (activeTool === 'eraser') {
+        const hit = elements.find((el) => {
+          const b = getElementBounds(el);
+          const margin = 12;
+          return coords.x >= b.x - margin && coords.x <= b.x + b.width + margin && coords.y >= b.y - margin && coords.y <= b.y + b.height + margin;
+        });
+        if (hit) {
+          deleteElements([hit.id]);
+        }
+      }
       if (activeTool === 'arrow' || activeTool === 'line') {
         const snap = findNearestShapePort(coords, elements);
         setActiveSnap(snap);
@@ -576,16 +602,63 @@ export function useWhiteboardInteractions({
         isAnimated: activeIsAnimated,
       });
     } else if (activeTool === 'pencil') {
+      const xs = points.map((p) => p.x);
+      const ys = points.map((p) => p.y);
+      const pMinX = Math.min(...xs);
+      const pMinY = Math.min(...ys);
+      const pW = Math.max(10, Math.max(...xs) - pMinX);
+      const pH = Math.max(10, Math.max(...ys) - pMinY);
+
       addElement({
-        id, type: 'pencil', x: minX, y: minY, width, height, points,
+        id, type: 'pencil', x: pMinX, y: pMinY, width: pW, height: pH, points,
         strokeColor: strokeHex, strokeWidth: activeStrokeWidth,
       });
     } else if (activeTool === 'text') {
-      addElement({
-        id, type: 'text', x: start.x, y: start.y, width: 160, height: 40,
-        text: 'Click to edit text', fontSize: 16,
-        strokeColor: strokeHex, strokeWidth: 1,
-      });
+      const rawW = Math.abs(current.x - start.x);
+      const rawH = Math.abs(current.y - start.y);
+      const isSingleClick = rawW < 15 && rawH < 15;
+
+      if (isSingleClick) {
+        const initSize = computeTextElementSize('', 24, 'text');
+        const newTextElement = {
+          id,
+          type: 'text' as const,
+          x: start.x,
+          y: start.y,
+          width: initSize.width,
+          height: initSize.height,
+          text: '',
+          fontSize: 24,
+          strokeColor: strokeHex,
+          strokeWidth: 1,
+          mode: 'text' as const,
+          language: 'Auto detect',
+        };
+        addElement(newTextElement);
+        setSelectedIds([id]);
+        setEditingElementId(id);
+      } else {
+        const draggedW = Math.max(60, rawW);
+        const draggedH = Math.max(36, rawH);
+        const newTextElement = {
+          id,
+          type: 'text' as const,
+          x: minX,
+          y: minY,
+          width: draggedW,
+          height: draggedH,
+          text: '',
+          fontSize: 24,
+          strokeColor: strokeHex,
+          strokeWidth: 1,
+          mode: 'text' as const,
+          language: 'Auto detect',
+          isUserResized: true,
+        };
+        addElement(newTextElement);
+        setSelectedIds([id]);
+        setEditingElementId(id);
+      }
     } else if (activeTool === 'comment') {
       addElement({
         id, type: 'comment', x: start.x - 16, y: start.y - 16, width: 200, height: 80,
@@ -611,6 +684,13 @@ export function useWhiteboardInteractions({
         fillColor: fillHex,
         strokeWidth: activeStrokeWidth,
       });
+    }
+
+    if (activeTool === 'pencil') {
+      setSelectedIds([]);
+      setDrawingState(null);
+      setActiveSnap(null);
+      return;
     }
 
     setSelectedIds([id]);

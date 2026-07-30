@@ -4,15 +4,6 @@ import React from 'react';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { WHITEBOARD_COLORS, isPolygonShapeType } from '@/lib/whiteboard/whiteboard-types';
 import { cn } from '@/lib/utils';
-import type { LineWidthSize } from '@/lib/store/whiteboard-store';
-
-const LINE_WIDTH_OPTIONS: { size: LineWidthSize; label: string }[] = [
-  { size: 'S', label: 'S' },
-  { size: 'M', label: 'M' },
-  { size: 'L', label: 'L' },
-  { size: 'XL', label: 'XL' },
-];
-
 export function ToolSubOptions() {
   const activeTool = useWhiteboardStore((s) => s.activeTool);
   const activeCornerRadius = useWhiteboardStore((s) => s.activeCornerRadius);
@@ -21,14 +12,13 @@ export function ToolSubOptions() {
   const setActiveStrokeHex = useWhiteboardStore((s) => s.setActiveStrokeHex);
   const activeFillHex = useWhiteboardStore((s) => s.activeFillHex);
   const setActiveFillHex = useWhiteboardStore((s) => s.setActiveFillHex);
-  const activeLineWidthSize = useWhiteboardStore((s) => s.activeLineWidthSize);
-  const setActiveLineWidthSize = useWhiteboardStore((s) => s.setActiveLineWidthSize);
   const setActiveColor = useWhiteboardStore((s) => s.setActiveColor);
 
-  // Arrow, line, and shape tools use bottom toolbars (ArrowToolbar / ShapeToolbar) instead
+  // Arrow, line, shape, pencil, and eraser tools use bottom floating toolbars instead
   if (activeTool === 'select') return null;
   if (activeTool === 'arrow' || activeTool === 'line') return null;
   if (isPolygonShapeType(activeTool)) return null;
+  if (activeTool === 'pencil' || activeTool === 'eraser') return null;
 
   return (
     <div className="absolute top-full left-0 mt-1 z-50 flex items-center gap-1.5 rounded-lg border bg-muted/90 p-1.5 shadow-lg backdrop-blur animate-in fade-in zoom-in-95">
@@ -52,26 +42,7 @@ export function ToolSubOptions() {
         </div>
       )}
 
-      {/* Pencil sub-options: S/M/L/XL stroke width */}
-      {activeTool === 'pencil' && (
-        <div className="flex items-center gap-1.5">
-          <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider mr-1">Width</span>
-          {LINE_WIDTH_OPTIONS.map((opt) => (
-            <button
-              key={opt.size}
-              onClick={() => setActiveLineWidthSize(opt.size)}
-              className={cn(
-                'flex h-6 w-8 items-center justify-center gap-1 rounded-md text-[10px] font-bold transition-colors',
-                activeLineWidthSize === opt.size
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-              )}
-            >
-              <span>{opt.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
+
 
       {/* Custom Color Picker — appears for all drawing tools except those with fixed colors */}
       {activeTool !== 'frame' && activeTool !== 'badge' && activeTool !== 'diagram' && activeTool !== 'comment' && (

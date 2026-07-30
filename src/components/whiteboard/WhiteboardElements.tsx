@@ -1,7 +1,8 @@
 'use client';
 
 import type { WhiteboardElement, ArrowElement, LineElement, CloudIconKind, LineStyle, ArrowheadStyle, Point, PortDirection } from '@/lib/whiteboard/whiteboard-types';
-import { WHITEBOARD_COLORS, LINE_DASH, isPolygonShapeType } from '@/lib/whiteboard/whiteboard-types';
+import { WHITEBOARD_COLORS, LINE_DASH, isPolygonShapeType, computeTextElementSize, getElementBounds } from '@/lib/whiteboard/whiteboard-types';
+import { HighlightedCode } from '@/lib/whiteboard/code-highlighter';
 import { ICON_MAP } from '@/lib/icons/icon-catalog';
 import { DiagramPreview } from '@/components/docs/DiagramPreview';
 import { useDiagramRegistry } from '@/lib/store/diagram-registry';
@@ -222,7 +223,7 @@ export function WhiteboardElements({
 
   const activeTool = useWhiteboardStore((s) => s.activeTool);
   const isHandMode = activeTool === 'hand';
-  const shapeCursorClass = isHandMode ? 'cursor-grab' : endpointDragState ? 'cursor-grabbing' : 'cursor-pointer';
+  const shapeCursorClass = isHandMode ? 'cursor-grab' : endpointDragState ? 'cursor-grabbing' : 'cursor-move';
 
   return (
     <>
@@ -387,6 +388,7 @@ export function WhiteboardElements({
         }
 
         if (el.type === 'pencil') {
+          const isSelected = selectedIds.includes(el.id);
           const strokePoints = (el as any).strokePoints as number[][] | undefined;
           if (strokePoints && strokePoints.length > 0) {
             const outlinePoints = strokePoints;
@@ -394,7 +396,10 @@ export function WhiteboardElements({
               const pathData = outlinePoints.map((pt: number[], i: number) => `${i === 0 ? 'M' : 'L'} ${pt[0]} ${pt[1]}`).join(' ') + ' Z';
               return (
                 <g key={el.id} onPointerDown={(e) => onElementPointerDown(e, el)} onClick={(e) => onElementClick(e, el)} onContextMenu={(e) => onElementContextMenu?.(e, el)}>
-                  <path d={pathData} fill={el.strokeColor} stroke={el.strokeColor} strokeWidth={1} fillOpacity={0.8} className="cursor-pointer" />
+                  {isSelected && (
+                    <path d={pathData} fill="none" stroke="var(--canvas-accent)" strokeWidth={3} fillOpacity={0} opacity={0.6} className="pointer-events-none" />
+                  )}
+                  <path d={pathData} fill={el.strokeColor} stroke={el.strokeColor} strokeWidth={1} fillOpacity={0.8} className="cursor-move" />
                 </g>
               );
             }
@@ -402,21 +407,62 @@ export function WhiteboardElements({
           const pathData = el.points.map((pt: Point, i: number) => `${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ');
           return (
             <g key={el.id} onPointerDown={(e) => onElementPointerDown(e, el)} onClick={(e) => onElementClick(e, el)} onContextMenu={(e) => onElementContextMenu?.(e, el)}>
-              <path d={pathData} fill="none" stroke={el.strokeColor} strokeWidth={el.strokeWidth} strokeLinecap="round" strokeLinejoin="round" className="cursor-pointer" />
+              {/* Invisible wider stroke for easy click/hover targeting without canvas blocking */}
+              <path d={pathData} fill="none" stroke="transparent" strokeWidth={Math.max(16, el.strokeWidth + 10)} strokeLinecap="round" strokeLinejoin="round" className="cursor-move" />
+              {/* Subtle stroke glow when selected (no container frame box) */}
+              {isSelected && (
+                <path d={pathData} fill="none" stroke="var(--canvas-accent)" strokeWidth={el.strokeWidth + 4} strokeLinecap="round" strokeLinejoin="round" opacity={0.5} className="pointer-events-none" />
+              )}
+              {/* Main pencil stroke */}
+              <path d={pathData} fill="none" stroke={el.strokeColor} strokeWidth={el.strokeWidth} strokeLinecap="round" strokeLinejoin="round" className="cursor-move" />
             </g>
           );
         }
 
         if (el.type === 'text') {
+          const isCodeMode = el.mode === 'code';
+          const fontSize = el.fontSize ?? (isCodeMode ? 16 : 24);
+          const bounds = getElementBounds(el);
+
           return (
-            <g key={el.id} onPointerDown={(e) => onElementPointerDown(e, el)} onClick={(e) => onElementClick(e, el)} onDoubleClick={(e) => onElementDoubleClick(e, el)} onContextMenu={(e) => onElementContextMenu?.(e, el)}>
+            <g
+              key={el.id}
+              onPointerDown={(e) => onElementPointerDown(e, el)}
+              onClick={(e) => onElementClick(e, el)}
+              onDoubleClick={(e) => onElementDoubleClick(e, el)}
+              onContextMenu={(e) => onElementContextMenu?.(e, el)}
+            >
               {editingElementId !== el.id && (
-                <foreignObject x={el.x} y={el.y} width={Math.max(140, el.width)} height={Math.max(40, el.height)}>
-                  <input type="text" value={el.text}
-                    onChange={(evt) => updateElement(el.id, { text: evt.target.value })}
-                    className="h-full w-full bg-transparent font-semibold outline-none select-none"
-                    style={{ color: el.strokeColor, fontSize: `${el.fontSize ?? 16}px`, fontFamily: el.fontFamily ?? 'inherit', fontWeight: el.fontWeight ?? 'bold', fontStyle: el.fontStyle ?? 'normal', textAlign: el.textAlign ?? 'left' }}
-                  />
+                <foreignObject x={bounds.x} y={bounds.y} width={bounds.width} height={bounds.height} className="overflow-visible" onWheel={(e) => e.stopPropagation()}>
+                  {isCodeMode ? (
+                    <div
+                      className={cn(
+                        'flex h-full w-full flex-col rounded-xl border border-[#2e3040] bg-[#181920] px-4 py-3 shadow-xl backdrop-blur transition-all select-none cursor-move overflow-hidden',
+                        isSelected && 'ring-2 ring-sky-500/70 ring-offset-1 ring-offset-background'
+                      )}
+                    >
+                      <HighlightedCode code={el.text || 'print("Hello world");'} language={el.language} fontSize={fontSize} textWrap={el.textWrap ?? true} />
+                    </div>
+                  ) : (
+                    <div
+                      className={cn(
+                        'h-full w-full flex items-center bg-transparent select-none cursor-move',
+                        isSelected && 'ring-1 ring-primary/40 rounded'
+                      )}
+                      style={{
+                        color: el.strokeColor || 'var(--foreground)',
+                        fontSize: `${fontSize}px`,
+                        fontFamily: el.fontFamily ?? 'inherit',
+                        fontWeight: el.fontWeight ?? 'bold',
+                        fontStyle: el.fontStyle ?? 'normal',
+                        textAlign: el.textAlign ?? 'left',
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {el.text || 'Double click to edit text'}
+                    </div>
+                  )}
                 </foreignObject>
               )}
             </g>
@@ -426,7 +472,7 @@ export function WhiteboardElements({
         if (el.type === 'cloud') {
           return (
             <g key={el.id} onPointerDown={(e) => onElementPointerDown(e, el)} onClick={(e) => onElementClick(e, el)} onDoubleClick={(e) => onElementDoubleClick(e, el)} onContextMenu={(e) => onElementContextMenu?.(e, el)}>
-              <rect x={el.x} y={el.y} width={el.width} height={el.height} fill="transparent" stroke="transparent" strokeWidth={0} className="cursor-pointer" />
+              <rect x={el.x} y={el.y} width={el.width} height={el.height} fill="transparent" stroke="transparent" strokeWidth={0} className="cursor-move" />
               <foreignObject x={el.x} y={el.y} width={el.width} height={el.height} className="pointer-events-none">
                 <div className="flex h-full w-full items-center justify-center p-0.5 select-none pointer-events-none">
                   {renderCloudIconSvg(el.iconKind, el.strokeColor, el.width)}
@@ -441,7 +487,7 @@ export function WhiteboardElements({
             <g key={el.id} onPointerDown={(e) => onElementPointerDown(e, el)} onClick={(e) => onElementClick(e, el)} onDoubleClick={(e) => onElementDoubleClick(e, el)} onContextMenu={(e) => onElementContextMenu?.(e, el)}>
               <rect x={el.x} y={el.y} width={el.width} height={el.height} rx={4}
                 fill={el.frameBg ?? 'var(--background)'} fillOpacity={0.5} stroke={el.frameColor ?? el.strokeColor}
-                strokeWidth={el.strokeWidth} strokeDasharray={dashArray} className="cursor-pointer" />
+                strokeWidth={el.strokeWidth} strokeDasharray={dashArray} className="cursor-move" />
               {editingElementId !== el.id && (
                 <foreignObject x={el.x + 8} y={el.y + 4} width={el.width - 16} height={24}>
                   <span className="text-[11px] font-bold text-muted-foreground select-none pointer-events-none">{el.title}</span>
@@ -457,7 +503,7 @@ export function WhiteboardElements({
             <g key={el.id} onPointerDown={(e) => onElementPointerDown(e, el)} onClick={(e) => onElementClick(e, el)} onContextMenu={(e) => onElementContextMenu?.(e, el)}>
               <rect x={el.x} y={el.y} width={el.width} height={el.height} rx={8}
                 fill="var(--background)" stroke={isSelected ? 'var(--canvas-accent)' : 'var(--border)'}
-                strokeWidth={isSelected ? 2 : 1} className="cursor-pointer shadow-sm" />
+                strokeWidth={isSelected ? 2 : 1} className="cursor-move shadow-sm" />
               <foreignObject x={el.x + 8} y={el.y + 8} width={el.width - 16} height={el.height - 16}>
                 {diagramRecord ? (
                   <div className="h-full w-full overflow-hidden select-none pointer-events-none">
@@ -478,7 +524,7 @@ export function WhiteboardElements({
             <g key={el.id} onPointerDown={(e) => onElementPointerDown(e, el)} onClick={(e) => onElementClick(e, el)} onDoubleClick={(e) => onElementDoubleClick(e, el)} onContextMenu={(e) => onElementContextMenu?.(e, el)}>
               <rect x={el.x} y={el.y} width={el.width} height={el.height} rx={8}
                 fill={el.fillColor ?? style.bg} stroke={el.strokeColor ?? style.border}
-                strokeWidth={isSelected ? 2 : 1} className="cursor-pointer shadow-sm"
+                strokeWidth={isSelected ? 2 : 1} className="cursor-move shadow-sm"
                 strokeDasharray={el.resolved ? '4 4' : ''} opacity={el.resolved ? 0.6 : 1} />
               <foreignObject x={el.x} y={el.y} width={24} height={24}>
                 <div className="flex h-full w-full items-center justify-center">
