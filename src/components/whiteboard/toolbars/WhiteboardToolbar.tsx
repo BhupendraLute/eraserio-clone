@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 import type { WhiteboardTool } from '@/lib/whiteboard/whiteboard-types';
 import { WHITEBOARD_COLORS, WHITEBOARD_COLOR_KEYS } from '@/lib/whiteboard/whiteboard-types';
 import { SHARED_TOOLS } from '@/lib/whiteboard/tool-definitions';
-import { CloudIconPicker } from './CloudIconPicker';
+import { CloudIconPicker } from '../CloudIconPicker';
 
 export function WhiteboardToolbar() {
   const activeTool = useWhiteboardStore((s) => s.activeTool);
@@ -224,7 +224,7 @@ export function WhiteboardToolbar() {
       <CloudIconPicker
         open={cloudPickerOpen}
         onOpenChange={setCloudPickerOpen}
-        onSelect={(kind) => {
+        onSelect={(kind: any) => {
           setActiveCloudIcon(kind);
           setActiveTool('cloud');
         }}

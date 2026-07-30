@@ -410,8 +410,8 @@ export function ShapeToolbar() {
                       className={cn(
                         'flex h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-accent',
                         ((item.mode === 'transparent' || item.mode === 'outline') && currentFillHex === 'transparent') ||
-                        (item.mode === 'soft' && currentFillHex !== 'transparent' && currentFillHex.endsWith('33')) ||
-                        (item.mode === 'solid' && currentFillHex !== 'transparent' && !currentFillHex.endsWith('33'))
+                          (item.mode === 'soft' && currentFillHex !== 'transparent' && currentFillHex.endsWith('33')) ||
+                          (item.mode === 'solid' && currentFillHex !== 'transparent' && !currentFillHex.endsWith('33'))
                           ? 'bg-primary/20 text-primary ring-1 ring-primary/40'
                           : 'text-muted-foreground hover:text-foreground'
                       )}

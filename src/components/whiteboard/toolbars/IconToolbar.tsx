@@ -3,14 +3,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { ICON_MAP } from '@/lib/icons/icon-catalog';
-import { CloudIconPicker } from './CloudIconPicker';
+import { CloudIconPicker } from '../CloudIconPicker';
 import {
   ToolbarPanel,
   ToolbarButton,
   ToolbarDivider,
   ToolbarColorPicker,
   ToolbarMoreMenu,
-} from './toolbars/ToolbarPanel';
+} from './ToolbarPanel';
 import { ChevronDown, MessageSquare, Server } from 'lucide-react';
 import type { CloudIconKind, WhiteboardColor, CloudIconElement } from '@/lib/whiteboard/whiteboard-types';
 import { WHITEBOARD_COLORS } from '@/lib/whiteboard/whiteboard-types';

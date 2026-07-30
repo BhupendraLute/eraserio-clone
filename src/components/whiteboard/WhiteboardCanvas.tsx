@@ -12,13 +12,13 @@ import { WhiteboardElements } from './WhiteboardElements';
 import { WhiteboardOverlays } from './WhiteboardOverlays';
 import { ExportMenu } from './ExportMenu';
 import { ContextMenu } from './ContextMenu';
-import { ToolSubOptions } from './ToolSubOptions';
+import { ToolSubOptions } from './toolbars/ToolSubOptions';
 import { InlineTextEditor } from './InlineTextEditor';
-import { ArrowToolbar } from './ArrowToolbar';
-import { IconToolbar } from './IconToolbar';
-import { ShapeToolbar } from './ShapeToolbar';
-import { PencilToolbar } from './PencilToolbar';
-import { TextFormattingToolbar } from './TextFormattingToolbar';
+import { ArrowToolbar } from './toolbars/ArrowToolbar';
+import { IconToolbar } from './toolbars/IconToolbar';
+import { ShapeToolbar } from './toolbars/ShapeToolbar';
+import { PencilToolbar } from './toolbars/PencilToolbar';
+import { TextFormattingToolbar } from './toolbars/TextFormattingToolbar';
 import { ZoomPanMenu } from './ZoomPanMenu';
 import { useTheme } from 'next-themes';
 import type { TextElement } from '@/lib/whiteboard/whiteboard-types';
@@ -202,14 +202,14 @@ export function WhiteboardCanvas() {
           cursor: isPanning
             ? 'grabbing'
             : (isSpacePressed || activeTool === 'hand')
-            ? 'grab'
-            : (endpointDragState || quickConnectDragState || isDraggingShape)
-            ? 'grabbing'
-            : activeTool === 'select'
-            ? selectCursor
-            : activeTool === 'text'
-            ? 'text'
-            : 'crosshair',
+              ? 'grab'
+              : (endpointDragState || quickConnectDragState || isDraggingShape)
+                ? 'grabbing'
+                : activeTool === 'select'
+                  ? selectCursor
+                  : activeTool === 'text'
+                    ? 'text'
+                    : 'crosshair',
         }}
         onWheel={handlers.onWheel}
         onPointerDown={handlePointerDown}
