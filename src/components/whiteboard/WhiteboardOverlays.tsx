@@ -435,21 +435,21 @@ export function WhiteboardOverlays({
             {
               dir: 'top' as const,
               cx: singleSelectedShape.x + singleSelectedShape.width / 2,
-              cy: singleSelectedShape.y - 18,
+              cy: singleSelectedShape.y - 26,
             },
             {
               dir: 'right' as const,
-              cx: singleSelectedShape.x + singleSelectedShape.width + 18,
+              cx: singleSelectedShape.x + singleSelectedShape.width + 26,
               cy: singleSelectedShape.y + singleSelectedShape.height / 2,
             },
             {
               dir: 'bottom' as const,
               cx: singleSelectedShape.x + singleSelectedShape.width / 2,
-              cy: singleSelectedShape.y + singleSelectedShape.height + 18,
+              cy: singleSelectedShape.y + singleSelectedShape.height + 26,
             },
             {
               dir: 'left' as const,
-              cx: singleSelectedShape.x - 18,
+              cx: singleSelectedShape.x - 26,
               cy: singleSelectedShape.y + singleSelectedShape.height / 2,
             },
           ].map((qc) => {
@@ -460,12 +460,8 @@ export function WhiteboardOverlays({
               <g key={`qc-${qc.dir}`}>
                 {isHovered ? (
                   <g
-                    className="cursor-pointer group"
+                    className="cursor-pointer group opacity-50 hover:opacity-100 transition-all duration-150"
                     style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
-                    onClick={(evt) => {
-                      evt.stopPropagation();
-                      onSpawnConnectedNode(singleSelectedShape.id, qc.dir);
-                    }}
                     onPointerDown={(evt) => {
                       evt.stopPropagation();
                       onQuickConnectDragStart(evt, singleSelectedShape.id, qc.dir, {
@@ -478,26 +474,27 @@ export function WhiteboardOverlays({
                       cx={qc.cx}
                       cy={qc.cy}
                       r={11}
-                      fill="var(--canvas-accent)"
-                      className="transition-all duration-150 scale-110 shadow-lg"
+                      fill="var(--background)"
+                      stroke="var(--canvas-accent)"
+                      strokeWidth={1.8}
+                      className="transition-transform duration-150 scale-105 shadow-md"
                       style={{ transformBox: 'fill-box', transformOrigin: 'center' }}
                     />
                     <path
-                      d={`M ${qc.cx - 4} ${qc.cy} L ${qc.cx + 4} ${qc.cy} M ${qc.cx} ${qc.cy - 4} L ${qc.cx} ${qc.cy + 4}`}
-                      stroke="var(--background)"
-                      strokeWidth={2}
+                      d={`M ${qc.cx - 4.5} ${qc.cy} L ${qc.cx + 4.5} ${qc.cy} M ${qc.cx} ${qc.cy - 4.5} L ${qc.cx} ${qc.cy + 4.5}`}
+                      stroke="var(--canvas-accent)"
+                      strokeWidth={1.8}
                       strokeLinecap="round"
                     />
                   </g>
                 ) : (
+                  /* Invisible hover trigger area near the port */
                   <circle
                     cx={qc.cx}
                     cy={qc.cy}
-                    r={3.5}
-                    fill="var(--background)"
-                    stroke="var(--canvas-accent)"
-                    strokeWidth={1.5}
-                    className="opacity-50 transition-opacity hover:opacity-100 cursor-pointer"
+                    r={16}
+                    fill="transparent"
+                    className="cursor-pointer"
                     onPointerEnter={() =>
                       onPortHover({ elementId: singleSelectedShape.id, dir: qc.dir })
                     }

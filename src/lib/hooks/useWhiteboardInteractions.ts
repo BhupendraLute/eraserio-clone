@@ -432,23 +432,36 @@ export function useWhiteboardInteractions({
 
     if (singleSelectedShape) {
       const el = singleSelectedShape;
-      const ports = [
-        { dir: 'top' as const, x: el.x + el.width / 2, y: el.y },
-        { dir: 'right' as const, x: el.x + el.width, y: el.y + el.height / 2 },
-        { dir: 'bottom' as const, x: el.x + el.width / 2, y: el.y + el.height },
-        { dir: 'left' as const, x: el.x, y: el.y + el.height / 2 },
-      ];
-      let closestDir: 'top' | 'right' | 'bottom' | 'left' = 'right';
-      let minD = Infinity;
-      ports.forEach((p) => {
-        const d = Math.hypot(coords.x - p.x, coords.y - p.y);
-        if (d < minD) { minD = d; closestDir = p.dir; }
-      });
-      const isNearShape = coords.x >= el.x - 40 && coords.x <= el.x + el.width + 40 && coords.y >= el.y - 40 && coords.y <= el.y + el.height + 40;
-      if (isNearShape || minD < 60) {
-        setHoveredPort({ elementId: el.id, dir: closestDir });
-      } else {
+      const isInsideElement =
+        coords.x >= el.x &&
+        coords.x <= el.x + el.width &&
+        coords.y >= el.y &&
+        coords.y <= el.y + el.height;
+
+      if (isInsideElement) {
         setHoveredPort(null);
+      } else {
+        const outerPorts = [
+          { dir: 'top' as const, x: el.x + el.width / 2, y: el.y - 26 },
+          { dir: 'right' as const, x: el.x + el.width + 26, y: el.y + el.height / 2 },
+          { dir: 'bottom' as const, x: el.x + el.width / 2, y: el.y + el.height + 26 },
+          { dir: 'left' as const, x: el.x - 26, y: el.y + el.height / 2 },
+        ];
+        let closestDir: 'top' | 'right' | 'bottom' | 'left' = 'right';
+        let minD = Infinity;
+        outerPorts.forEach((p) => {
+          const d = Math.hypot(coords.x - p.x, coords.y - p.y);
+          if (d < minD) {
+            minD = d;
+            closestDir = p.dir;
+          }
+        });
+
+        if (minD < 28) {
+          setHoveredPort({ elementId: el.id, dir: closestDir });
+        } else {
+          setHoveredPort(null);
+        }
       }
     } else {
       setHoveredPort(null);
@@ -480,47 +493,85 @@ export function useWhiteboardInteractions({
     }
 
     if (quickConnectDragState) {
-      const snap = findNearestShapePort(coords, elements, quickConnectDragState.sourceId);
-      const sourceEl = elements.find((el) => el.id === quickConnectDragState.sourceId);
-      if (snap && sourceEl) {
-        const arrowId = generateId();
-        addElement({
-          id: arrowId, type: 'arrow',
-          x: Math.min(quickConnectDragState.startPos.x, snap.x), y: Math.min(quickConnectDragState.startPos.y, snap.y),
-          width: Math.abs(snap.x - quickConnectDragState.startPos.x) || 10, height: Math.abs(snap.y - quickConnectDragState.startPos.y) || 10,
-          startX: quickConnectDragState.startPos.x, startY: quickConnectDragState.startPos.y,
-          endX: snap.x, endY: snap.y,
-          routingStyle: activeRoutingStyle, lineStyle: activeLineStyle,
-          arrowheadStyle: activeArrowheadStyle, startArrowheadStyle: activeStartArrowheadStyle, arrowheadColor: sourceEl.strokeColor || '#3b82f6',
-          fromElementId: quickConnectDragState.sourceId, fromPort: quickConnectDragState.fromPort,
-          toElementId: snap.elementId, toPort: snap.port,
-          strokeColor: sourceEl.strokeColor || '#3b82f6', strokeWidth: sourceEl.strokeWidth || 2,
-        });
-      } else if (sourceEl) {
-        const newShapeId = generateId();
-        const arrowId = generateId();
-        const newShape: WhiteboardElement = { ...sourceEl, id: newShapeId, x: coords.x - sourceEl.width / 2, y: coords.y - sourceEl.height / 2 };
-        const targetPort = getOppositePort(quickConnectDragState.fromPort);
-        let targetPortPos = { x: newShape.x, y: newShape.y + newShape.height / 2 };
-        if (targetPort === 'top') targetPortPos = { x: newShape.x + newShape.width / 2, y: newShape.y };
-        else if (targetPort === 'bottom') targetPortPos = { x: newShape.x + newShape.width / 2, y: newShape.y + newShape.height };
-        else if (targetPort === 'right') targetPortPos = { x: newShape.x + newShape.width, y: newShape.y + newShape.height / 2 };
+      const dragDist = Math.hypot(
+        coords.x - quickConnectDragState.startPos.x,
+        coords.y - quickConnectDragState.startPos.y
+      );
 
-        const newArrow: WhiteboardElement = {
-          id: arrowId, type: 'arrow',
-          x: Math.min(quickConnectDragState.startPos.x, targetPortPos.x), y: Math.min(quickConnectDragState.startPos.y, targetPortPos.y),
-          width: Math.abs(targetPortPos.x - quickConnectDragState.startPos.x) || 10, height: Math.abs(targetPortPos.y - quickConnectDragState.startPos.y) || 10,
-          startX: quickConnectDragState.startPos.x, startY: quickConnectDragState.startPos.y,
-          endX: targetPortPos.x, endY: targetPortPos.y,
-          routingStyle: activeRoutingStyle, lineStyle: activeLineStyle,
-          arrowheadStyle: activeArrowheadStyle, startArrowheadStyle: activeStartArrowheadStyle, arrowheadColor: sourceEl.strokeColor || '#3b82f6',
-          fromElementId: quickConnectDragState.sourceId, fromPort: quickConnectDragState.fromPort,
-          toElementId: newShapeId, toPort: targetPort,
-          strokeColor: sourceEl.strokeColor || '#3b82f6', strokeWidth: sourceEl.strokeWidth || 2,
-        };
-        addElement(newShape);
-        addElement(newArrow);
-        setSelectedIds([newShapeId]);
+      if (dragDist < 15) {
+        // Single Click on + tool -> spawn connected node offset in port direction
+        spawnConnectedNode(quickConnectDragState.sourceId, quickConnectDragState.fromPort);
+      } else {
+        const snap = findNearestShapePort(coords, elements, quickConnectDragState.sourceId);
+        const sourceEl = elements.find((el) => el.id === quickConnectDragState.sourceId);
+        if (snap && sourceEl) {
+          const arrowId = generateId();
+          addElement({
+            id: arrowId,
+            type: 'arrow',
+            x: Math.min(quickConnectDragState.startPos.x, snap.x),
+            y: Math.min(quickConnectDragState.startPos.y, snap.y),
+            width: Math.abs(snap.x - quickConnectDragState.startPos.x) || 10,
+            height: Math.abs(snap.y - quickConnectDragState.startPos.y) || 10,
+            startX: quickConnectDragState.startPos.x,
+            startY: quickConnectDragState.startPos.y,
+            endX: snap.x,
+            endY: snap.y,
+            routingStyle: activeRoutingStyle,
+            lineStyle: activeLineStyle,
+            arrowheadStyle: activeArrowheadStyle,
+            startArrowheadStyle: activeStartArrowheadStyle,
+            arrowheadColor: sourceEl.strokeColor || '#3b82f6',
+            fromElementId: quickConnectDragState.sourceId,
+            fromPort: quickConnectDragState.fromPort,
+            toElementId: snap.elementId,
+            toPort: snap.port,
+            strokeColor: sourceEl.strokeColor || '#3b82f6',
+            strokeWidth: sourceEl.strokeWidth || 2,
+          });
+        } else if (sourceEl) {
+          // Dragged to empty space -> spawn duplicated shape at cursor position connected via arrow
+          const newShapeId = generateId();
+          const arrowId = generateId();
+          const newShape: WhiteboardElement = {
+            ...sourceEl,
+            id: newShapeId,
+            x: coords.x - sourceEl.width / 2,
+            y: coords.y - sourceEl.height / 2,
+          };
+          const targetPort = getOppositePort(quickConnectDragState.fromPort);
+          let targetPortPos = { x: newShape.x, y: newShape.y + newShape.height / 2 };
+          if (targetPort === 'top') targetPortPos = { x: newShape.x + newShape.width / 2, y: newShape.y };
+          else if (targetPort === 'bottom') targetPortPos = { x: newShape.x + newShape.width / 2, y: newShape.y + newShape.height };
+          else if (targetPort === 'right') targetPortPos = { x: newShape.x + newShape.width, y: newShape.y + newShape.height / 2 };
+
+          const newArrow: WhiteboardElement = {
+            id: arrowId,
+            type: 'arrow',
+            x: Math.min(quickConnectDragState.startPos.x, targetPortPos.x),
+            y: Math.min(quickConnectDragState.startPos.y, targetPortPos.y),
+            width: Math.abs(targetPortPos.x - quickConnectDragState.startPos.x) || 10,
+            height: Math.abs(targetPortPos.y - quickConnectDragState.startPos.y) || 10,
+            startX: quickConnectDragState.startPos.x,
+            startY: quickConnectDragState.startPos.y,
+            endX: targetPortPos.x,
+            endY: targetPortPos.y,
+            routingStyle: activeRoutingStyle,
+            lineStyle: activeLineStyle,
+            arrowheadStyle: activeArrowheadStyle,
+            startArrowheadStyle: activeStartArrowheadStyle,
+            arrowheadColor: sourceEl.strokeColor || '#3b82f6',
+            fromElementId: quickConnectDragState.sourceId,
+            fromPort: quickConnectDragState.fromPort,
+            toElementId: newShapeId,
+            toPort: targetPort,
+            strokeColor: sourceEl.strokeColor || '#3b82f6',
+            strokeWidth: sourceEl.strokeWidth || 2,
+          };
+          addElement(newShape);
+          addElement(newArrow);
+          setSelectedIds([newShapeId]);
+        }
       }
       setQuickConnectDragState(null);
       setActiveSnap(null);
@@ -713,6 +764,9 @@ export function useWhiteboardInteractions({
           setSelectedIds([...selectedIds, el.id]);
         }
       } else {
+        if (selectedIds.length > 1 && selectedIds.includes(el.id)) {
+          return;
+        }
         setSelectedIds([el.id]);
       }
     }

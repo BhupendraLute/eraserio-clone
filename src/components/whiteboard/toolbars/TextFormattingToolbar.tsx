@@ -19,6 +19,8 @@ import {
   WrapText,
   ChevronDown,
   Check,
+  Minus,
+  Plus,
 } from 'lucide-react';
 import type { TextElement } from '@/lib/whiteboard/whiteboard-types';
 import { ERASER_CODE_LANGUAGES, computeTextElementSize, STROKE_COLOR_PALETTE } from '@/lib/whiteboard/whiteboard-types';
@@ -50,7 +52,12 @@ export function TextFormattingToolbar() {
   const currentFontSize = target.fontSize ?? (isCodeMode ? 16 : 34);
   const currentLanguage = target.language ?? 'Auto detect';
 
-  const fontSizes = [12, 14, 16, 20, 24, 34, 48, 64];
+  const fontPresets = [
+    { label: 'Small', value: 14 },
+    { label: 'Medium', value: 16 },
+    { label: 'Large', value: 24 },
+    { label: 'X-Large', value: 34 },
+  ];
 
   const handleCopyText = () => {
     if (target.text) {
@@ -82,6 +89,18 @@ export function TextFormattingToolbar() {
     } as any);
   };
 
+  const handleDecreaseFontSize = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextSize = Math.max(10, currentFontSize - 2);
+    handleFontSizeChange(nextSize);
+  };
+
+  const handleIncreaseFontSize = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nextSize = Math.min(96, currentFontSize + 2);
+    handleFontSizeChange(nextSize);
+  };
+
   return (
     <div className="absolute bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-border/80 bg-background/95 p-1.5 shadow-2xl backdrop-blur select-none">
       {/* 1. Segmented Mode Control: [ Text | Code ] */}
@@ -110,18 +129,59 @@ export function TextFormattingToolbar() {
 
       <div className="h-4 w-px bg-border/60" />
 
-      {/* 2. Font Size Selector */}
-      <select
-        value={currentFontSize}
-        onChange={(e) => handleFontSizeChange(Number(e.target.value))}
-        className="h-8 rounded-lg border border-border/60 bg-muted/30 px-2.5 text-xs font-semibold text-foreground outline-none cursor-pointer hover:bg-muted/60 transition-colors"
-      >
-        {fontSizes.map((s) => (
-          <option key={s} value={s}>
-            {s}px
-          </option>
-        ))}
-      </select>
+      {/* 2. Font Size Selector Dropdown with Stepper Header & Presets */}
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          className="flex h-8 items-center gap-1.5 rounded-lg border border-border/60 bg-muted/30 px-2.5 text-xs font-semibold text-foreground hover:bg-muted/60 transition-colors outline-none cursor-pointer"
+          title="Select Font Size"
+        >
+          <span>{currentFontSize}px</span>
+          <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="center" className="w-48 bg-background/95 border-border shadow-2xl backdrop-blur p-2 select-none z-50 rounded-xl">
+          {/* Top Stepper Header: [ -   24px   + ] */}
+          <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/40 p-1 mb-1.5">
+            <button
+              type="button"
+              onClick={handleDecreaseFontSize}
+              className="flex h-6 w-6 items-center justify-center rounded-md text-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+              title="Decrease Font Size (-2px)"
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </button>
+            <span className="text-xs font-bold text-foreground">{currentFontSize}px</span>
+            <button
+              type="button"
+              onClick={handleIncreaseFontSize}
+              className="flex h-6 w-6 items-center justify-center rounded-md text-foreground hover:bg-accent hover:text-accent-foreground transition-colors cursor-pointer"
+              title="Increase Font Size (+2px)"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          <DropdownMenuSeparator className="my-1.5" />
+
+          {/* Presets List */}
+          <div className="flex flex-col gap-0.5">
+            {fontPresets.map((preset) => (
+              <DropdownMenuItem
+                key={preset.label}
+                onClick={() => handleFontSizeChange(preset.value)}
+                className={cn(
+                  "flex items-center justify-between text-xs font-medium px-2.5 py-1.5 cursor-pointer rounded-md transition-colors",
+                  currentFontSize === preset.value
+                    ? "bg-accent text-accent-foreground font-semibold"
+                    : "hover:bg-muted/60 text-foreground"
+                )}
+              >
+                <span>{preset.label}</span>
+                {currentFontSize === preset.value && <Check className="h-3.5 w-3.5 text-primary ml-2" />}
+              </DropdownMenuItem>
+            ))}
+          </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {/* 3. Text Color Palette Tool (Text Mode Only) */}
       {!isCodeMode && (

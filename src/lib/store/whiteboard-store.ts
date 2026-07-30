@@ -606,7 +606,8 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
       if (!sourceEl) return state;
 
       const gap = 120;
-      let newX = sourceEl.x, newY = sourceEl.y;
+      let newX = sourceEl.x;
+      let newY = sourceEl.y;
       let fromPort: PortDirection = 'right';
       let toPort: PortDirection = 'left';
 
