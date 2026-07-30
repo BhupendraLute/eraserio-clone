@@ -59,6 +59,32 @@ export function isPolygonShapeType(type: string): type is PolygonShapeType {
   return (POLYGON_SHAPE_TYPES as readonly string[]).includes(type);
 }
 
+export const DRAWABLE_TOOLS: WhiteboardTool[] = [
+  'rectangle',
+  'square',
+  'circle',
+  'diamond',
+  'triangle',
+  'parallelogram',
+  'trapezoid',
+  'cylinder',
+  'capsule',
+  'hexagon',
+  'star',
+  'arrow',
+  'line',
+  'pencil',
+  'text',
+  'frame',
+  'cloud',
+  'comment',
+  'badge',
+];
+
+export function isDrawableTool(tool: string): boolean {
+  return DRAWABLE_TOOLS.includes(tool as WhiteboardTool);
+}
+
 export interface Point {
   x: number;
   y: number;

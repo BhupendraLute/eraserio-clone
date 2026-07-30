@@ -20,7 +20,7 @@ import {
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { getMarkerId, getStartMarkerId } from '@/components/whiteboard/WhiteboardElements';
 import { ICON_MAP } from '@/lib/icons/icon-catalog';
-import { Server } from 'lucide-react';
+import { Server, Frame } from 'lucide-react';
 
 /* CSS variable helpers for theme-aware canvas chrome */
 const BG = () => 'var(--background)' as const;
@@ -84,9 +84,19 @@ export function WhiteboardOverlays({
 
         return (
           <g className="pointer-events-none">
-            {(activeTool === 'rectangle' || activeTool === 'square' || activeTool === 'text') && w > 0 && h > 0 && (
-              <rect x={minX} y={minY} width={activeTool === 'square' ? Math.max(w, h) : w} height={activeTool === 'square' ? Math.max(w, h) : h} rx={4}
-                fill="var(--canvas-accent)" fillOpacity={0.06} stroke="var(--canvas-accent)" strokeWidth={1.5} strokeDasharray="4 4" />
+            {(activeTool === 'rectangle' || activeTool === 'square' || activeTool === 'text' || activeTool === 'frame') && w > 0 && h > 0 && (
+              <g>
+                <rect x={minX} y={minY} width={activeTool === 'square' ? Math.max(w, h) : w} height={activeTool === 'square' ? Math.max(w, h) : h} rx={activeTool === 'frame' ? 6 : 4}
+                  fill="var(--canvas-accent)" fillOpacity={0.06} stroke="var(--canvas-accent)" strokeWidth={1.5} strokeDasharray="4 4" />
+                {activeTool === 'frame' && (
+                  <foreignObject x={minX} y={minY - 22} width={160} height={22} className="overflow-visible pointer-events-none">
+                    <div className="flex items-center gap-1 rounded-md border border-border/70 bg-background/95 px-1.5 py-0.5 shadow-sm backdrop-blur select-none w-fit opacity-80">
+                      <Frame className="h-3 w-3 text-primary opacity-75" />
+                      <span className="text-[10px] font-semibold text-foreground leading-none">Figure</span>
+                    </div>
+                  </foreignObject>
+                )}
+              </g>
             )}
             {activeTool === 'circle' && w > 0 && h > 0 && (
               <ellipse cx={cx} cy={cy} rx={w / 2} ry={h / 2}

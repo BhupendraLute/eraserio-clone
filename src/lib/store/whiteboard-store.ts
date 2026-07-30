@@ -9,7 +9,7 @@ import type {
   PortDirection,
   FillStyleMode,
 } from '@/lib/whiteboard/whiteboard-types';
-import { WHITEBOARD_COLORS, isConnectorElement, getShapePorts, ArrowheadStyle, RoutingStyle } from '@/lib/whiteboard/whiteboard-types';
+import { WHITEBOARD_COLORS, isConnectorElement, getShapePorts, getElementBounds, ArrowheadStyle, RoutingStyle } from '@/lib/whiteboard/whiteboard-types';
 import { getOptimalPortPair, getOptimalSinglePort, determineAutoRoutingStyle } from '@/lib/whiteboard/orthogonal-routing';
 import { generateId } from '@/lib/utils';
 
@@ -255,8 +255,31 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
 
   moveSelectedElements: (dx, dy) =>
     set((state) => {
+      const selectedFigures = state.elements.filter(
+        (el) => state.selectedIds.includes(el.id) && el.type === 'frame'
+      );
+
+      const idsToMove = new Set<string>(state.selectedIds);
+
+      selectedFigures.forEach((fig) => {
+        state.elements.forEach((child) => {
+          if (child.id !== fig.id) {
+            const b = getElementBounds(child);
+            const isInside =
+              b.x >= fig.x - 5 &&
+              b.x + b.width <= fig.x + fig.width + 5 &&
+              b.y >= fig.y - 5 &&
+              b.y + b.height <= fig.y + fig.height + 5;
+
+            if (isInside) {
+              idsToMove.add(child.id);
+            }
+          }
+        });
+      });
+
       const updatedElements = state.elements.map((el) => {
-        if (!state.selectedIds.includes(el.id)) return el;
+        if (!idsToMove.has(el.id)) return el;
         if (isConnectorElement(el)) {
           return {
             ...el,

@@ -7,7 +7,7 @@ import { ICON_MAP } from '@/lib/icons/icon-catalog';
 import { DiagramPreview } from '@/components/docs/DiagramPreview';
 import { useDiagramRegistry } from '@/lib/store/diagram-registry';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
-import { Server, MessageSquare, Check } from 'lucide-react';
+import { Server, MessageSquare, Check, Frame } from 'lucide-react';
 import { cn, generateId } from '@/lib/utils';
 import {
   getDirectionalOrthogonalPathD,
@@ -225,9 +225,15 @@ export function WhiteboardElements({
   const isHandMode = activeTool === 'hand';
   const shapeCursorClass = isHandMode ? 'cursor-grab' : endpointDragState ? 'cursor-grabbing' : 'cursor-move';
 
+  const sortedElements = [...elements].sort((a, b) => {
+    if (a.type === 'frame' && b.type !== 'frame') return -1;
+    if (a.type !== 'frame' && b.type === 'frame') return 1;
+    return 0;
+  });
+
   return (
     <>
-      {elements.map((el) => {
+      {sortedElements.map((el) => {
         const isSelected = selectedIds.includes(el.id);
         const dashArray = getStrokeDasharray(el);
 
@@ -485,14 +491,27 @@ export function WhiteboardElements({
         if (el.type === 'frame') {
           return (
             <g key={el.id} onPointerDown={(e) => onElementPointerDown(e, el)} onClick={(e) => onElementClick(e, el)} onDoubleClick={(e) => onElementDoubleClick(e, el)} onContextMenu={(e) => onElementContextMenu?.(e, el)}>
-              <rect x={el.x} y={el.y} width={el.width} height={el.height} rx={4}
-                fill={el.frameBg ?? 'var(--background)'} fillOpacity={0.5} stroke={el.frameColor ?? el.strokeColor}
-                strokeWidth={el.strokeWidth} strokeDasharray={dashArray} className="cursor-move" />
-              {editingElementId !== el.id && (
-                <foreignObject x={el.x + 8} y={el.y + 4} width={el.width - 16} height={24}>
-                  <span className="text-[11px] font-bold text-muted-foreground select-none pointer-events-none">{el.title}</span>
-                </foreignObject>
-              )}
+              {/* Figure Bounding Container */}
+              <rect
+                x={el.x}
+                y={el.y}
+                width={el.width}
+                height={el.height}
+                rx={6}
+                fill={el.frameBg ?? 'transparent'}
+                stroke={isSelected ? 'var(--canvas-accent)' : (el.frameColor ?? el.strokeColor ?? 'var(--border)')}
+                strokeWidth={isSelected ? 1.2 : 1}
+                strokeOpacity={isSelected ? 1 : 0.75}
+                strokeDasharray={dashArray}
+                className="cursor-move"
+              />
+              {/* Top-Left Floating Header Badge [ ⛶ Figure 1 ] */}
+              <foreignObject x={el.x} y={el.y - 22} width={Math.max(160, el.width)} height={22} className="overflow-visible pointer-events-none">
+                <div className="flex items-center gap-1 rounded-md border border-border/70 bg-background/95 px-1.5 py-0.5 shadow-sm backdrop-blur select-none w-fit">
+                  <Frame className="h-3 w-3 text-primary opacity-75" />
+                  <span className="text-[10px] font-semibold text-foreground leading-none">{el.title ?? 'Figure 1'}</span>
+                </div>
+              </foreignObject>
             </g>
           );
         }

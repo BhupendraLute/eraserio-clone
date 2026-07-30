@@ -8,7 +8,7 @@ import type {
   Point,
   PortDirection,
 } from '@/lib/whiteboard/whiteboard-types';
-import { WHITEBOARD_COLORS, isConnectorElement, getElementBounds, getShapePorts, isPolygonShapeType, computeTextElementSize } from '@/lib/whiteboard/whiteboard-types';
+import { WHITEBOARD_COLORS, isConnectorElement, getElementBounds, getShapePorts, isPolygonShapeType, isDrawableTool, computeTextElementSize } from '@/lib/whiteboard/whiteboard-types';
 import {
   findNearestShapePort,
   getOptimalPortPair,
@@ -325,7 +325,7 @@ export function useWhiteboardInteractions({
       return;
     }
 
-    if (['rectangle', 'circle', 'diamond', 'cylinder', 'arrow', 'line', 'sticky', 'pencil', 'text', 'frame', 'cloud', 'comment'].includes(activeTool)) {
+    if (isDrawableTool(activeTool)) {
       try {
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       } catch {}
@@ -735,6 +735,27 @@ export function useWhiteboardInteractions({
         fillColor: fillHex,
         strokeWidth: activeStrokeWidth,
       });
+    } else if (activeTool === 'frame') {
+      const figureCount = elements.filter((e) => e.type === 'frame').length + 1;
+      const rawW = Math.abs(current.x - start.x);
+      const rawH = Math.abs(current.y - start.y);
+      const isSingleClick = rawW < 15 && rawH < 15;
+      const fWidth = isSingleClick ? 360 : Math.max(120, rawW);
+      const fHeight = isSingleClick ? 280 : Math.max(80, rawH);
+      const fX = isSingleClick ? start.x - 180 : minX;
+      const fY = isSingleClick ? start.y - 140 : minY;
+
+      addElement({
+        id,
+        type: 'frame',
+        x: fX,
+        y: fY,
+        width: fWidth,
+        height: fHeight,
+        title: `Figure ${figureCount}`,
+        strokeColor: strokeHex || '#3b82f6',
+        strokeWidth: activeStrokeWidth || 1,
+      });
     }
 
     if (activeTool === 'pencil') {
@@ -774,11 +795,7 @@ export function useWhiteboardInteractions({
 
   const handleElementDoubleClick = (e: React.MouseEvent, el: WhiteboardElement) => {
     e.stopPropagation();
-    if (['text', 'frame', 'comment'].includes(el.type)) {
-      setEditingElementId(el.id);
-    } else if (['rectangle', 'circle', 'diamond', 'cylinder', 'arrow', 'line'].includes(el.type)) {
-      setEditingElementId(el.id);
-    }
+    setEditingElementId(el.id);
   };
 
   const handleElementPointerDown = (e: React.PointerEvent, el: WhiteboardElement) => {

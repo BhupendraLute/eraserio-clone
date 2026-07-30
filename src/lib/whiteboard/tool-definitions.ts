@@ -28,6 +28,6 @@ export const SHARED_TOOLS: ToolDefinition[] = [
   { tool: 'line',      label: 'Line',              shortcut: 'L', icon: Minus },
   { tool: 'pencil',    label: 'Pencil',            shortcut: 'P', icon: Pencil },
   { tool: 'text',      label: 'Text',              shortcut: 'T', icon: Type },
-  { tool: 'frame',     label: 'Frame',             shortcut: 'F', icon: Frame },
+  { tool: 'frame',     label: 'Figure',            shortcut: 'F', icon: Frame },
   { tool: 'comment',   label: 'Comment',           shortcut: 'C', icon: MessageSquare },
 ];

@@ -19,6 +19,7 @@ import { IconToolbar } from './toolbars/IconToolbar';
 import { ShapeToolbar } from './toolbars/ShapeToolbar';
 import { PencilToolbar } from './toolbars/PencilToolbar';
 import { TextFormattingToolbar } from './toolbars/TextFormattingToolbar';
+import { FigureToolbar } from './toolbars/FigureToolbar';
 import { ZoomPanMenu } from './ZoomPanMenu';
 import { useTheme } from 'next-themes';
 import type { TextElement } from '@/lib/whiteboard/whiteboard-types';
@@ -190,6 +191,7 @@ export function WhiteboardCanvas() {
           <ShapeToolbar />
           <PencilToolbar />
           <TextFormattingToolbar />
+          <FigureToolbar fitToContent={fitToContent} />
         </>
       )}
 
