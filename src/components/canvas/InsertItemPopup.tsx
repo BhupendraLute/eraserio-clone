@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useWorkspaceStore } from '@/lib/store/workspace-store';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
-import { useClickOutside } from '@/lib/hooks/useClickOutside';
+import { useOnClickOutside } from '@/lib/hooks/useOnClickOutside';
 import { cn } from '@/lib/utils';
 import {
   Sparkles,
@@ -144,7 +144,12 @@ export function InsertItemPopup({
   const addElement = useWhiteboardStore((s) => s.addElement);
   const setSelectedIds = useWhiteboardStore((s) => s.setSelectedIds);
 
-  const popupRef = useClickOutside<HTMLDivElement>(() => onOpenChange(false), open);
+  const popupRef = useRef<HTMLDivElement>(null);
+  useOnClickOutside(
+    popupRef,
+    useCallback(() => onOpenChange(false), [onOpenChange]),
+    open
+  );
   const { data: filteredIcons = [], isLoading } = useIconSearch(iconSearch, 100);
 
   if (!open) return null;

@@ -138,7 +138,7 @@ export const useDiagramStore = create<DiagramState>((set) => ({
 
    resetNodePosition: (id) =>
       set((state) => {
-         const { [id]: _removed, ...rest } = state.nodeOverrides;
+         const { [id]: _, ...rest } = state.nodeOverrides;
          const rawNode = state.rawNodes.find((n) => n.id === id);
          return {
             nodeOverrides: rest,

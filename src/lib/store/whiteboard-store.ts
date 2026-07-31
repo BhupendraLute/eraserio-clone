@@ -109,7 +109,7 @@ interface WhiteboardStore {
   deleteElements: (ids: string[]) => void;
   setSelectedIds: (ids: string[]) => void;
   clearSelection: () => void;
-  moveSelectedElements: (dx: number, dy: number) => void;
+  moveSelectedElements: (dx: number, dy: number, overrideIdsToMove?: Set<string>) => void;
   resizeElement: (id: string, handle: ResizeHandle, dx: number, dy: number) => void;
 
   bringToFront: () => void;
@@ -153,6 +153,60 @@ function pushHistory(state: { history: HistoryState[]; elements: WhiteboardEleme
   const newHistory = [...state.history, { elements: state.elements }];
   if (newHistory.length > 100) newHistory.shift();
   return newHistory;
+}
+
+export function duplicateFrameContents(
+  sourceFrame: WhiteboardElement,
+  dx: number,
+  dy: number,
+  allElements: WhiteboardElement[]
+): WhiteboardElement[] {
+  if (sourceFrame.type !== 'frame') return [];
+
+  const children = allElements.filter((child) => {
+    if (child.id === sourceFrame.id || child.type === 'comment') return false;
+    const b = getElementBounds(child);
+    return (
+      b.x >= sourceFrame.x - 5 &&
+      b.x + b.width <= sourceFrame.x + sourceFrame.width + 5 &&
+      b.y >= sourceFrame.y - 5 &&
+      b.y + b.height <= sourceFrame.y + sourceFrame.height + 5
+    );
+  });
+
+  if (children.length === 0) return [];
+
+  const idMap = new Map<string, string>();
+  children.forEach((child) => {
+    idMap.set(child.id, generateId());
+  });
+
+  return children.map((child) => {
+    const newId = idMap.get(child.id)!;
+    if (isConnectorElement(child)) {
+      const fromId = child.fromElementId && idMap.has(child.fromElementId) ? idMap.get(child.fromElementId) : child.fromElementId;
+      const toId = child.toElementId && idMap.has(child.toElementId) ? idMap.get(child.toElementId) : child.toElementId;
+      return {
+        ...child,
+        id: newId,
+        x: child.x + dx,
+        y: child.y + dy,
+        startX: child.startX + dx,
+        startY: child.startY + dy,
+        endX: child.endX + dx,
+        endY: child.endY + dy,
+        waypoint: child.waypoint ? { x: child.waypoint.x + dx, y: child.waypoint.y + dy } : undefined,
+        fromElementId: fromId,
+        toElementId: toId,
+      } as WhiteboardElement;
+    }
+    return {
+      ...child,
+      id: newId,
+      x: child.x + dx,
+      y: child.y + dy,
+    } as WhiteboardElement;
+  });
 }
 
 export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
@@ -277,30 +331,35 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
   setSelectedIds: (selectedIds) => set({ selectedIds }),
   clearSelection: () => set({ selectedIds: [] }),
 
-  moveSelectedElements: (dx, dy) =>
+  moveSelectedElements: (dx, dy, overrideIdsToMove) =>
     set((state) => {
-      const selectedFigures = state.elements.filter(
-        (el) => state.selectedIds.includes(el.id) && el.type === 'frame'
-      );
+      let idsToMove: Set<string>;
+      if (overrideIdsToMove) {
+        idsToMove = overrideIdsToMove;
+      } else {
+        const selectedFigures = state.elements.filter(
+          (el) => state.selectedIds.includes(el.id) && el.type === 'frame'
+        );
 
-      const idsToMove = new Set<string>(state.selectedIds);
+        idsToMove = new Set<string>(state.selectedIds);
 
-      selectedFigures.forEach((fig) => {
-        state.elements.forEach((child) => {
-          if (child.id !== fig.id) {
-            const b = getElementBounds(child);
-            const isInside =
-              b.x >= fig.x - 5 &&
-              b.x + b.width <= fig.x + fig.width + 5 &&
-              b.y >= fig.y - 5 &&
-              b.y + b.height <= fig.y + fig.height + 5;
+        selectedFigures.forEach((fig) => {
+          state.elements.forEach((child) => {
+            if (child.id !== fig.id) {
+              const b = getElementBounds(child);
+              const isInside =
+                b.x >= fig.x - 5 &&
+                b.x + b.width <= fig.x + fig.width + 5 &&
+                b.y >= fig.y - 5 &&
+                b.y + b.height <= fig.y + fig.height + 5;
 
-            if (isInside) {
-              idsToMove.add(child.id);
+              if (isInside) {
+                idsToMove.add(child.id);
+              }
             }
-          }
+          });
         });
-      });
+      }
 
       const updatedElements = state.elements.map((el) => {
         if (!idsToMove.has(el.id) || el.type === 'comment') return el;
@@ -498,7 +557,27 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
 
   duplicateSelected: () =>
     set((state) => {
-      const selected = state.elements.filter((el) => state.selectedIds.includes(el.id));
+      const selectedFigures = state.elements.filter(
+        (el) => state.selectedIds.includes(el.id) && el.type === 'frame'
+      );
+      const selectedSet = new Set<string>(state.selectedIds);
+      selectedFigures.forEach((fig) => {
+        state.elements.forEach((child) => {
+          if (child.id !== fig.id && child.type !== 'comment') {
+            const b = getElementBounds(child);
+            const isInside =
+              b.x >= fig.x - 5 &&
+              b.x + b.width <= fig.x + fig.width + 5 &&
+              b.y >= fig.y - 5 &&
+              b.y + b.height <= fig.y + fig.height + 5;
+            if (isInside) {
+              selectedSet.add(child.id);
+            }
+          }
+        });
+      });
+
+      const selected = state.elements.filter((el) => selectedSet.has(el.id));
       if (selected.length === 0) return state;
       const history = pushHistory(state);
       const offset = 24;
@@ -737,8 +816,12 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
         strokeColor: sourceEl.strokeColor, strokeWidth: sourceEl.strokeWidth || 2,
       };
 
+      const duplicatedChildren = sourceEl.type === 'frame'
+        ? duplicateFrameContents(sourceEl, newX - sourceEl.x, newY - sourceEl.y, state.elements)
+        : [];
+
       const history = pushHistory(state);
-      const elements = [...state.elements, newShape, newArrow];
+      const elements = [...state.elements, newShape, ...duplicatedChildren, newArrow];
       saveElements(elements);
       return { history, future: [], elements, selectedIds: [newShapeId], canUndo: true, canRedo: false };
     }),

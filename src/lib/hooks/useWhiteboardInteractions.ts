@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
+import { useWhiteboardStore, duplicateFrameContents } from '@/lib/store/whiteboard-store';
 import type {
   WhiteboardElement,
   ResizeHandle,
@@ -89,7 +89,7 @@ export function useWhiteboardInteractions({
   const [dragState, setDragState] = useState<{
     isDragging: boolean;
     lastPos: Point;
-    startPositions?: Map<string, Point>;
+    attachedIds?: Set<string>;
   }>({ isDragging: false, lastPos: { x: 0, y: 0 } });
 
   const [resizeState, setResizeState] = useState<{
@@ -149,6 +149,30 @@ export function useWhiteboardInteractions({
       window.removeEventListener('keyup', handleKeyUpWindow);
     };
   }, [isSpacePressed]);
+
+  const selectedElements = elements.filter((el) => selectedIds.includes(el.id));
+  const hasSelection = selectedElements.length > 0;
+  const singleSelectedShape = selectedElements.length === 1 && !isConnectorElement(selectedElements[0]) && selectedElements[0].type !== 'comment'
+    ? selectedElements[0]
+    : null;
+
+  const handleFitContent = useCallback(() => {
+    if (elements.length === 0) { reset(); return; }
+    const nodes = elements.map((el) => {
+      const b = getElementBounds(el);
+      return { id: el.id, label: el.id, x: b.x, y: b.y, width: b.width, height: b.height, lines: [], attrs: {} };
+    });
+    fitToContent(nodes);
+  }, [elements, reset, fitToContent]);
+
+  const handleFitSelection = useCallback(() => {
+    if (selectedElements.length === 0) { handleFitContent(); return; }
+    const nodes = selectedElements.map((el) => {
+      const b = getElementBounds(el);
+      return { id: el.id, label: el.id, x: b.x, y: b.y, width: b.width, height: b.height, lines: [], attrs: {} };
+    });
+    fitToContent(nodes);
+  }, [selectedElements, handleFitContent, fitToContent]);
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -347,13 +371,6 @@ export function useWhiteboardInteractions({
     }
   };
 
-  const selectedElements = elements.filter((el) => selectedIds.includes(el.id));
-  const hasSelection = selectedElements.length > 0;
-  const singleSelectedShape =
-    selectedElements.length === 1 && !isConnectorElement(selectedElements[0]) && selectedElements[0].type !== 'pencil' && selectedElements[0].type !== 'comment'
-      ? selectedElements[0]
-      : null;
-
   const handlePointerMove = (e: React.PointerEvent) => {
     if (isPanningRef.current && panStartRef.current) {
       const dx = e.clientX - panStartRef.current.pointerX;
@@ -413,7 +430,7 @@ export function useWhiteboardInteractions({
     if (dragState.isDragging) {
       const dx = coords.x - dragState.lastPos.x;
       const dy = coords.y - dragState.lastPos.y;
-      moveSelectedElements(dx, dy);
+      moveSelectedElements(dx, dy, dragState.attachedIds);
       setDragState({ ...dragState, lastPos: coords });
       setHoveredPort(null);
       if (activeSnap) setActiveSnap(null);
@@ -584,6 +601,15 @@ export function useWhiteboardInteractions({
             strokeWidth: sourceEl.strokeWidth || 2,
           };
           addElement(newShape);
+          if (sourceEl.type === 'frame') {
+            const duplicatedChildren = duplicateFrameContents(
+              sourceEl,
+              newShape.x - sourceEl.x,
+              newShape.y - sourceEl.y,
+              elements
+            );
+            duplicatedChildren.forEach((child: WhiteboardElement) => addElement(child));
+          }
           addElement(newArrow);
           setSelectedIds([newShapeId]);
         }
@@ -834,40 +860,46 @@ export function useWhiteboardInteractions({
     e.stopPropagation();
     if (el.type === 'comment') return;
 
+    const effectiveSelectedIds = selectedIds.includes(el.id)
+      ? selectedIds
+      : e.shiftKey
+      ? [...selectedIds, el.id]
+      : [el.id];
+
     if (!selectedIds.includes(el.id)) {
-      if (e.shiftKey) {
-        setSelectedIds([...selectedIds, el.id]);
-      } else {
-        setSelectedIds([el.id]);
-      }
+      setSelectedIds(effectiveSelectedIds);
     }
 
+    const selectedFigures = elements.filter(
+      (item) => effectiveSelectedIds.includes(item.id) && item.type === 'frame'
+    );
+
+    const initialAttachedIds = new Set<string>(effectiveSelectedIds);
+    selectedFigures.forEach((fig) => {
+      elements.forEach((child) => {
+        if (child.id !== fig.id) {
+          const b = getElementBounds(child);
+          const isInside =
+            b.x >= fig.x - 5 &&
+            b.x + b.width <= fig.x + fig.width + 5 &&
+            b.y >= fig.y - 5 &&
+            b.y + b.height <= fig.y + fig.height + 5;
+
+          if (isInside) {
+            initialAttachedIds.add(child.id);
+          }
+        }
+      });
+    });
+
     const coords = getCanvasCoords(e);
-    setDragState({ isDragging: true, lastPos: coords });
+    setDragState({ isDragging: true, lastPos: coords, attachedIds: initialAttachedIds });
   };
 
   const handleResizeHandlePointerDown = (e: React.PointerEvent, handle: ResizeHandle, targetId: string) => {
     e.stopPropagation();
     const coords = getCanvasCoords(e);
     setResizeState({ isResizing: true, handle, targetId, lastPos: coords });
-  };
-
-  const handleFitContent = () => {
-    if (elements.length === 0) { reset(); return; }
-    const nodes = elements.map((el) => {
-      const b = getElementBounds(el);
-      return { id: el.id, label: el.id, x: b.x, y: b.y, width: b.width, height: b.height, lines: [], attrs: {} };
-    });
-    fitToContent(nodes);
-  };
-
-  const handleFitSelection = () => {
-    if (selectedElements.length === 0) { handleFitContent(); return; }
-    const nodes = selectedElements.map((el) => {
-      const b = getElementBounds(el);
-      return { id: el.id, label: el.id, x: b.x, y: b.y, width: b.width, height: b.height, lines: [], attrs: {} };
-    });
-    fitToContent(nodes);
   };
 
   return {

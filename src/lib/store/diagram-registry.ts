@@ -78,7 +78,7 @@ export const useDiagramRegistry = create<DiagramRegistryState>((set, get) => ({
 
   deleteDiagram: (id) =>
     set((state) => {
-      const { [id]: _removed, ...rest } = state.diagrams;
+      const { [id]: _, ...rest } = state.diagrams;
       const order = state.order.filter((d) => d !== id);
       const activeDiagramId =
         state.activeDiagramId === id ? (order[0] ?? null) : state.activeDiagramId;

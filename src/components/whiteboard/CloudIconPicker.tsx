@@ -1,13 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { Search, X, Loader2 } from 'lucide-react';
 import { useIconSearch } from '@/lib/hooks/useIconSearch';
-import { useClickOutside } from '@/lib/hooks/useClickOutside';
+import { useOnClickOutside } from '@/lib/hooks/useOnClickOutside';
 import type { CloudIconKind } from '@/lib/whiteboard/whiteboard-types';
-import { generateId } from '@/lib/utils';
-import { WHITEBOARD_COLORS } from '@/lib/whiteboard/whiteboard-types';
 
 export function CloudIconPicker({
   open,
@@ -21,15 +19,17 @@ export function CloudIconPicker({
   positionClass?: string;
 }) {
   const [search, setSearch] = useState('');
-  const containerRef = useClickOutside<HTMLDivElement>(() => onOpenChange(false), open);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useOnClickOutside(
+    containerRef,
+    useCallback(() => onOpenChange(false), [onOpenChange]),
+    open
+  );
 
   const { data: filteredIcons = [], isLoading, isFetching } = useIconSearch(search, 120);
 
-  const addElement = useWhiteboardStore((s) => s.addElement);
-  const setSelectedIds = useWhiteboardStore((s) => s.setSelectedIds);
-  const setActiveTool = useWhiteboardStore((s) => s.setActiveTool);
   const setActiveCloudIcon = useWhiteboardStore((s) => s.setActiveCloudIcon);
-  const activeColor = useWhiteboardStore((s) => s.activeColor);
 
   if (!open) return null;
 
