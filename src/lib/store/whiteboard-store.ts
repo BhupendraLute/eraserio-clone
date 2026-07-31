@@ -291,7 +291,7 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
         if (el.id !== id) return el;
         const updated = { ...el, ...patch } as WhiteboardElement;
         if (isConnectorElement(updated) && updated.routingStyle !== 'curved') {
-          delete (updated as any).waypoint;
+          delete updated.waypoint;
         }
         return updated;
       });

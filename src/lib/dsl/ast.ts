@@ -22,6 +22,9 @@ export interface DiagramAST {
   edges: EdgeDecl[];
 }
 
+/** The per-rule children map produced by the Chevrotain CST visitor. */
+type CstChildren = Record<string, (IToken | CstNode)[]>;
+
 const BaseVisitor = parserInstance.getBaseCstVisitorConstructorWithDefaults();
 
 class AstBuilder extends BaseVisitor {
@@ -47,11 +50,11 @@ class AstBuilder extends BaseVisitor {
     }
   }
 
-  program(ctx: any): DiagramAST {
+  program(ctx: CstChildren): DiagramAST {
     this.reset();
-    this.visit(ctx.diagramTypeLine[0]);
-    ctx.nodeDecl?.forEach((n: CstNode) => this.visit(n));
-    ctx.edgeDecl?.forEach((e: CstNode) => this.visit(e));
+    this.visit(ctx.diagramTypeLine[0] as CstNode);
+    ctx.nodeDecl?.forEach((n) => this.visit(n as CstNode));
+    ctx.edgeDecl?.forEach((e) => this.visit(e as CstNode));
     return {
       type: this.diagramType,
       nodes: Array.from(this.nodes.values()),
@@ -59,13 +62,13 @@ class AstBuilder extends BaseVisitor {
     };
   }
 
-  diagramTypeLine(ctx: any) {
+  diagramTypeLine(ctx: CstChildren) {
     const text = (ctx.FreeText[0] as IToken).image.trim().toLowerCase();
     this.diagramType = text === 'flowchart' || text === 'sequence-diagram' ? text : 'unknown';
   }
 
-  nodeDecl(ctx: any) {
-    const tokens: IToken[] = ctx.FreeText;
+  nodeDecl(ctx: CstChildren) {
+    const tokens = ctx.FreeText as IToken[];
     const hasExplicitId = Boolean(ctx.Colon);
 
     const idTok = tokens[0];
@@ -75,7 +78,7 @@ class AstBuilder extends BaseVisitor {
     const label = labelTok.image.trim();
     if (!id) return;
 
-    const attrs: Record<string, string> = ctx.attrList ? this.visit(ctx.attrList[0]) : {};
+    const attrs: Record<string, string> = ctx.attrList ? this.visit(ctx.attrList[0] as CstNode) : {};
 
     const existing = this.nodes.get(id);
     if (existing) {
@@ -86,9 +89,9 @@ class AstBuilder extends BaseVisitor {
     }
   }
 
-  edgeDecl(ctx: any) {
-    const fromTok: IToken = ctx.FreeText[0];
-    const toTok: IToken = ctx.FreeText[1];
+  edgeDecl(ctx: CstChildren) {
+    const fromTok = ctx.FreeText[0] as IToken;
+    const toTok = ctx.FreeText[1] as IToken;
     const from = fromTok.image.trim();
     const to = toTok.image.trim();
     if (!from || !to) return;
@@ -101,16 +104,16 @@ class AstBuilder extends BaseVisitor {
     this.edges.push({ from, to, label, arrowType, line: fromTok.startLine ?? undefined });
   }
 
-  attrList(ctx: any): Record<string, string> {
+  attrList(ctx: CstChildren): Record<string, string> {
     const result: Record<string, string> = {};
-    ctx.attrPair.forEach((p: CstNode) => {
-      const { key, value } = this.visit(p);
+    ctx.attrPair.forEach((p) => {
+      const { key, value } = this.visit(p as CstNode);
       result[key] = value;
     });
     return result;
   }
 
-  attrPair(ctx: any) {
+  attrPair(ctx: CstChildren) {
     const key = (ctx.FreeText[0] as IToken).image.trim();
     const value = (ctx.FreeText[1] as IToken).image.trim();
     return { key, value };

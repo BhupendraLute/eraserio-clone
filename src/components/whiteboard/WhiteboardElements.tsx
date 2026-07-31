@@ -1,15 +1,15 @@
 'use client';
 
 import type { WhiteboardElement, ArrowElement, LineElement, CloudIconKind, LineStyle, ArrowheadStyle, Point, PortDirection } from '@/lib/whiteboard/whiteboard-types';
-import { WHITEBOARD_COLORS, LINE_DASH, isPolygonShapeType, computeTextElementSize, getElementBounds } from '@/lib/whiteboard/whiteboard-types';
+import { LINE_DASH, isPolygonShapeType, getElementBounds } from '@/lib/whiteboard/whiteboard-types';
 import { HighlightedCode } from '@/lib/whiteboard/code-highlighter';
 import { ICON_MAP } from '@/lib/icons/icon-catalog';
 import { DiagramPreview } from '@/components/docs/DiagramPreview';
 import { useDiagramRegistry } from '@/lib/store/diagram-registry';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
-import { Server, MessageSquare, Check, Frame } from 'lucide-react';
+import { Server, Frame } from 'lucide-react';
 import { CommentThread } from './CommentThread';
-import { cn, generateId } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import {
   getDirectionalOrthogonalPathD,
   getCurvedPathD,
@@ -66,7 +66,6 @@ export function WhiteboardElements({
   onElementContextMenu,
 
 }: WhiteboardElementsProps) {
-  const updateElement = useWhiteboardStore((s) => s.updateElement);
   const diagramMap = useDiagramRegistry((s) => s.diagrams);
 
   const renderCloudIconSvg = (kind: CloudIconKind | string, color: string, elementWidth: number = 64) => {
@@ -93,9 +92,9 @@ export function WhiteboardElements({
 
   const renderLabel = (el: WhiteboardElement, label: string | undefined, midX: number, midY: number) => {
     if (!label || editingElementId === el.id) return null;
-    const labelFontSize = (el as any).labelFontSize ?? (el as any).fontSize ?? 12;
-    const labelFontFamily = (el as any).labelFontFamily ?? (el as any).fontFamily ?? 'inherit';
-    const labelColor = (el as any).labelColor ?? el.strokeColor ?? 'currentColor';
+    const labelFontSize = el.labelFontSize ?? el.fontSize ?? 12;
+    const labelFontFamily = el.labelFontFamily ?? el.fontFamily ?? 'inherit';
+    const labelColor = el.labelColor ?? el.strokeColor ?? 'currentColor';
 
     const charWidth = labelFontSize * 0.62;
     const paddingX = 8;
@@ -240,7 +239,7 @@ export function WhiteboardElements({
         const dashArray = getStrokeDasharray(el);
 
         if (isPolygonShapeType(el.type)) {
-          const fillStyleMode = (el as any).fillStyle || 'plain';
+          const fillStyleMode = el.fillStyle || 'plain';
           const strokeColor = el.strokeColor;
           const fillColor = el.fillColor ?? 'transparent';
           const strokeWidth = el.strokeWidth;
@@ -347,10 +346,10 @@ export function WhiteboardElements({
               onContextMenu={(e) => onElementContextMenu?.(e, el)}>
               {shapeContent}
               {label && editingElementId !== el.id && (() => {
-                const align = (el as any).textAlign ?? 'center';
-                const fontSize = (el as any).labelFontSize ?? (el as any).fontSize ?? 14;
-                const fontFamily = (el as any).labelFontFamily ?? (el as any).fontFamily ?? 'inherit';
-                const labelColor = (el as any).labelColor ?? 'currentColor';
+                const align = el.textAlign ?? 'center';
+                const fontSize = el.labelFontSize ?? el.fontSize ?? 14;
+                const fontFamily = el.labelFontFamily ?? el.fontFamily ?? 'inherit';
+                const labelColor = el.labelColor ?? 'currentColor';
 
                 const padX = 12;
                 const padY = 8;
@@ -397,7 +396,7 @@ export function WhiteboardElements({
 
         if (el.type === 'pencil') {
           const isSelected = selectedIds.includes(el.id);
-          const strokePoints = (el as any).strokePoints as number[][] | undefined;
+          const strokePoints = el.strokePoints;
           if (strokePoints && strokePoints.length > 0) {
             const outlinePoints = strokePoints;
             if (outlinePoints.length > 0) {

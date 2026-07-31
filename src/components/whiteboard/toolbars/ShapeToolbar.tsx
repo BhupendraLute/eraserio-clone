@@ -6,17 +6,14 @@ import { useOnClickOutside } from '@/lib/hooks/useOnClickOutside';
 import { WHITEBOARD_COLORS, isPolygonShapeType, STROKE_COLOR_PALETTE, FILL_COLOR_PALETTE } from '@/lib/whiteboard/whiteboard-types';
 import { cn } from '@/lib/utils';
 import type {
-  WhiteboardColor,
+  WhiteboardElement,
   LineStyle,
   FillStyleMode,
   WhiteboardTool,
 } from '@/lib/whiteboard/whiteboard-types';
 import type { LineWidthSize } from '@/lib/store/whiteboard-store';
 import { LabelTypographyToolbar } from './LabelTypographyToolbar';
-import { ToolbarButton } from '@/components/whiteboard/ui/ToolbarButton';
 import { ColorSwatchGrid } from '@/components/whiteboard/ui/ColorSwatchGrid';
-import { LineWidthSelector } from '@/components/whiteboard/ui/LineWidthSelector';
-import { LineStyleSelector } from '@/components/whiteboard/ui/LineStyleSelector';
 
 const LINE_WIDTH_OPTIONS: { size: LineWidthSize; label: string; width: number }[] = [
   { size: 'S', label: 'S', width: 1 },
@@ -131,7 +128,7 @@ const SHAPE_GRID_OPTIONS: { type: string; label: string; icon: React.ReactNode }
   },
 ];
 
-type PopupId = 'shape' | 'fill' | 'stroke' | 'more' | null;
+type PopupId = 'shape' | 'fill' | 'stroke' | 'fontSize' | 'typography' | 'more' | null;
 
 export function ShapeToolbar() {
   const activeTool = useWhiteboardStore((s) => s.activeTool);
@@ -145,7 +142,6 @@ export function ShapeToolbar() {
   const duplicateSelected = useWhiteboardStore((s) => s.duplicateSelected);
 
   const activeColor = useWhiteboardStore((s) => s.activeColor);
-  const setActiveColor = useWhiteboardStore((s) => s.setActiveColor);
   const activeStrokeHex = useWhiteboardStore((s) => s.activeStrokeHex);
   const setActiveStrokeHex = useWhiteboardStore((s) => s.setActiveStrokeHex);
   const activeFillHex = useWhiteboardStore((s) => s.activeFillHex);
@@ -203,14 +199,14 @@ export function ShapeToolbar() {
     : activeFillHex;
 
   const currentLineStyle: LineStyle = firstSelectedShape
-    ? ((firstSelectedShape as any).lineStyle || 'solid')
+    ? (firstSelectedShape.lineStyle || 'solid')
     : activeLineStyle;
 
   const currentFillStyle: FillStyleMode = firstSelectedShape
-    ? ((firstSelectedShape as any).fillStyle || activeFillStyle)
+    ? (firstSelectedShape.fillStyle || activeFillStyle)
     : activeFillStyle;
 
-  const hasLabel = selectedShapes.some((el) => Boolean((el as any).label && (el as any).label.trim() !== ''));
+  const hasLabel = selectedShapes.some((el) => Boolean(el.label && el.label.trim() !== ''));
 
   const currentLineWidthSize = firstSelectedShape
     ? strokeWidthToSize(firstSelectedShape.strokeWidth)
@@ -220,7 +216,7 @@ export function ShapeToolbar() {
     setActiveTool(newType as WhiteboardTool);
     if (hasSelectedShape) {
       selectedShapes.forEach((el) => {
-        updateElement(el.id, { type: newType as any });
+        updateElement(el.id, { type: newType as WhiteboardElement['type'] });
       });
     }
     setOpenPopup(null);
@@ -230,7 +226,7 @@ export function ShapeToolbar() {
     setActiveFillStyle(mode);
     if (hasSelectedShape) {
       selectedShapes.forEach((el) => {
-        updateElement(el.id, { fillStyle: mode } as any);
+        updateElement(el.id, { fillStyle: mode });
       });
     }
   };
@@ -263,7 +259,7 @@ export function ShapeToolbar() {
     setActiveLineStyle(ls);
     if (hasSelectedShape) {
       selectedShapes.forEach((el) => {
-        updateElement(el.id, { lineStyle: ls } as any);
+        updateElement(el.id, { lineStyle: ls });
       });
     }
   };

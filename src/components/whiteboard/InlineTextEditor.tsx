@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useCallback } from 'react';
 import type { WhiteboardElement } from '@/lib/whiteboard/whiteboard-types';
-import { WHITEBOARD_COLORS, computeShapeAutoHeight, computeTextElementSize, getElementBounds } from '@/lib/whiteboard/whiteboard-types';
+import { computeShapeAutoHeight, computeTextElementSize, getElementBounds } from '@/lib/whiteboard/whiteboard-types';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { getArrowMidpoint } from '@/lib/whiteboard/orthogonal-routing';
 import { HighlightedCode } from '@/lib/whiteboard/code-highlighter';
@@ -12,8 +12,35 @@ interface InlineTextEditorProps {
   onFinish: () => void;
 }
 
+// Some fields only exist on specific element types, which the union type doesn't
+// model — widen once here instead of scattering `any` casts.
+interface ElementExtras {
+  text?: string;
+  mode?: 'text' | 'code';
+  language?: string;
+  textWrap?: boolean;
+  isUserResized?: boolean;
+  fontSize?: number;
+  fontFamily?: string;
+  fontWeight?: 'normal' | 'bold' | number | string;
+  fontStyle?: 'normal' | 'italic';
+  textAlign?: 'left' | 'center' | 'right';
+  label?: string;
+  labelFontSize?: number;
+  labelFontFamily?: string;
+  labelColor?: string;
+  title?: string;
+  routingStyle?: 'curved' | 'straight';
+  waypoint?: { x: number; y: number };
+  startX?: number;
+  startY?: number;
+  endX?: number;
+  endY?: number;
+}
+
 export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
-  if (element.type === 'comment') return null;
+  const isComment = element.type === 'comment';
+  const extras = element as WhiteboardElement & ElementExtras;
   const updateElement = useWhiteboardStore((s) => s.updateElement);
   const inputRef = useRef<HTMLTextAreaElement | HTMLInputElement>(null);
 
@@ -26,48 +53,48 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
   let textValue = '';
   let fontSize = 14;
   let fontFamily = 'inherit';
-  let fontWeight: 'normal' | 'bold' = 'normal';
+  let fontWeight: React.CSSProperties['fontWeight'] = 'normal';
   let fontStyle: 'normal' | 'italic' = 'normal';
   let textAlign: 'left' | 'center' | 'right' = 'center';
   let textColor = 'currentColor';
   let isMultiline = true;
   let placeholder = '';
 
-  const isCodeMode = isText && (element as any).mode === 'code';
+  const isCodeMode = isText && extras.mode === 'code';
 
   if (isText) {
-    textValue = (element as any).text ?? '';
-    fontSize = (element as any).fontSize ?? (isCodeMode ? 16 : 24);
+    textValue = extras.text ?? '';
+    fontSize = extras.fontSize ?? (isCodeMode ? 16 : 24);
     fontFamily = isCodeMode
       ? 'monospace, ui-monospace, SFMono-Regular, Consolas'
-      : (element as any).fontFamily ?? 'inherit';
-    fontWeight = (element as any).fontWeight ?? (isCodeMode ? 'normal' : 'bold');
-    fontStyle = (element as any).fontStyle ?? 'normal';
-    textAlign = (element as any).textAlign ?? 'left';
+      : extras.fontFamily ?? 'inherit';
+    fontWeight = extras.fontWeight ?? (isCodeMode ? 'normal' : 'bold');
+    fontStyle = extras.fontStyle ?? 'normal';
+    textAlign = extras.textAlign ?? 'left';
     textColor = isCodeMode ? '#f8fafc' : element.strokeColor;
     isMultiline = true;
     placeholder = isCodeMode ? 'print("Hello world");' : 'Type text...';
   } else if (isShape) {
-    textValue = (element as any).label ?? '';
-    fontSize = (element as any).labelFontSize ?? (element as any).fontSize ?? 14;
-    fontFamily = (element as any).labelFontFamily ?? (element as any).fontFamily ?? 'inherit';
-    textAlign = (element as any).textAlign ?? 'center';
-    textColor = (element as any).labelColor ?? 'currentColor';
-    fontWeight = '500' as any;
+    textValue = extras.label ?? '';
+    fontSize = extras.labelFontSize ?? extras.fontSize ?? 14;
+    fontFamily = extras.labelFontFamily ?? extras.fontFamily ?? 'inherit';
+    textAlign = extras.textAlign ?? 'center';
+    textColor = extras.labelColor ?? 'currentColor';
+    fontWeight = '500';
     placeholder = 'Type label...';
     isMultiline = true;
   } else if (isConnector) {
-    textValue = (element as any).label ?? '';
-    fontSize = (element as any).labelFontSize ?? 12;
-    fontFamily = (element as any).labelFontFamily ?? 'inherit';
-    textColor = (element as any).labelColor ?? element.strokeColor ?? 'var(--foreground)';
-    fontWeight = '500' as any;
+    textValue = extras.label ?? '';
+    fontSize = extras.labelFontSize ?? 12;
+    fontFamily = extras.labelFontFamily ?? 'inherit';
+    textColor = extras.labelColor ?? element.strokeColor ?? 'var(--foreground)';
+    fontWeight = '500';
     placeholder = 'Type label...';
     isMultiline = false;
   } else if (isFrame) {
-    textValue = (element as any).title ?? '';
+    textValue = extras.title ?? '';
     fontSize = 11;
-    fontWeight = 'bold' as any;
+    fontWeight = 'bold';
     textAlign = 'left';
     isMultiline = false;
     placeholder = 'Frame title...';
@@ -75,21 +102,21 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
 
   const handleChange = useCallback((value: string) => {
     if (isText) {
-      const mode = (element as any).mode || 'text';
+      const mode = extras.mode || 'text';
       const newSize = computeTextElementSize(value, fontSize, mode);
       updateElement(element.id, {
         text: value,
-        width: (element as any).isUserResized ? element.width : newSize.width,
-        height: (element as any).isUserResized ? element.height : newSize.height,
-      } as any);
+        width: extras.isUserResized ? element.width : newSize.width,
+        height: extras.isUserResized ? element.height : newSize.height,
+      });
     }
     else if (isShape) {
       const newHeight = computeShapeAutoHeight(value, element.width, element.height, fontSize);
-      updateElement(element.id, { label: value, height: newHeight } as any);
+      updateElement(element.id, { label: value, height: newHeight });
     }
-    else if (isConnector) updateElement(element.id, { label: value } as any);
-    else if (isFrame) updateElement(element.id, { title: value } as any);
-  }, [element.id, element.width, element.height, fontSize, updateElement, isText, isShape, isConnector, isFrame]);
+    else if (isConnector) updateElement(element.id, { label: value });
+    else if (isFrame) updateElement(element.id, { title: value });
+  }, [element.id, element.width, element.height, fontSize, updateElement, isText, isShape, isConnector, isFrame, extras]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!isMultiline && e.key === 'Enter') {
@@ -135,9 +162,9 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
     foW = bounds.width;
     foH = bounds.height;
   } else if (isConnector) {
-    const el = element as any;
+    const el = extras;
     const isCurved = el.routingStyle === 'curved';
-    const mid = getArrowMidpoint(el.startX, el.startY, el.endX, el.endY, isCurved ? el.waypoint : undefined);
+    const mid = getArrowMidpoint(el.startX ?? 0, el.startY ?? 0, el.endX ?? 0, el.endY ?? 0, isCurved ? el.waypoint : undefined);
     const labelFontSize = el.labelFontSize ?? 12;
     const charWidth = labelFontSize * 0.62;
     const textLen = (textValue || '').length;
@@ -172,7 +199,7 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
     color: textColor,
     fontSize: `${fontSize}px`,
     fontFamily,
-    fontWeight: fontWeight as any,
+    fontWeight,
     fontStyle,
     textAlign: isConnector ? 'center' : textAlign,
     lineHeight: '1.4',
@@ -183,7 +210,6 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
   };
 
   const commonProps = {
-    ref: inputRef as any,
     style: inputStyle,
     onChange: (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => handleChange(e.target.value),
     onKeyDown: handleKeyDown,
@@ -194,6 +220,8 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
     onDoubleClick: (e: React.MouseEvent) => e.stopPropagation(),
     placeholder,
   };
+
+  if (isComment) return null;
 
   if (isCodeMode) {
     return (
@@ -212,10 +240,10 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
         <div className="relative flex h-full w-full flex-col rounded-xl border border-[#2e3040] bg-[#181920] px-4 py-3 shadow-2xl backdrop-blur overflow-hidden">
           <HighlightedCode
             code={textValue}
-            language={(element as any).language}
+            language={extras.language}
             fontSize={fontSize}
             readOnly={false}
-            textWrap={(element as any).textWrap ?? true}
+            textWrap={extras.textWrap ?? true}
             onChange={(val) => handleChange(val)}
           />
         </div>
@@ -238,12 +266,14 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
       {isMultiline ? (
         <textarea
           {...commonProps}
+          ref={inputRef as unknown as React.Ref<HTMLTextAreaElement>}
           value={textValue}
           className="cursor-text"
         />
       ) : (
         <input
           {...commonProps}
+          ref={inputRef as unknown as React.Ref<HTMLInputElement>}
           type="text"
           value={textValue}
           className="cursor-text"

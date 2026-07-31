@@ -1,18 +1,17 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useSyncExternalStore } from 'react';
 import { useWhiteboardStore, GRID_SIZE } from '@/lib/store/whiteboard-store';
-import { WHITEBOARD_COLORS, isPolygonShapeType, WHITEBOARD_COLOR_KEYS, STROKE_COLOR_PALETTE, computeTextElementSize } from '@/lib/whiteboard/whiteboard-types';
-import { Trash2, Plus, Minus, Maximize, Grid3X3, Download, Copy, CopyPlus, Clipboard, Group, Ungroup, ZoomIn, ChevronDown, Hand, Focus, EyeOff, Eye } from 'lucide-react';
+import { STROKE_COLOR_PALETTE, computeTextElementSize } from '@/lib/whiteboard/whiteboard-types';
+import { Maximize, Grid3X3, Download, Copy, CopyPlus, Clipboard, Group, Ungroup, Focus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn, generateId } from '@/lib/utils';
+import { generateId } from '@/lib/utils';
 import { usePanZoom } from '@/lib/hooks/usePanZoom';
 import { useWhiteboardInteractions } from '@/lib/hooks/useWhiteboardInteractions';
 import { WhiteboardElements } from './WhiteboardElements';
 import { WhiteboardOverlays } from './WhiteboardOverlays';
 import { ExportMenu } from './ExportMenu';
 import { ContextMenu } from './ContextMenu';
-import { ToolSubOptions } from './toolbars/ToolSubOptions';
 import { InlineTextEditor } from './InlineTextEditor';
 import { ArrowToolbar } from './toolbars/ArrowToolbar';
 import { IconToolbar } from './toolbars/IconToolbar';
@@ -30,15 +29,16 @@ const SELECT_CURSOR_DARK = `url("data:image/svg+xml,%3Csvg width='24px' height='
 
 export function WhiteboardCanvas() {
   const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // true on the client, false on the server — avoids hydration mismatches
+  // without needing a state-update effect.
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   const selectCursor = mounted && resolvedTheme === 'dark' ? SELECT_CURSOR_DARK : SELECT_CURSOR_LIGHT;
 
-  const updateElement = useWhiteboardStore((s) => s.updateElement);
   const addElement = useWhiteboardStore((s) => s.addElement);
   const setSelectedIds = useWhiteboardStore((s) => s.setSelectedIds);
   const showGrid = useWhiteboardStore((s) => s.showGrid);
@@ -55,10 +55,6 @@ export function WhiteboardCanvas() {
     elements,
     selectedIds,
     activeTool,
-    activeFontFamily,
-    setActiveFontFamily,
-    activeFontSize,
-    setActiveFontSize,
     isSpacePressed,
     isPanning,
     isDraggingShape,
@@ -72,7 +68,6 @@ export function WhiteboardCanvas() {
     hoveredPort,
     setHoveredPort,
     selectedElements,
-    hasSelection,
     singleSelectedShape,
     editingElementId,
     setEditingElementId,
@@ -86,7 +81,6 @@ export function WhiteboardCanvas() {
     handleFitContent,
     handleFitSelection,
     spawnConnectedNode,
-    deleteElements,
 
   } = useWhiteboardInteractions({
     transform,
@@ -104,12 +98,9 @@ export function WhiteboardCanvas() {
 
   // Elements sorted by z-order (later in array = on top)
   const activeStrokeHex = useWhiteboardStore((s) => s.activeStrokeHex);
-  const setActiveStrokeHex = useWhiteboardStore((s) => s.setActiveStrokeHex);
-  const activeFillHex = useWhiteboardStore((s) => s.activeFillHex);
-  const setActiveFillHex = useWhiteboardStore((s) => s.setActiveFillHex);
 
   // Zoom level indicator animation
-  const [zoomAnimState, setZoomAnimState] = useState<'idle' | 'pop-in' | 'pop-out'>('idle');
+  const [, setZoomAnimState] = useState<'idle' | 'pop-in' | 'pop-out'>('idle');
   const prevScaleRef = useRef(transform.scale);
   const animTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -143,8 +134,6 @@ export function WhiteboardCanvas() {
       if (animTimerRef.current !== null) clearTimeout(animTimerRef.current);
     };
   }, []);
-
-  const isBottomToolbarSelection = selectedElements.length > 0 && selectedElements.every(el => el.type === 'arrow' || el.type === 'line' || el.type === 'pencil' || isPolygonShapeType(el.type));
 
   const handleCanvasDoubleClick = (e: React.MouseEvent<SVGSVGElement>) => {
     const targetTag = (e.target as HTMLElement).tagName.toLowerCase();

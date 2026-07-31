@@ -65,7 +65,7 @@ export function IconToolbar() {
     : activeCloudIcon;
 
   const currentColorKey: string = firstSelectedCloud
-    ? ((firstSelectedCloud as any).color || activeColor)
+    ? (firstSelectedCloud.color || activeColor)
     : activeColor;
 
   const currentStrokeHex: string = firstSelectedCloud

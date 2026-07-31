@@ -44,16 +44,23 @@ export function usePanZoom(initial: PanZoomState = { scale: 1, x: 0, y: 0 }) {
    const animTargetRef = useRef<PanZoomState | null>(null);
    const animRafRef = useRef<number | null>(null);
 
-   function cancelAnim() {
+   const cancelAnim = useCallback(() => {
       if (animRafRef.current !== null) {
          cancelAnimationFrame(animRafRef.current);
          animRafRef.current = null;
       }
       animTargetRef.current = null;
-   }
+   }, []);
+
+   const cancelSmoothScroll = useCallback(() => {
+      if (scrollRafRef.current !== null) {
+         cancelAnimationFrame(scrollRafRef.current);
+         scrollRafRef.current = null;
+      }
+   }, []);
 
    /** Smoothly animate from the current transform to a target transform. */
-   function animateTo(target: PanZoomState) {
+   const animateTo = useCallback((target: PanZoomState) => {
       cancelSmoothScroll();
       cancelAnim();
       animTargetRef.current = target;
@@ -85,14 +92,7 @@ export function usePanZoom(initial: PanZoomState = { scale: 1, x: 0, y: 0 }) {
       };
 
       animRafRef.current = requestAnimationFrame(step);
-   }
-
-   function cancelSmoothScroll() {
-      if (scrollRafRef.current !== null) {
-         cancelAnimationFrame(scrollRafRef.current);
-         scrollRafRef.current = null;
-      }
-   }
+   }, [cancelSmoothScroll, cancelAnim]);
 
    function ensureSmoothScroll() {
       if (scrollRafRef.current !== null) return; // already animating
@@ -155,7 +155,7 @@ export function usePanZoom(initial: PanZoomState = { scale: 1, x: 0, y: 0 }) {
             initialY: transformRef.current.y,
          };
       }
-   }, []);
+   }, [cancelSmoothScroll]);
 
    const handleTouchMove = useCallback((e: TouchEvent) => {
       if (e.touches.length === 2 && touchStateRef.current) {
@@ -219,7 +219,7 @@ export function usePanZoom(initial: PanZoomState = { scale: 1, x: 0, y: 0 }) {
          cancelSmoothScroll();
          cancelAnim();
       };
-   }, []);
+   }, [cancelSmoothScroll, cancelAnim]);
 
    // Zoom while keeping the point under the cursor visually fixed.
    // When Ctrl/Meta is held, scroll zooms in/out.
@@ -267,7 +267,7 @@ export function usePanZoom(initial: PanZoomState = { scale: 1, x: 0, y: 0 }) {
          y: base.y - e.deltaY * SCROLL_PAN_FACTOR,
       };
       ensureSmoothScroll();
-   }, []);
+   }, [cancelSmoothScroll]);
 
    const onPointerDown = useCallback((e: React.PointerEvent<SVGSVGElement>) => {
       // Left mouse button only — cancel any in-flight smooth scroll
@@ -276,7 +276,7 @@ export function usePanZoom(initial: PanZoomState = { scale: 1, x: 0, y: 0 }) {
       isPanning.current = true;
       lastPointer.current = { x: e.clientX, y: e.clientY };
       (e.target as Element).setPointerCapture(e.pointerId);
-   }, []);
+   }, [cancelSmoothScroll]);
 
    const onPointerMove = useCallback((e: React.PointerEvent<SVGSVGElement>) => {
       if (!isPanning.current || !lastPointer.current) return;
@@ -316,11 +316,11 @@ export function usePanZoom(initial: PanZoomState = { scale: 1, x: 0, y: 0 }) {
             y: cy - diagramY * nextScale,
          };
       });
-   }, []);
+   }, [cancelSmoothScroll, cancelAnim]);
 
    const reset = useCallback(() => {
       animateTo({ scale: 1, x: 0, y: 0 });
-   }, []);
+   }, [animateTo]);
 
    // Fits all given nodes' bounding box into the current viewport, with
    // padding, centered. For small diagrams, zooms in up to FIT_MAX_SCALE.
@@ -356,7 +356,7 @@ export function usePanZoom(initial: PanZoomState = { scale: 1, x: 0, y: 0 }) {
       const y = viewport.height / 2 - contentCenterY * scale;
 
       animateTo({ scale, x, y });
-   }, []);
+   }, [animateTo]);
 
    // Fits a known width x height content box into the viewport, centered.
    // Simpler variant of fitToContent for layouts (like sequence diagrams)
@@ -383,7 +383,7 @@ export function usePanZoom(initial: PanZoomState = { scale: 1, x: 0, y: 0 }) {
 
          animateTo({ scale, x, y });
       },
-      [],
+      [animateTo],
    );
 
    return {

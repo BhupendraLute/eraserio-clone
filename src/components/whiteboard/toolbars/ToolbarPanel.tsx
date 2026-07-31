@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { WHITEBOARD_COLORS } from '@/lib/whiteboard/whiteboard-types';
 import type { WhiteboardColor } from '@/lib/whiteboard/whiteboard-types';
 import {
@@ -10,7 +9,6 @@ import {
   Trash2,
   MoreHorizontal,
   ChevronDown,
-  MessageSquare,
   ArrowUp,
   ArrowDown,
   Check,

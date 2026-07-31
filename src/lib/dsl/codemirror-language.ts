@@ -49,7 +49,6 @@ export const dslStreamParser: StreamParser<DslState> = {
     // by position, so for highlighting we just treat it as an identifier
     // unless it looks like an attribute key right before a colon).
     if (stream.match(/[^[\]:>,\n]+/)) {
-      const text = stream.current();
       const rest = stream.string.slice(stream.pos);
       if (/^\s*:/.test(rest) && stream.string.trimStart().startsWith('[') === false) {
         return 'string'; // edge label following a colon context is rare to detect pre-hoc; default identifier

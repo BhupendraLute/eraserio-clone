@@ -6,8 +6,6 @@ import { WHITEBOARD_COLORS, isPolygonShapeType } from '@/lib/whiteboard/whiteboa
 import { cn } from '@/lib/utils';
 export function ToolSubOptions() {
   const activeTool = useWhiteboardStore((s) => s.activeTool);
-  const activeCornerRadius = useWhiteboardStore((s) => s.activeCornerRadius);
-  const setActiveCornerRadius = useWhiteboardStore((s) => s.setActiveCornerRadius);
   const activeStrokeHex = useWhiteboardStore((s) => s.activeStrokeHex);
   const setActiveStrokeHex = useWhiteboardStore((s) => s.setActiveStrokeHex);
   const activeFillHex = useWhiteboardStore((s) => s.activeFillHex);

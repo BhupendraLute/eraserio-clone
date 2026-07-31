@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useDiagramStore } from "@/lib/store/diagram-store";
 import { useDiagramRegistry } from "@/lib/store/diagram-registry";
 import { pushDiagnostics } from "@/lib/dsl/codemirror-lint";
@@ -18,7 +18,7 @@ export function usePipelineWorker() {
    const setErrors = useDiagramStore((s) => s.setErrors);
    const setPending = useDiagramStore((s) => s.setPending);
 
-   const [worker, setWorker] = useState<Worker | null>(null);
+   const workerRef = useRef<Worker | null>(null);
 
    const requestId = useRef(0);
    const latestSentId = useRef(0);
@@ -26,18 +26,16 @@ export function usePipelineWorker() {
       undefined,
    );
 
+   // Create the worker once on mount and wire up its message handler. The
+   // worker lives in a ref (never React state), so no re-render is triggered
+   // and no state is set from inside an effect.
    useEffect(() => {
       const w = new Worker(
          new URL("../../workers/pipeline.worker.ts", import.meta.url),
       );
-      setWorker(w);
-      return () => w.terminate();
-   }, []);
+      workerRef.current = w;
 
-   useEffect(() => {
-      if (!worker) return;
-
-      worker.onmessage = (event: MessageEvent<PipelineResponse>) => {
+      w.onmessage = (event: MessageEvent<PipelineResponse>) => {
          const res = event.data;
          if (res.id !== latestSentId.current) return;
 
@@ -63,14 +61,20 @@ export function usePipelineWorker() {
             }
          }
       };
-   }, [worker, applyResult, setErrors]);
 
+      return () => {
+         w.terminate();
+         workerRef.current = null;
+      };
+   }, [applyResult, setErrors]);
+
+   // Keep the registry's stored source in sync as the user types, so any doc
+   // embed referencing this diagram id always resolves to current content,
+   // then debounce the pipeline request that runs the parser + layout engine.
    useEffect(() => {
+      const worker = workerRef.current;
       if (!worker) return;
 
-      // Keep the registry's stored source in sync as the user types, so
-      // any doc embed referencing this diagram id always resolves to
-      // current content, not a stale snapshot from when it was opened.
       const currentDiagramId = useDiagramStore.getState().currentDiagramId;
       if (currentDiagramId) {
          useDiagramRegistry.getState().updateSource(currentDiagramId, source);
@@ -89,5 +93,5 @@ export function usePipelineWorker() {
       return () => {
          if (debounceTimer.current) clearTimeout(debounceTimer.current);
       };
-   }, [source, worker, setPending]);
+   }, [source, setPending]);
 }

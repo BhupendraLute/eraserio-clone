@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { useTheme } from 'next-themes';
-import { Search, Sun, Moon, Monitor, MousePointer, Square, Circle, Diamond, Database, MoveRight, Minus, Pencil, Type, StickyNote, Frame, MessageSquare, Eraser, Hash, Undo2, Redo2, Copy, CopyPlus, Clipboard, Group, Ungroup, Settings, Trash2, Grid3X3, Download, Save, HelpCircle } from 'lucide-react';
+import { Search, Sun, Moon, Monitor, MousePointer, Square, Circle, Diamond, Database, MoveRight, Minus, Pencil, Type, Frame, MessageSquare, Eraser, Hash, Undo2, Redo2, Copy, CopyPlus, Clipboard, Group, Ungroup, Settings, Trash2, Grid3X3 } from 'lucide-react';
 
 interface Command {
   id: string;
@@ -18,6 +18,7 @@ interface Command {
 export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [prevOpen, setPrevOpen] = useState(open);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const { setTheme } = useTheme();
@@ -35,10 +36,18 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const deleteElements = useWhiteboardStore((s) => s.deleteElements);
   const selectedIds = useWhiteboardStore((s) => s.selectedIds);
 
-  useEffect(() => {
+  // Reset query + selection whenever the palette opens. Adjusted during render —
+  // the React-recommended alternative to setting state inside an effect.
+  if (prevOpen !== open) {
+    setPrevOpen(open);
     if (open) {
       setQuery('');
       setSelectedIndex(0);
+    }
+  }
+
+  useEffect(() => {
+    if (open) {
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [open]);

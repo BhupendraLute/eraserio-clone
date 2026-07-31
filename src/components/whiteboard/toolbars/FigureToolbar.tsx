@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { Button } from '@/components/ui/button';
-import { cn, generateId } from '@/lib/utils';
+import { generateId } from '@/lib/utils';
 import {
   Link,
   Focus,

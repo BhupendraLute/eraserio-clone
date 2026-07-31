@@ -7,12 +7,12 @@ import type {
   Point,
   WhiteboardTool,
   PortDirection,
+  ArrowElement,
 } from '@/lib/whiteboard/whiteboard-types';
 import {
   getDirectionalOrthogonalPathD,
   getCurvedPathD,
   inferCardinalDirection,
-  getOppositePort,
   getArrowMidpoint,
   determineAutoRoutingStyle,
   ShapePortSnap,
@@ -21,9 +21,6 @@ import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { getMarkerId, getStartMarkerId } from '@/components/whiteboard/WhiteboardElements';
 import { ICON_MAP } from '@/lib/icons/icon-catalog';
 import { Server, Frame } from 'lucide-react';
-
-/* CSS variable helpers for theme-aware canvas chrome */
-const BG = () => 'var(--background)' as const;
 
 interface WhiteboardOverlaysProps {
   elements: WhiteboardElement[];
@@ -61,7 +58,6 @@ export function WhiteboardOverlays({
   hoveredPort,
   isDraggingShape = false,
   onResizeHandlePointerDown,
-  onSpawnConnectedNode,
   onQuickConnectDragStart,
   onPortHover,
 }: WhiteboardOverlaysProps) {
@@ -226,9 +222,9 @@ export function WhiteboardOverlays({
       {/* Live Quick-Connect Drag Preview */}
       {quickConnectDragState && (() => {
         const targetPt = activeSnap ? { x: activeSnap.x, y: activeSnap.y } : quickConnectDragState.currentPos;
-        const arrow = elements.find((el) => el.id === quickConnectDragState.sourceId);
-        const activeEndAh = arrow ? (arrow as any).arrowheadStyle : 'arrow';
-        const activeStartAh = arrow ? (arrow as any).startArrowheadStyle : 'none';
+        const arrow = elements.find((el) => el.id === quickConnectDragState.sourceId) as ArrowElement | undefined;
+        const activeEndAh = arrow ? arrow.arrowheadStyle : 'arrow';
+        const activeStartAh = arrow ? arrow.startArrowheadStyle : 'none';
         const activeStrokeHex = arrow?.strokeColor || 'var(--canvas-accent)';
         const toPort = activeSnap ? activeSnap.port : 'top';
         const pathD = determineAutoRoutingStyle(
@@ -311,10 +307,10 @@ export function WhiteboardOverlays({
 
         const liveMid = getArrowMidpoint(startPt.x, startPt.y, endPt.x, endPt.y, waypointPt);
 
-        const label = (arrow as any).label;
-        const labelFontSize = (arrow as any).labelFontSize ?? (arrow as any).fontSize ?? 12;
-        const labelFontFamily = (arrow as any).labelFontFamily ?? (arrow as any).fontFamily ?? 'inherit';
-        const labelColor = (arrow as any).labelColor ?? (arrow as any).strokeColor ?? 'currentColor';
+        const label = arrow.label;
+        const labelFontSize = arrow.labelFontSize ?? arrow.fontSize ?? 12;
+        const labelFontFamily = arrow.labelFontFamily ?? arrow.fontFamily ?? 'inherit';
+        const labelColor = arrow.labelColor ?? arrow.strokeColor ?? 'currentColor';
 
         const charWidth = labelFontSize * 0.62;
         const paddingX = 8;
@@ -332,8 +328,8 @@ export function WhiteboardOverlays({
               stroke={arrow.strokeColor || "var(--canvas-accent)"}
               strokeWidth={2}
               strokeDasharray="4 4"
-              markerEnd={arrow.type === 'arrow' ? (getMarkerId((arrow as any).arrowheadStyle, arrow.strokeColor) || undefined) : undefined}
-              markerStart={arrow.type === 'arrow' ? (getStartMarkerId((arrow as any).startArrowheadStyle, arrow.strokeColor) || undefined) : undefined}
+              markerEnd={arrow.type === 'arrow' ? (getMarkerId(arrow.arrowheadStyle, arrow.strokeColor) || undefined) : undefined}
+              markerStart={arrow.type === 'arrow' ? (getStartMarkerId(arrow.startArrowheadStyle, arrow.strokeColor) || undefined) : undefined}
             />
             {label && (
               <g className="pointer-events-none select-none">

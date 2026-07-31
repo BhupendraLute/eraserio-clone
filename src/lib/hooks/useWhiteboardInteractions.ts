@@ -8,7 +8,7 @@ import type {
   Point,
   PortDirection,
 } from '@/lib/whiteboard/whiteboard-types';
-import { WHITEBOARD_COLORS, isConnectorElement, getElementBounds, getShapePorts, isPolygonShapeType, isDrawableTool, computeTextElementSize } from '@/lib/whiteboard/whiteboard-types';
+import { isConnectorElement, getElementBounds, isPolygonShapeType, isDrawableTool, computeTextElementSize } from '@/lib/whiteboard/whiteboard-types';
 import {
   findNearestShapePort,
   getOptimalPortPair,
@@ -40,7 +40,6 @@ export function useWhiteboardInteractions({
   svgRef,
   reset,
   fitToContent,
-  panZoomHandlers,
 }: UseWhiteboardInteractionsProps) {
   const elements = useWhiteboardStore((s) => s.elements);
   const selectedIds = useWhiteboardStore((s) => s.selectedIds);
@@ -51,7 +50,6 @@ export function useWhiteboardInteractions({
   const activeStrokeHex = useWhiteboardStore((s) => s.activeStrokeHex);
   const activeFillHex = useWhiteboardStore((s) => s.activeFillHex);
   const activeRoutingStyle = useWhiteboardStore((s) => s.activeRoutingStyle);
-  const activeCornerRadius = useWhiteboardStore((s) => s.activeCornerRadius);
   const activeArrowheadStyle = useWhiteboardStore((s) => s.activeArrowheadStyle);
   const activeStartArrowheadStyle = useWhiteboardStore((s) => s.activeStartArrowheadStyle);
   const activeIsAnimated = useWhiteboardStore((s) => s.activeIsAnimated);
@@ -308,7 +306,7 @@ export function useWhiteboardInteractions({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedIds, elements, setActiveTool, deleteElements, clearSelection, duplicateSelected, copyToClipboard, pasteFromClipboard, groupSelected, ungroupSelected, undo, redo, moveSelectedElements, spawnConnectedNode, setSelectedIds]);
+  }, [selectedIds, elements, activeTool, reset, handleFitContent, handleFitSelection, setActiveTool, deleteElements, clearSelection, duplicateSelected, copyToClipboard, pasteFromClipboard, groupSelected, ungroupSelected, undo, redo, moveSelectedElements, spawnConnectedNode, setSelectedIds]);
 
   const getCanvasCoords = useCallback(
     (e: React.PointerEvent | React.MouseEvent): Point => {
@@ -422,7 +420,7 @@ export function useWhiteboardInteractions({
       const dx = coords.x - resizeState.lastPos.x;
       const dy = coords.y - resizeState.lastPos.y;
       resizeElement(resizeState.targetId, resizeState.handle, dx, dy);
-      updateElement(resizeState.targetId, { isUserResized: true } as any);
+      updateElement(resizeState.targetId, { isUserResized: true });
       setResizeState({ ...resizeState, lastPos: coords });
       return;
     }
@@ -641,7 +639,7 @@ export function useWhiteboardInteractions({
       const shapeH = activeTool === 'square' ? Math.max(width, height) : height;
       addElement({
         id,
-        type: activeTool as any,
+        type: activeTool,
         x: minX,
         y: minY,
         width: shapeW,

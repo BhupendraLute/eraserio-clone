@@ -137,12 +137,13 @@ SYSTEM_DESIGN_ICONIFY_LIST.forEach((item) => {
   });
 });
 
-function isValidIconComponent(val: any): boolean {
+function isValidIconComponent(val: unknown): boolean {
   if (!val) return false;
   if (typeof val === 'function') return true;
   if (typeof val === 'object' && val !== null) {
-    if (typeof val.render === 'function') return true;
-    if (val.$$typeof && typeof val.$$typeof === 'symbol') return true;
+    const iconLike = val as { render?: unknown; $$typeof?: unknown };
+    if (typeof iconLike.render === 'function') return true;
+    if (iconLike.$$typeof && typeof iconLike.$$typeof === 'symbol') return true;
   }
   return false;
 }
@@ -169,7 +170,7 @@ function isSystemDesignIcon(cleanName: string): boolean {
 }
 
 function registerSystemDesignModuleIcons(
-  moduleObj: Record<string, any>,
+  moduleObj: Record<string, unknown>,
   source: IconCatalogEntry['source'],
   prefixCut: number = 0
 ) {
@@ -235,7 +236,7 @@ export function searchIconsDynamic(query: string, maxResults: number = 120): Ico
   const q = query.trim().toLowerCase();
 
   // Continuous character substring matching
-  let matches = ICON_CATALOG.filter((item) => {
+  const matches = ICON_CATALOG.filter((item) => {
     const nameLower = item.name.toLowerCase();
     const kindLower = item.kind.toLowerCase();
 

@@ -1,0 +1,59 @@
+name: CI
+
+# Run on every push to any branch and every pull request.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+# Cancel in-progress runs when a newer commit lands on the same branch.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Typecheck · Lint · Tests · Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          # Node 22.10+ is required by the dependency graph: chevrotain 12 uses
+          # Object.groupBy (Node 21+) and jsdom 30's bundled undici needs
+          # worker_threads.markAsUncloneable (Node >= 22.10). Node 24 is the
+          # current LTS and matches local development.
+          node-version: 24
+          # Lockfile is tracked, so `npm ci` gives deterministic, reproducible
+          # installs (and is faster than `npm install`).
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Coverage (enforces 70/60/75/75 thresholds)
+        run: npm run test:coverage
+
+      # Upload even on failure so a threshold regression is easy to inspect.
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
