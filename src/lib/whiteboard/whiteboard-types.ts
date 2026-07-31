@@ -101,6 +101,18 @@ export interface BaseElement {
   strokeWidth: number;
   groupId?: string;
   label?: string;
+  // Optional label / typography / style fields shared by every element kind.
+  // Declared on the base so toolbars and renderers can read them generically
+  // without per-kind casts.
+  labelFontSize?: number;
+  labelFontFamily?: string;
+  labelColor?: string;
+  textColor?: string;
+  fontSize?: number;
+  fontFamily?: string;
+  textAlign?: 'left' | 'center' | 'right';
+  fillStyle?: FillStyleMode;
+  lineStyle?: LineStyle;
 }
 
 export interface BaseShapeElement extends BaseElement {
@@ -241,6 +253,7 @@ export interface TextElement extends BaseElement {
   mode?: 'text' | 'code';
   language?: string;
   textWrap?: boolean;
+  isUserResized?: boolean;
 }
 
 export function computeTextElementSize(
@@ -303,6 +316,7 @@ export interface BadgeElement extends BaseElement {
 export interface CloudIconElement extends BaseElement {
   type: 'cloud';
   iconKind: CloudIconKind;
+  color?: string;
 }
 
 export interface DiagramElement extends BaseElement {
@@ -436,7 +450,7 @@ export function getElementBounds(el: WhiteboardElement): { x: number; y: number;
     return { x: minX, y: minY, width: w, height: h };
   }
   if (el.type === 'text') {
-    if ((el as any).isUserResized) {
+    if (el.isUserResized) {
       return { x: el.x, y: el.y, width: Math.max(60, el.width), height: Math.max(30, el.height) };
     }
     const isCodeMode = el.mode === 'code';

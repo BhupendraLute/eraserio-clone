@@ -1,5 +1,7 @@
 import { Extension } from '@tiptap/core';
+import type { Editor, Range } from '@tiptap/core';
 import Suggestion from '@tiptap/suggestion';
+import type { SuggestionProps, SuggestionKeyDownProps } from '@tiptap/suggestion';
 import { ReactRenderer } from '@tiptap/react';
 import { SLASH_COMMANDS, SlashMenuList, SlashMenuListRef, CommandItem } from './SlashMenuList';
 
@@ -10,7 +12,7 @@ export const SlashCommandExtension = Extension.create({
     return {
       suggestion: {
         char: '/',
-        command: ({ editor, range, props }: { editor: any; range: any; props: CommandItem }) => {
+        command: ({ editor, range, props }: { editor: Editor; range: Range; props: CommandItem }) => {
           props.command({ editor, range });
         },
       },
@@ -34,7 +36,7 @@ export const SlashCommandExtension = Extension.create({
           let container: HTMLDivElement | null = null;
 
           return {
-            onStart: (props: any) => {
+            onStart: (props: SuggestionProps) => {
               component = new ReactRenderer(SlashMenuList, {
                 props,
                 editor: props.editor,
@@ -57,7 +59,7 @@ export const SlashCommandExtension = Extension.create({
               }
             },
 
-            onUpdate: (props: any) => {
+            onUpdate: (props: SuggestionProps) => {
               component?.updateProps(props);
 
               if (container && props.clientRect) {
@@ -69,7 +71,7 @@ export const SlashCommandExtension = Extension.create({
               }
             },
 
-            onKeyDown: (props: any) => {
+            onKeyDown: (props: SuggestionKeyDownProps) => {
               if (props.event.key === 'Escape') {
                 if (container) {
                   container.remove();

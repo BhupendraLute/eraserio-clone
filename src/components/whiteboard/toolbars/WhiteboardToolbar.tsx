@@ -224,7 +224,7 @@ export function WhiteboardToolbar() {
       <CloudIconPicker
         open={cloudPickerOpen}
         onOpenChange={setCloudPickerOpen}
-        onSelect={(kind: any) => {
+        onSelect={(kind: string) => {
           setActiveCloudIcon(kind);
           setActiveTool('cloud');
         }}

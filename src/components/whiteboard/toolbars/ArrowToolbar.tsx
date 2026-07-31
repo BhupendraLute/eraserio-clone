@@ -75,7 +75,7 @@ const ARROWHEAD_STYLE_OPTIONS: { style: ArrowheadStyle; label: string; icon: Rea
   },
 ];
 
-type PopupId = 'color' | 'routing' | 'width' | 'lineStyle' | 'startArrowhead' | 'endArrowhead' | 'labelFont' | 'labelSize' | 'labelColor' | 'more' | null;
+type PopupId = 'color' | 'routing' | 'width' | 'lineStyle' | 'startArrowhead' | 'endArrowhead' | 'labelFont' | 'labelSize' | 'labelColor' | 'fontSize' | 'typography' | 'more' | null;
 
 export function ArrowToolbar() {
   const activeTool = useWhiteboardStore((s) => s.activeTool);
@@ -210,7 +210,7 @@ export function ArrowToolbar() {
           routingStyle: rs,
           isUserRoutingStyle: true,
           waypoint: rs === 'curved' ? el.waypoint : undefined,
-        } as any);
+        });
       });
     }
     setOpenPopup(null);
@@ -262,14 +262,14 @@ export function ArrowToolbar() {
   };
 
   const hasLabel = hasSelectedArrow && Boolean(firstSelectedArrow?.label && firstSelectedArrow.label.trim().length > 0);
-  const currentLabelFontFamily = (firstSelectedArrow as any)?.labelFontFamily ?? 'Inter, sans-serif';
-  const currentLabelFontSize = (firstSelectedArrow as any)?.labelFontSize ?? 11;
-  const currentLabelColor = (firstSelectedArrow as any)?.labelColor ?? firstSelectedArrow?.strokeColor ?? activeStrokeHex;
+  const currentLabelFontFamily = firstSelectedArrow?.labelFontFamily ?? 'Inter, sans-serif';
+  const currentLabelFontSize = firstSelectedArrow?.labelFontSize ?? 11;
+  const currentLabelColor = firstSelectedArrow?.labelColor ?? firstSelectedArrow?.strokeColor ?? activeStrokeHex;
 
   const handleSelectLabelFont = (font: string) => {
     if (hasSelectedArrow) {
       selectedArrows.forEach((el) => {
-        updateElement(el.id, { labelFontFamily: font } as any);
+        updateElement(el.id, { labelFontFamily: font });
       });
     }
     setOpenPopup(null);
@@ -278,7 +278,7 @@ export function ArrowToolbar() {
   const handleSelectLabelSize = (size: number) => {
     if (hasSelectedArrow) {
       selectedArrows.forEach((el) => {
-        updateElement(el.id, { labelFontSize: size } as any);
+        updateElement(el.id, { labelFontSize: size });
       });
     }
     setOpenPopup(null);
@@ -287,7 +287,7 @@ export function ArrowToolbar() {
   const handleSelectLabelColor = (hex: string) => {
     if (hasSelectedArrow) {
       selectedArrows.forEach((el) => {
-        updateElement(el.id, { labelColor: hex } as any);
+        updateElement(el.id, { labelColor: hex });
       });
     }
   };

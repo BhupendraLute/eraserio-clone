@@ -407,7 +407,7 @@ export function InsertItemPopup({
                   const IconComp = i.icon;
                   if (
                     typeof IconComp !== 'function' &&
-                    (typeof IconComp !== 'object' || !IconComp || !(IconComp as any).render)
+                    (typeof IconComp !== 'object' || !IconComp || !(IconComp as { render?: unknown }).render)
                   ) {
                     return null;
                   }

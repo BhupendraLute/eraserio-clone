@@ -7,6 +7,7 @@ import { WHITEBOARD_COLORS, isPolygonShapeType, STROKE_COLOR_PALETTE, FILL_COLOR
 import { cn } from '@/lib/utils';
 import type {
   WhiteboardColor,
+  WhiteboardElement,
   LineStyle,
   FillStyleMode,
   WhiteboardTool,
@@ -131,7 +132,7 @@ const SHAPE_GRID_OPTIONS: { type: string; label: string; icon: React.ReactNode }
   },
 ];
 
-type PopupId = 'shape' | 'fill' | 'stroke' | 'more' | null;
+type PopupId = 'shape' | 'fill' | 'stroke' | 'fontSize' | 'typography' | 'more' | null;
 
 export function ShapeToolbar() {
   const activeTool = useWhiteboardStore((s) => s.activeTool);
@@ -203,14 +204,14 @@ export function ShapeToolbar() {
     : activeFillHex;
 
   const currentLineStyle: LineStyle = firstSelectedShape
-    ? ((firstSelectedShape as any).lineStyle || 'solid')
+    ? (firstSelectedShape.lineStyle || 'solid')
     : activeLineStyle;
 
   const currentFillStyle: FillStyleMode = firstSelectedShape
-    ? ((firstSelectedShape as any).fillStyle || activeFillStyle)
+    ? (firstSelectedShape.fillStyle || activeFillStyle)
     : activeFillStyle;
 
-  const hasLabel = selectedShapes.some((el) => Boolean((el as any).label && (el as any).label.trim() !== ''));
+  const hasLabel = selectedShapes.some((el) => Boolean(el.label && el.label.trim() !== ''));
 
   const currentLineWidthSize = firstSelectedShape
     ? strokeWidthToSize(firstSelectedShape.strokeWidth)
@@ -220,7 +221,7 @@ export function ShapeToolbar() {
     setActiveTool(newType as WhiteboardTool);
     if (hasSelectedShape) {
       selectedShapes.forEach((el) => {
-        updateElement(el.id, { type: newType as any });
+        updateElement(el.id, { type: newType as WhiteboardElement['type'] });
       });
     }
     setOpenPopup(null);
@@ -230,7 +231,7 @@ export function ShapeToolbar() {
     setActiveFillStyle(mode);
     if (hasSelectedShape) {
       selectedShapes.forEach((el) => {
-        updateElement(el.id, { fillStyle: mode } as any);
+        updateElement(el.id, { fillStyle: mode });
       });
     }
   };
@@ -263,7 +264,7 @@ export function ShapeToolbar() {
     setActiveLineStyle(ls);
     if (hasSelectedShape) {
       selectedShapes.forEach((el) => {
-        updateElement(el.id, { lineStyle: ls } as any);
+        updateElement(el.id, { lineStyle: ls });
       });
     }
   };

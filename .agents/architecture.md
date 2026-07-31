@@ -25,6 +25,7 @@
 | Sync pipeline | `src/lib/dsl/run-pipeline-sync.ts` | Main-thread previews for docs embeds |
 | Stores | `src/lib/store/` | Single source of truth, 5 stores |
 | UI | `src/components/` | Thin window over stores + engine |
+| Tests | `tests/` | Vitest suites mirroring `src/` (commands + conventions: dev-rules → Testing) |
 
 ## Stores
 

@@ -143,19 +143,25 @@ const router = useRouter(); router.push('/settings');
 ## 8. Verification Commands
 
 ```bash
-npm test            # Vitest unit tests (tests/ folder — dsl, layout, store, render)
+npm test            # Vitest unit tests (tests/ folder — dsl, layout, store, render, export)
+npm run test:coverage  # Vitest + coverage report (fails below 70/60/75/75% thresholds)
 npx tsc --noEmit    # Type-check the entire project (catches DOM leaks in engine files too)
 npm run lint        # ESLint
 npm run build       # Full production build validation (slowest, most thorough)
 ```
 
+> 🤖 **CI** — these checks also run automatically on **every push and PR** via
+> [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) (typecheck, lint, unit tests, and
+> coverage-threshold-enforced coverage). Fix a red CI run before merging.
+
 **Suggested pre-push checklist**:
 
 1. `npx tsc --noEmit` — zero errors.
 2. `npm run lint` — zero errors.
-3. `npm run build` — passes (catches SSR issues TSC misses).
-4. If you touched engine files → restart dev server and manually verify the diagram still parses.
-5. If you touched export → export a PNG and confirm it isn't blank/black.
+3. `npm run test:coverage` — all tests pass and coverage stays above the 70/60/75/75% thresholds (plain `npm test` does **not** enforce coverage, only `npm run test:coverage` does).
+4. `npm run build` — passes (catches SSR issues TSC misses).
+5. If you touched engine files → restart dev server and manually verify the diagram still parses.
+6. If you touched export → export a PNG and confirm it isn't blank/black.
 
 ---
 
@@ -196,3 +202,4 @@ npm run build       # Full production build validation (slowest, most thorough)
 | Worker pipeline | [08-worker-pipeline.md](08-worker-pipeline.md) |
 | Whiteboard internals | [14-whiteboard-core.md](14-whiteboard-core.md) → [19-whiteboard-toolbars.md](19-whiteboard-toolbars.md) |
 | End-to-end flows | [20-data-flows.md](20-data-flows.md) |
+| Test workflow & coverage gate | [22-testing-guide.md](22-testing-guide.md) |

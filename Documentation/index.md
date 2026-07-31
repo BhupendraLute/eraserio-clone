@@ -4,7 +4,7 @@ Welcome, developer! 👋 This folder contains **modular, beginner-friendly docum
 Eraser.io Clone codebase. Each document covers **one feature** in detail, with mermaid diagrams,
 code snippets, and plain-English explanations.
 
-> **Start here.** Read the docs in order (01 → 21), or jump straight to the feature you're
+> **Start here.** Read the docs in order (01 → 22), or jump straight to the feature you're
 > working on using the index below. Every link below opens the matching file.
 
 ---
@@ -34,6 +34,7 @@ code snippets, and plain-English explanations.
 | 19 | [Whiteboard Toolbars & UI](19-whiteboard-toolbars.md) | Tool definitions, `ToolbarPanel`, context menu, command palette |
 | 20 | [Data Flows](20-data-flows.md) | End-to-end flows: keystroke→canvas, export, undo/redo, etc. |
 | 21 | [Development Guide](21-development-guide.md) | Coding rules, verification commands, common pitfalls |
+| 22 | [Testing Guide](22-testing-guide.md) | One reference for the test workflow, conventions & coverage gate |
 
 ---
 
@@ -107,6 +108,7 @@ Then open [01-getting-started.md](01-getting-started.md) for the full setup walk
 3. **Working on the whiteboard?** Read 14 → 19.
 4. **Lost on how things connect?** Read [20-data-flows.md](20-data-flows.md).
 5. **About to write code?** Read [21-development-guide.md](21-development-guide.md) for the rules.
+6. **Writing or running tests?** Read [22-testing-guide.md](22-testing-guide.md) for the workflow & coverage gate.
 
 > 💡 **Tip for contributors**: when you change the behavior of a file, update the matching doc
 > in this folder so the documentation never drifts from the code.

@@ -36,7 +36,7 @@ export function HighlightedCode({
 
     el.addEventListener('wheel', handleWheel, { capture: true, passive: true });
     return () => {
-      el.removeEventListener('wheel', handleWheel, { capture: true } as any);
+      el.removeEventListener('wheel', handleWheel, { capture: true });
     };
   }, []);
 

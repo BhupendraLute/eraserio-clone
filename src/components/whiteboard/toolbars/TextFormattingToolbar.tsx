@@ -75,7 +75,7 @@ export function TextFormattingToolbar() {
       width: newSize.width,
       height: newSize.height,
       isUserResized: false,
-    } as any);
+    });
   };
 
   const handleFontSizeChange = (newFontSize: number) => {
@@ -86,7 +86,7 @@ export function TextFormattingToolbar() {
       width: newSize.width,
       height: newSize.height,
       isUserResized: false,
-    } as any);
+    });
   };
 
   const handleDecreaseFontSize = (e: React.MouseEvent) => {

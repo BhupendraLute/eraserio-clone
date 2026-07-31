@@ -13,12 +13,13 @@ import {
   Minus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { Editor, Range } from '@tiptap/core';
 
 export interface CommandItem {
   title: string;
   description: string;
   icon: React.ComponentType<{ className?: string }>;
-  command: (props: { editor: any; range: any }) => void;
+  command: (props: { editor: Editor; range: Range }) => void;
 }
 
 export const SLASH_COMMANDS: CommandItem[] = [

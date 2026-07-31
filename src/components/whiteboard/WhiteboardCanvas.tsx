@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useSyncExternalStore } from 'react';
 import { useWhiteboardStore, GRID_SIZE } from '@/lib/store/whiteboard-store';
 import { WHITEBOARD_COLORS, isPolygonShapeType, WHITEBOARD_COLOR_KEYS, STROKE_COLOR_PALETTE, computeTextElementSize } from '@/lib/whiteboard/whiteboard-types';
 import { Trash2, Plus, Minus, Maximize, Grid3X3, Download, Copy, CopyPlus, Clipboard, Group, Ungroup, ZoomIn, ChevronDown, Hand, Focus, EyeOff, Eye } from 'lucide-react';
@@ -30,11 +30,13 @@ const SELECT_CURSOR_DARK = `url("data:image/svg+xml,%3Csvg width='24px' height='
 
 export function WhiteboardCanvas() {
   const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // true on the client, false on the server — avoids hydration mismatches
+  // without needing a state-update effect.
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   const selectCursor = mounted && resolvedTheme === 'dark' ? SELECT_CURSOR_DARK : SELECT_CURSOR_LIGHT;
 

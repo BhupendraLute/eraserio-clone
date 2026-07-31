@@ -91,6 +91,7 @@ export function CommentThread({ element }: CommentThreadProps) {
   const [showResolvedReplies, setShowResolvedReplies] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [mentionTarget, setMentionTarget] = useState<'draft' | 'reply' | 'editMain' | 'editReply' | null>(null);
+  const [prevDraft, setPrevDraft] = useState(isDraft);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const draftTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -117,12 +118,14 @@ export function CommentThread({ element }: CommentThreadProps) {
     isOpen
   );
 
-  // Keep draft open initially
-  useEffect(() => {
+  // Keep a draft comment open whenever it (re)enters draft state (e.g. after undo).
+  // Adjusted during render — the React-recommended alternative to setting state in an effect.
+  if (prevDraft !== isDraft) {
+    setPrevDraft(isDraft);
     if (isDraft) {
       setIsOpen(true);
     }
-  }, [isDraft]);
+  }
 
   // Auto-focus draft textarea on spawn
   useEffect(() => {

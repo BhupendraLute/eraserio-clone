@@ -22,8 +22,8 @@ export const FONT_SIZE_PRESETS = [
 interface LabelTypographyToolbarProps {
   selectedElements: WhiteboardElement[];
   openPopup: string | null;
-  togglePopup: (popupName: any) => void;
-  setOpenPopup: (popupName: any) => void;
+  togglePopup: (popupName: 'fontSize' | 'typography') => void;
+  setOpenPopup: (popupName: 'fontSize' | 'typography' | null) => void;
 }
 
 export function LabelTypographyToolbar({
@@ -34,7 +34,7 @@ export function LabelTypographyToolbar({
 }: LabelTypographyToolbarProps) {
   const updateElement = useWhiteboardStore((s) => s.updateElement);
 
-  const firstEl = selectedElements[0] as any;
+  const firstEl = selectedElements[0];
   if (!firstEl) return null;
 
   const currentFontFamily = firstEl?.labelFontFamily ?? firstEl?.fontFamily ?? "'Caveat', cursive, sans-serif";
@@ -44,7 +44,7 @@ export function LabelTypographyToolbar({
 
   const handleSelectFontFamily = (val: string) => {
     selectedElements.forEach((el) => {
-      updateElement(el.id, { labelFontFamily: val, fontFamily: val } as any);
+      updateElement(el.id, { labelFontFamily: val, fontFamily: val });
     });
     setOpenPopup(null);
   };
@@ -52,19 +52,19 @@ export function LabelTypographyToolbar({
   const handleSelectFontSize = (sz: number) => {
     const validSize = Math.max(8, Math.min(72, sz));
     selectedElements.forEach((el) => {
-      updateElement(el.id, { labelFontSize: validSize, fontSize: validSize } as any);
+      updateElement(el.id, { labelFontSize: validSize, fontSize: validSize });
     });
   };
 
   const handleSelectTextAlign = (align: 'left' | 'center' | 'right') => {
     selectedElements.forEach((el) => {
-      updateElement(el.id, { textAlign: align } as any);
+      updateElement(el.id, { textAlign: align });
     });
   };
 
   const handleSelectLabelColor = (colorHex: string) => {
     selectedElements.forEach((el) => {
-      updateElement(el.id, { labelColor: colorHex, textColor: colorHex } as any);
+      updateElement(el.id, { labelColor: colorHex, textColor: colorHex });
     });
   };
 

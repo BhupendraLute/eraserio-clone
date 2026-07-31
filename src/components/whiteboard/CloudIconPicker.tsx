@@ -87,7 +87,7 @@ export function CloudIconPicker({
               const IconComponent = i.icon;
               if (
                 typeof IconComponent !== 'function' &&
-                (typeof IconComponent !== 'object' || !IconComponent || !(IconComponent as any).render)
+                (typeof IconComponent !== 'object' || !IconComponent || !(IconComponent as { render?: unknown }).render)
               ) {
                 return null;
               }

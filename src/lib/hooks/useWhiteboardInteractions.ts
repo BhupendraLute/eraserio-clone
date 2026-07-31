@@ -422,7 +422,7 @@ export function useWhiteboardInteractions({
       const dx = coords.x - resizeState.lastPos.x;
       const dy = coords.y - resizeState.lastPos.y;
       resizeElement(resizeState.targetId, resizeState.handle, dx, dy);
-      updateElement(resizeState.targetId, { isUserResized: true } as any);
+      updateElement(resizeState.targetId, { isUserResized: true });
       setResizeState({ ...resizeState, lastPos: coords });
       return;
     }
@@ -641,7 +641,7 @@ export function useWhiteboardInteractions({
       const shapeH = activeTool === 'square' ? Math.max(width, height) : height;
       addElement({
         id,
-        type: activeTool as any,
+        type: activeTool,
         x: minX,
         y: minY,
         width: shapeW,

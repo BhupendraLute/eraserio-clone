@@ -138,6 +138,8 @@ flowchart TD
 
 > **What this covers**: how to run the unit-test suite and how to add tests for new code.
 > The project uses [Vitest](https://vitest.dev).
+> 📚 The consolidated testing reference — commands, conventions, and the coverage gate — lives in
+> [22-testing-guide.md](22-testing-guide.md).
 
 ### 8.1 Commands
 
@@ -145,6 +147,7 @@ flowchart TD
 |---|---|
 | `npm test` | Run the whole suite once (CI-friendly, exits when done) |
 | `npm run test:watch` | Watch mode — re-runs affected tests on every file save |
+| `npm run test:coverage` | Run the suite with a coverage report (terminal table + HTML in `coverage/`); **fails if coverage regresses below the thresholds** (see §8.2) |
 | `npx vitest run tests/<file>.test.ts` | Run a single test file while developing |
 
 ### 8.2 Where the tests live
@@ -153,10 +156,13 @@ All tests live in the root **`tests/`** folder, mirroring the `src/` structure:
 
 ```
 tests/
-├── dsl/      # lexer, parser, AST, validator, error-messages, run-pipeline-sync
+├── dsl/      # lexer, parser, AST, validator, error-messages, run-pipeline-sync,
+│             #   codemirror-language (highlighting), codemirror-lint + diagnostics (lint bridge)
 ├── layout/   # dagre-adapter, sequence-layout, text-measure, wrap-text
-├── store/    # whiteboard-store (undo/redo, element CRUD, persistence)
-└── render/   # orthogonal-routing, edge-geometry
+├── store/    # workspace-store, diagram-store, diagram-registry, diagram-library-store,
+│             #   whiteboard-store (undo/redo, element CRUD, persistence)
+├── render/   # orthogonal-routing, edge-geometry
+└── export/   # svg-export (SVG/PNG serialization & downloads)
 ```
 
 Everything is wired up in `vitest.config.ts`:
@@ -165,6 +171,9 @@ Everything is wired up in `vitest.config.ts`:
 - **Include pattern** — only files matching `tests/**/*.test.ts` are collected.
 - **`@/` alias** — maps to `src/`, so tests import real code the same way the app does
   (e.g. `import { validate } from '@/lib/dsl/validator'`).
+- **Coverage thresholds** — `npm run test:coverage` fails the run when the tracked areas
+  (`src/lib/{dsl,layout,store,render,export}`) drop below **70% statements / 60% branches / 75%
+  functions / 75% lines**. Current baseline is ~86% statements (run the command for live numbers).
 
 ### 8.3 Adding a new test suite
 
@@ -186,8 +195,23 @@ Everything is wired up in `vitest.config.ts`:
 4. Before pushing, run the full gate:
 
    ```bash
-   npm test && npx tsc --noEmit && npm run lint
+   npm test && npx tsc --noEmit && npm run lint && npm run test:coverage
    ```
+
+   > ⚠️ **The coverage gate** — only `npm run test:coverage` enforces coverage (plain `npm test`
+   > does **not**). It fails the run when the tracked areas
+   > (`src/lib/{dsl,layout,store,render,export}`) drop below **70% statements / 60% branches /
+   > 75% functions / 75% lines** (see §8.2). What that means when you add a suite:
+   >
+   > - **New suites only raise coverage** — writing tests for a tracked file can only push the
+   >   numbers up, so the gate is a floor, not a ceiling.
+   > - **Uncovered files drag the aggregate down** — if a new file lands inside a tracked area
+   >   without tests, the gate can fail. Either add a small suite for it or, if it's UI/React
+   >   code, move it out of `src/lib/{dsl,layout,store,render,export}` (those areas are pure-TS
+   >   and intentionally fully testable).
+   > - **Check the terminal table** — the coverage run prints per-file percentages and
+   >   un-covered line numbers; grep for the area you touched to see exactly what's still
+   >   uncovered.
 
 ### 8.4 Conventions & gotchas (learned from the existing suites)
 
@@ -195,7 +219,11 @@ Everything is wired up in `vitest.config.ts`:
   only what a test needs (see `rect()` in `tests/store/whiteboard-store.test.ts`).
 - **No DOM in tests** — the node environment has no `OffscreenCanvas`, so `measureTextWidth`
   falls back to its char-width heuristic. Tests either pin that math or stub the global (see
-  `tests/layout/text-measure.test.ts`).
+  `tests/layout/text-measure.test.ts`). Two suites opt into a real DOM with a
+  `// @vitest-environment jsdom` pragma (jsdom is a devDependency):
+  `tests/export/svg-export.test.ts` (SVG serialization & downloads) and
+  `tests/dsl/codemirror-lint.test.ts` (a live CodeMirror `EditorView` to verify pushed
+  diagnostics land in the lint state).
 - **Module singletons** — the whiteboard store and the text-measure cache keep module-level
   state. Reset a Zustand store between tests with `useWhiteboardStore.setState({ ...defaults })`
   (a merge preserves the actions); use `vi.resetModules()` + a dynamic `import()` when you need
