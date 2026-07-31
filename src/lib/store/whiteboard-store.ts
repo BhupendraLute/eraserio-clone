@@ -248,13 +248,27 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
   deleteElements: (ids) =>
     set((state) => {
       const history = pushHistory(state);
-      const elements = state.elements.filter((el) => !ids.includes(el.id));
+      const deletedSet = new Set(ids);
+      const rawElements = state.elements.filter((el) => !deletedSet.has(el.id));
+      const elements = rawElements.map((el) => {
+        if (!isConnectorElement(el)) return el;
+        const detachFrom = el.fromElementId && deletedSet.has(el.fromElementId);
+        const detachTo = el.toElementId && deletedSet.has(el.toElementId);
+        if (!detachFrom && !detachTo) return el;
+        return {
+          ...el,
+          fromElementId: detachFrom ? undefined : el.fromElementId,
+          fromPort: detachFrom ? undefined : el.fromPort,
+          toElementId: detachTo ? undefined : el.toElementId,
+          toPort: detachTo ? undefined : el.toPort,
+        };
+      });
       saveElements(elements);
       return {
         history,
         future: [],
         elements,
-        selectedIds: state.selectedIds.filter((id) => !ids.includes(id)),
+        selectedIds: state.selectedIds.filter((id) => !deletedSet.has(id)),
         canUndo: true,
         canRedo: false,
       };

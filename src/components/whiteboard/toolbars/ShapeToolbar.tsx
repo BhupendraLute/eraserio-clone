@@ -13,6 +13,10 @@ import type {
 } from '@/lib/whiteboard/whiteboard-types';
 import type { LineWidthSize } from '@/lib/store/whiteboard-store';
 import { LabelTypographyToolbar } from './LabelTypographyToolbar';
+import { ToolbarButton } from '@/components/whiteboard/ui/ToolbarButton';
+import { ColorSwatchGrid } from '@/components/whiteboard/ui/ColorSwatchGrid';
+import { LineWidthSelector } from '@/components/whiteboard/ui/LineWidthSelector';
+import { LineStyleSelector } from '@/components/whiteboard/ui/LineStyleSelector';
 
 const LINE_WIDTH_OPTIONS: { size: LineWidthSize; label: string; width: number }[] = [
   { size: 'S', label: 'S', width: 1 },
@@ -421,42 +425,11 @@ export function ShapeToolbar() {
                 </div>
 
                 {/* 2x4 Color Swatches Grid */}
-                <div className="grid grid-cols-4 gap-1.5">
-                  {FILL_COLOR_PALETTE.map((hex) => (
-                    <button
-                      key={hex}
-                      onClick={() => handleSelectFillHex(hex)}
-                      className={cn(
-                        'h-6 w-6 rounded-md border transition-transform hover:scale-110',
-                        currentFillHex === hex && 'ring-2 ring-primary ring-offset-1'
-                      )}
-                      style={{ backgroundColor: hex }}
-                    />
-                  ))}
-
-                  {/* Custom Color Picker */}
-                  <div className="relative flex h-6 w-6 items-center justify-center rounded-md border bg-gradient-to-br from-red-500 via-green-500 to-blue-500 overflow-hidden cursor-pointer">
-                    <input
-                      type="color"
-                      value={currentFillHex === 'transparent' ? '#ffffff' : currentFillHex}
-                      onChange={(e) => handleSelectFillHex(e.target.value)}
-                      className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                      title="Custom fill color"
-                    />
-                  </div>
-
-                  {/* Transparent Slash Swatch */}
-                  <button
-                    onClick={() => handleSelectFillHex('transparent')}
-                    className={cn(
-                      'relative h-6 w-6 rounded-md border bg-background overflow-hidden flex items-center justify-center transition-transform hover:scale-110',
-                      currentFillHex === 'transparent' && 'ring-2 ring-primary ring-offset-1'
-                    )}
-                    title="Transparent (No fill)"
-                  >
-                    <div className="absolute h-[1.5px] w-full bg-red-500 rotate-45" />
-                  </button>
-                </div>
+                <ColorSwatchGrid
+                  palette={FILL_COLOR_PALETTE}
+                  currentColor={currentFillHex}
+                  onSelectColor={handleSelectFillHex}
+                />
               </div>
 
               {/* Right Card: Style Options (Plain, Shadow, Watercolor) */}

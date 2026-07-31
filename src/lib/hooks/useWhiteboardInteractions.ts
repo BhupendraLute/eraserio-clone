@@ -173,20 +173,28 @@ export function useWhiteboardInteractions({
             }
             return;
           case 'd':
-            e.preventDefault();
-            duplicateSelected();
+            if (!isInputFocused) {
+              e.preventDefault();
+              duplicateSelected();
+            }
             return;
           case 'z':
-            e.preventDefault();
-            if (e.shiftKey) redo(); else undo();
+            if (!isInputFocused) {
+              e.preventDefault();
+              if (e.shiftKey) redo(); else undo();
+            }
             return;
           case 'y':
-            e.preventDefault();
-            redo();
+            if (!isInputFocused) {
+              e.preventDefault();
+              redo();
+            }
             return;
           case 'g':
-            e.preventDefault();
-            if (e.shiftKey) ungroupSelected(); else groupSelected();
+            if (!isInputFocused) {
+              e.preventDefault();
+              if (e.shiftKey) ungroupSelected(); else groupSelected();
+            }
             return;
           case '0':
             e.preventDefault();

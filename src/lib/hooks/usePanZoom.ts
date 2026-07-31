@@ -258,13 +258,13 @@ export function usePanZoom(initial: PanZoomState = { scale: 1, x: 0, y: 0 }) {
       }
 
       // Plain scroll → smooth pan canvas with easing
-      // Use transformRef.current as base so external transform changes
-      // (drag-pan, reset, fit, zoom buttons) don't desync the target.
-      const current = transformRef.current;
+      // Use active scrollTargetRef as base if smooth scroll animation is running
+      // to avoid target resets during high-frequency trackpad/wheel events.
+      const base = scrollRafRef.current !== null ? scrollTargetRef.current : transformRef.current;
       scrollTargetRef.current = {
-         ...current,
-         x: current.x - e.deltaX * SCROLL_PAN_FACTOR,
-         y: current.y - e.deltaY * SCROLL_PAN_FACTOR,
+         scale: base.scale,
+         x: base.x - e.deltaX * SCROLL_PAN_FACTOR,
+         y: base.y - e.deltaY * SCROLL_PAN_FACTOR,
       };
       ensureSmoothScroll();
    }, []);

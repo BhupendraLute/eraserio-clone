@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, type RefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 
 /**
  * Custom hook that triggers a callback when a pointerdown or mousedown event
@@ -15,6 +15,12 @@ export function useOnClickOutside<T extends HTMLElement = HTMLElement>(
   handler: (event: PointerEvent | MouseEvent) => void,
   enabled: boolean = true
 ): void {
+  const handlerRef = useRef(handler);
+
+  useEffect(() => {
+    handlerRef.current = handler;
+  }, [handler]);
+
   useEffect(() => {
     if (!enabled) return;
 
@@ -23,12 +29,12 @@ export function useOnClickOutside<T extends HTMLElement = HTMLElement>(
       if (!el || el.contains(event.target as Node)) {
         return;
       }
-      handler(event);
+      handlerRef.current(event);
     };
 
     window.addEventListener('pointerdown', listener);
     return () => {
       window.removeEventListener('pointerdown', listener);
     };
-  }, [ref, handler, enabled]);
+  }, [ref, enabled]);
 }
