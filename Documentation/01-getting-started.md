@@ -11,7 +11,7 @@ Before you start, make sure you have:
 
 | Tool | Version | Why you need it |
 |---|---|---|
-| **Node.js** | 20.x or newer | Runs the Next.js dev server & build tools |
+| **Node.js** | 22.10 or newer (24.x LTS recommended) | Runs the Next.js dev server & build tools. Older versions break the test suite: chevrotain 12 needs `Object.groupBy` (21+) and jsdom 30's bundled undici needs `markAsUncloneable` (22.10+) |
 | **npm** | 9.x or newer | Installs dependencies (comes with Node) |
 | **Git** | any | Clone the repository & manage changes |
 | **VS Code** (optional) | any | Best-in-class editor experience |
@@ -19,8 +19,8 @@ Before you start, make sure you have:
 Check your versions:
 
 ```bash
-node --version   # e.g. v20.11.0
-npm --version    # e.g. 10.2.4
+node --version   # e.g. v24.18.0
+npm --version    # e.g. 11.16.0
 ```
 
 ---

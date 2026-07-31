@@ -26,7 +26,11 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Node 22.10+ is required by the dependency graph: chevrotain 12 uses
+          # Object.groupBy (Node 21+) and jsdom 30's bundled undici needs
+          # worker_threads.markAsUncloneable (Node >= 22.10). Node 24 is the
+          # current LTS and matches local development.
+          node-version: 24
           # `npm install` works with or without a lockfile (npm ci would be
           # faster/deterministic once the lockfile is stable — future iteration).
 
