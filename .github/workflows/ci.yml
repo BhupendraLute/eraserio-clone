@@ -27,11 +27,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          # No `cache: npm` — the repo has no package-lock.json, and
-          # setup-node's npm cache requires one.
+          # `npm install` works with or without a lockfile (npm ci would be
+          # faster/deterministic once the lockfile is stable — future iteration).
 
       - name: Install dependencies
-        # `npm install` (not `npm ci`) because there is no lockfile.
         run: npm install
 
       - name: Type-check
