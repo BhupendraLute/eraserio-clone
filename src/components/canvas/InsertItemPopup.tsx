@@ -12,7 +12,6 @@ import {
   Smile,
   Smartphone,
   Search,
-  Image as ImageIcon,
   ChevronRight,
   Loader2,
 } from 'lucide-react';

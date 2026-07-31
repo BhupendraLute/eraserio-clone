@@ -2,7 +2,7 @@
 
 import React, { useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Image, FileText, FileCode, X } from 'lucide-react';
+import { Image as ImageIcon, FileText, FileCode, X } from 'lucide-react';
 
 interface ExportMenuProps {
   svgRef: React.RefObject<SVGSVGElement | null>;
@@ -96,7 +96,7 @@ export function ExportMenu({ svgRef, onClose }: ExportMenuProps) {
       </div>
       <div className="flex flex-col gap-1">
         <Button variant="ghost" size="sm" className="h-8 justify-start gap-2 text-xs" onClick={exportPng}>
-          <Image className="h-3.5 w-3.5 text-emerald-500" />
+          <ImageIcon className="h-3.5 w-3.5 text-emerald-500" />
           Export as PNG
         </Button>
         <Button variant="ghost" size="sm" className="h-8 justify-start gap-2 text-xs" onClick={exportSvg}>

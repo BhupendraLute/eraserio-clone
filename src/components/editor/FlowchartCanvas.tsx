@@ -212,14 +212,6 @@ function NodeView({ node, scale, onDrag, onResetPosition }: NodeViewProps) {
    const iconSpace = hasIcon ? ICON_SIZE + ICON_GAP : 0;
    const contentCenterX = node.x + node.width / 2;
    const textCenterX = contentCenterX + iconSpace / 2;
-   const iconX =
-      textCenterX -
-      Math.max(
-         ...node.lines.map((l) => measureTextWidth(l, "13px ui-sans-serif")),
-      ) /
-         2 -
-      iconSpace +
-      ICON_GAP / 2;
 
    const blockHeight = node.lines.length * NODE_LINE_HEIGHT;
    const iconY = node.y + node.height / 2 - ICON_SIZE / 2;
@@ -246,7 +238,7 @@ function NodeView({ node, scale, onDrag, onResetPosition }: NodeViewProps) {
          {hasIcon && iconName && (
             <NodeIcon
                name={iconName}
-               x={node.x + NODE_PADDING_X_HALF(node)}
+               x={node.x + NODE_PADDING_X_HALF()}
                y={iconY}
                size={ICON_SIZE}
                color={color?.accent}
@@ -283,7 +275,7 @@ function NodeView({ node, scale, onDrag, onResetPosition }: NodeViewProps) {
 // Icon sits at a fixed inset from the node's left edge, vertically
 // centered — simpler and more robust than trying to perfectly center
 // icon+text as one measured unit.
-function NODE_PADDING_X_HALF(node: LaidOutNode): number {
+function NODE_PADDING_X_HALF(): number {
    return 12;
 }
 

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { useTheme } from 'next-themes';
-import { Search, Sun, Moon, Monitor, MousePointer, Square, Circle, Diamond, Database, MoveRight, Minus, Pencil, Type, StickyNote, Frame, MessageSquare, Eraser, Hash, Undo2, Redo2, Copy, CopyPlus, Clipboard, Group, Ungroup, Settings, Trash2, Grid3X3, Download, Save, HelpCircle } from 'lucide-react';
+import { Search, Sun, Moon, Monitor, MousePointer, Square, Circle, Diamond, Database, MoveRight, Minus, Pencil, Type, Frame, MessageSquare, Eraser, Hash, Undo2, Redo2, Copy, CopyPlus, Clipboard, Group, Ungroup, Settings, Trash2, Grid3X3 } from 'lucide-react';
 
 interface Command {
   id: string;

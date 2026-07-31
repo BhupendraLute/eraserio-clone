@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import type { CommentElement, CommentReply } from '@/lib/whiteboard/whiteboard-types';
+import type { CommentElement } from '@/lib/whiteboard/whiteboard-types';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { useOnClickOutside } from '@/lib/hooks/useOnClickOutside';
 import {

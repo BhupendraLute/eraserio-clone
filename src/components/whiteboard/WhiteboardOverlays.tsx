@@ -13,7 +13,6 @@ import {
   getDirectionalOrthogonalPathD,
   getCurvedPathD,
   inferCardinalDirection,
-  getOppositePort,
   getArrowMidpoint,
   determineAutoRoutingStyle,
   ShapePortSnap,
@@ -22,9 +21,6 @@ import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { getMarkerId, getStartMarkerId } from '@/components/whiteboard/WhiteboardElements';
 import { ICON_MAP } from '@/lib/icons/icon-catalog';
 import { Server, Frame } from 'lucide-react';
-
-/* CSS variable helpers for theme-aware canvas chrome */
-const BG = () => 'var(--background)' as const;
 
 interface WhiteboardOverlaysProps {
   elements: WhiteboardElement[];
@@ -62,7 +58,6 @@ export function WhiteboardOverlays({
   hoveredPort,
   isDraggingShape = false,
   onResizeHandlePointerDown,
-  onSpawnConnectedNode,
   onQuickConnectDragStart,
   onPortHover,
 }: WhiteboardOverlaysProps) {

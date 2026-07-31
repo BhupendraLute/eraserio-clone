@@ -79,7 +79,6 @@ type PopupId = 'color' | 'routing' | 'width' | 'lineStyle' | 'startArrowhead' | 
 
 export function ArrowToolbar() {
   const activeTool = useWhiteboardStore((s) => s.activeTool);
-  const activeColor = useWhiteboardStore((s) => s.activeColor);
   const setActiveColor = useWhiteboardStore((s) => s.setActiveColor);
   const activeStrokeHex = useWhiteboardStore((s) => s.activeStrokeHex);
   const setActiveStrokeHex = useWhiteboardStore((s) => s.setActiveStrokeHex);
@@ -262,27 +261,7 @@ export function ArrowToolbar() {
   };
 
   const hasLabel = hasSelectedArrow && Boolean(firstSelectedArrow?.label && firstSelectedArrow.label.trim().length > 0);
-  const currentLabelFontFamily = firstSelectedArrow?.labelFontFamily ?? 'Inter, sans-serif';
-  const currentLabelFontSize = firstSelectedArrow?.labelFontSize ?? 11;
   const currentLabelColor = firstSelectedArrow?.labelColor ?? firstSelectedArrow?.strokeColor ?? activeStrokeHex;
-
-  const handleSelectLabelFont = (font: string) => {
-    if (hasSelectedArrow) {
-      selectedArrows.forEach((el) => {
-        updateElement(el.id, { labelFontFamily: font });
-      });
-    }
-    setOpenPopup(null);
-  };
-
-  const handleSelectLabelSize = (size: number) => {
-    if (hasSelectedArrow) {
-      selectedArrows.forEach((el) => {
-        updateElement(el.id, { labelFontSize: size });
-      });
-    }
-    setOpenPopup(null);
-  };
 
   const handleSelectLabelColor = (hex: string) => {
     if (hasSelectedArrow) {

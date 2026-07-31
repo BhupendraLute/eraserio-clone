@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, Sun, Moon, Monitor, Keyboard, MousePointer, Square, Circle, Diamond, Database, MoveRight, Minus, Pencil, Type, StickyNote, Frame, MessageSquare, Eraser, Hash, Undo2, Redo2, Copy, Clipboard, Group, Ungroup, Trash2, Grid3X3, Sparkles, Search } from 'lucide-react';
+import { ArrowLeft, Sun, Moon, Monitor, Keyboard, MousePointer, Undo2, Search } from 'lucide-react';
 import { ThemeToggle } from '@/components/whiteboard/ThemeToggle';
 
 interface ShortcutGroup {

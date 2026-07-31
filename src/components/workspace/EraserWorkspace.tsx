@@ -54,7 +54,7 @@ export function EraserWorkspace() {
     });
   };
 
-  const handleHeaderPointerUp = (e: React.PointerEvent) => {
+  const handleHeaderPointerUp = () => {
     isDraggingRef.current = false;
     dragStartRef.current = null;
   };

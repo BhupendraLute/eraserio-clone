@@ -1,15 +1,15 @@
 'use client';
 
 import type { WhiteboardElement, ArrowElement, LineElement, CloudIconKind, LineStyle, ArrowheadStyle, Point, PortDirection } from '@/lib/whiteboard/whiteboard-types';
-import { WHITEBOARD_COLORS, LINE_DASH, isPolygonShapeType, computeTextElementSize, getElementBounds } from '@/lib/whiteboard/whiteboard-types';
+import { LINE_DASH, isPolygonShapeType, getElementBounds } from '@/lib/whiteboard/whiteboard-types';
 import { HighlightedCode } from '@/lib/whiteboard/code-highlighter';
 import { ICON_MAP } from '@/lib/icons/icon-catalog';
 import { DiagramPreview } from '@/components/docs/DiagramPreview';
 import { useDiagramRegistry } from '@/lib/store/diagram-registry';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
-import { Server, MessageSquare, Check, Frame } from 'lucide-react';
+import { Server, Frame } from 'lucide-react';
 import { CommentThread } from './CommentThread';
-import { cn, generateId } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import {
   getDirectionalOrthogonalPathD,
   getCurvedPathD,
@@ -66,7 +66,6 @@ export function WhiteboardElements({
   onElementContextMenu,
 
 }: WhiteboardElementsProps) {
-  const updateElement = useWhiteboardStore((s) => s.updateElement);
   const diagramMap = useDiagramRegistry((s) => s.diagrams);
 
   const renderCloudIconSvg = (kind: CloudIconKind | string, color: string, elementWidth: number = 64) => {

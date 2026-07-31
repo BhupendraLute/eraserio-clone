@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { useOnClickOutside } from '@/lib/hooks/useOnClickOutside';
 import {
@@ -19,7 +19,6 @@ import {
   AlignCenterVertical,
   AlignEndVertical,
   CheckSquare,
-  Link,
   Scissors,
 } from 'lucide-react';
 
@@ -30,7 +29,7 @@ interface ContextMenuProps {
   context: 'canvas' | 'element' | 'multi';
 }
 
-export function ContextMenu({ x, y, onClose, context }: ContextMenuProps) {
+export function ContextMenu({ x, y, onClose }: ContextMenuProps) {
   const ref = useRef<HTMLDivElement>(null);
 
   const selectedIds = useWhiteboardStore((s) => s.selectedIds);

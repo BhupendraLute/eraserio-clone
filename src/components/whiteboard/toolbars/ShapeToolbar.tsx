@@ -6,7 +6,6 @@ import { useOnClickOutside } from '@/lib/hooks/useOnClickOutside';
 import { WHITEBOARD_COLORS, isPolygonShapeType, STROKE_COLOR_PALETTE, FILL_COLOR_PALETTE } from '@/lib/whiteboard/whiteboard-types';
 import { cn } from '@/lib/utils';
 import type {
-  WhiteboardColor,
   WhiteboardElement,
   LineStyle,
   FillStyleMode,
@@ -14,10 +13,7 @@ import type {
 } from '@/lib/whiteboard/whiteboard-types';
 import type { LineWidthSize } from '@/lib/store/whiteboard-store';
 import { LabelTypographyToolbar } from './LabelTypographyToolbar';
-import { ToolbarButton } from '@/components/whiteboard/ui/ToolbarButton';
 import { ColorSwatchGrid } from '@/components/whiteboard/ui/ColorSwatchGrid';
-import { LineWidthSelector } from '@/components/whiteboard/ui/LineWidthSelector';
-import { LineStyleSelector } from '@/components/whiteboard/ui/LineStyleSelector';
 
 const LINE_WIDTH_OPTIONS: { size: LineWidthSize; label: string; width: number }[] = [
   { size: 'S', label: 'S', width: 1 },
@@ -146,7 +142,6 @@ export function ShapeToolbar() {
   const duplicateSelected = useWhiteboardStore((s) => s.duplicateSelected);
 
   const activeColor = useWhiteboardStore((s) => s.activeColor);
-  const setActiveColor = useWhiteboardStore((s) => s.setActiveColor);
   const activeStrokeHex = useWhiteboardStore((s) => s.activeStrokeHex);
   const setActiveStrokeHex = useWhiteboardStore((s) => s.setActiveStrokeHex);
   const activeFillHex = useWhiteboardStore((s) => s.activeFillHex);

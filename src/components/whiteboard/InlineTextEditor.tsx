@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useCallback } from 'react';
 import type { WhiteboardElement } from '@/lib/whiteboard/whiteboard-types';
-import { WHITEBOARD_COLORS, computeShapeAutoHeight, computeTextElementSize, getElementBounds } from '@/lib/whiteboard/whiteboard-types';
+import { computeShapeAutoHeight, computeTextElementSize, getElementBounds } from '@/lib/whiteboard/whiteboard-types';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { getArrowMidpoint } from '@/lib/whiteboard/orthogonal-routing';
 import { HighlightedCode } from '@/lib/whiteboard/code-highlighter';
