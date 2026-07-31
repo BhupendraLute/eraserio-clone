@@ -21,21 +21,21 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           # Node 22.10+ is required by the dependency graph: chevrotain 12 uses
           # Object.groupBy (Node 21+) and jsdom 30's bundled undici needs
           # worker_threads.markAsUncloneable (Node >= 22.10). Node 24 is the
           # current LTS and matches local development.
           node-version: 24
-          # `npm install` works with or without a lockfile (npm ci would be
-          # faster/deterministic once the lockfile is stable — future iteration).
+          # Lockfile is tracked, so `npm ci` gives deterministic, reproducible
+          # installs (and is faster than `npm install`).
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Type-check
         run: npx tsc --noEmit
@@ -52,7 +52,7 @@ jobs:
       # Upload even on failure so a threshold regression is easy to inspect.
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coverage-report
           path: coverage/
