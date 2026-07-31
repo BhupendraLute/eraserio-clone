@@ -5,6 +5,7 @@ import type {
   CloudIconKind,
   ResizeHandle,
   WhiteboardElement,
+  CommentReply,
   LineStyle,
   PortDirection,
   FillStyleMode,
@@ -82,6 +83,7 @@ interface WhiteboardStore {
   clipboard: WhiteboardElement[];
   showGrid: boolean;
   hideUI: boolean;
+  showComments: boolean;
 
   setActiveTool: (tool: WhiteboardTool) => void;
   setActiveColor: (color: WhiteboardColor) => void;
@@ -99,6 +101,8 @@ interface WhiteboardStore {
   setActiveFillStyle: (style: FillStyleMode) => void;
   setShowGrid: (show: boolean) => void;
   setHideUI: (hide: boolean) => void;
+  setShowComments: (show: boolean) => void;
+  toggleShowComments: () => void;
 
   addElement: (element: WhiteboardElement) => void;
   updateElement: (id: string, patch: Partial<WhiteboardElement>) => void;
@@ -126,6 +130,9 @@ interface WhiteboardStore {
 
   hydrate: () => void;
   toggleResolvedComment: (id: string) => void;
+  addCommentReply: (commentId: string, text: string, author?: string) => void;
+  editCommentText: (commentId: string, text: string, replyId?: string) => void;
+  deleteCommentReply: (commentId: string, replyId: string) => void;
 
   spawnConnectedNode: (sourceId: string, direction: PortDirection) => void;
   reconnectArrowEndpoint: (
@@ -170,6 +177,7 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
   clipboard: [],
   showGrid: true,
   hideUI: false,
+  showComments: true,
 
   canUndo: false,
   canRedo: false,
@@ -203,6 +211,8 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
   setActiveFillStyle: (style) => set({ activeFillStyle: style }),
   setShowGrid: (show) => set({ showGrid: show }),
   setHideUI: (hide) => set({ hideUI: hide }),
+  setShowComments: (show) => set({ showComments: show }),
+  toggleShowComments: () => set((state) => ({ showComments: !state.showComments })),
 
   hydrate: () => {
     if (typeof window === 'undefined') return;
@@ -279,7 +289,7 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
       });
 
       const updatedElements = state.elements.map((el) => {
-        if (!idsToMove.has(el.id)) return el;
+        if (!idsToMove.has(el.id) || el.type === 'comment') return el;
         if (isConnectorElement(el)) {
           return {
             ...el,
@@ -335,7 +345,7 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
   resizeElement: (id, handle, dx, dy) =>
     set((state) => {
       const updatedElements = state.elements.map((el) => {
-        if (el.id !== id) return el;
+        if (el.id !== id || el.type === 'comment') return el;
         let newX = el.x, newY = el.y, newW = el.width, newH = el.height;
         if (el.type === 'cloud') {
           // 1:1 Aspect Ratio Corner Resizing for Icons
@@ -619,6 +629,57 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
       const elements = state.elements.map((el) =>
         el.id === id && el.type === 'comment' ? { ...el, resolved: !el.resolved } : el
       );
+      saveElements(elements);
+      return { elements };
+    }),
+
+  addCommentReply: (commentId, text, author = 'User') =>
+    set((state) => {
+      const elements = state.elements.map((el) => {
+        if (el.id === commentId && el.type === 'comment') {
+          const newReply: CommentReply = {
+            id: generateId(),
+            text,
+            author,
+            createdAt: Date.now(),
+          };
+          const replies = [...(el.replies || []), newReply];
+          return { ...el, replies, isDraft: false };
+        }
+        return el;
+      });
+      saveElements(elements);
+      return { elements };
+    }),
+
+  editCommentText: (commentId, text, replyId) =>
+    set((state) => {
+      const elements = state.elements.map((el) => {
+        if (el.id === commentId && el.type === 'comment') {
+          if (!replyId) {
+            return { ...el, text, isDraft: false, updatedAt: Date.now() };
+          } else {
+            const replies = (el.replies || []).map((r) =>
+              r.id === replyId ? { ...r, text, updatedAt: Date.now() } : r
+            );
+            return { ...el, replies };
+          }
+        }
+        return el;
+      });
+      saveElements(elements);
+      return { elements };
+    }),
+
+  deleteCommentReply: (commentId, replyId) =>
+    set((state) => {
+      const elements = state.elements.map((el) => {
+        if (el.id === commentId && el.type === 'comment') {
+          const replies = (el.replies || []).filter((r) => r.id !== replyId);
+          return { ...el, replies };
+        }
+        return el;
+      });
       saveElements(elements);
       return { elements };
     }),

@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
+import { useOnClickOutside } from '@/lib/hooks/useOnClickOutside';
 import { WHITEBOARD_COLORS, isPolygonShapeType, STROKE_COLOR_PALETTE, FILL_COLOR_PALETTE } from '@/lib/whiteboard/whiteboard-types';
 import { cn } from '@/lib/utils';
 import type {
@@ -156,17 +157,12 @@ export function ShapeToolbar() {
   const [openPopup, setOpenPopup] = useState<PopupId>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Click-outside to dismiss popups
-  useEffect(() => {
-    if (!openPopup) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpenPopup(null);
-      }
-    };
-    document.addEventListener('pointerdown', handleClickOutside);
-    return () => document.removeEventListener('pointerdown', handleClickOutside);
-  }, [openPopup]);
+  // Click-outside to dismiss popups via reusable hook
+  useOnClickOutside(
+    containerRef,
+    useCallback(() => setOpenPopup(null), []),
+    Boolean(openPopup)
+  );
 
   const togglePopup = (id: PopupId) => {
     setOpenPopup((prev) => (prev === id ? null : id));

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useWorkspaceStore } from '@/lib/store/workspace-store';
+import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { Button } from '@/components/ui/button';
 import {
   Sparkles,
@@ -24,6 +25,9 @@ export function EraserHeader() {
   const setFileName = useWorkspaceStore((s) => s.setFileName);
   const aiChatOpen = useWorkspaceStore((s) => s.aiChatOpen);
   const toggleAiChat = useWorkspaceStore((s) => s.toggleAiChat);
+
+  const showComments = useWhiteboardStore((s) => s.showComments);
+  const toggleShowComments = useWhiteboardStore((s) => s.toggleShowComments);
 
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
@@ -109,7 +113,23 @@ export function EraserHeader() {
           onClick={toggleAiChat}
         >
           <Sparkles className="h-3 w-3 text-amber-300" />
-          <span>AI Chat</span>
+          <span>Eraser AI</span>
+        </Button>
+
+        {/* 💬 Comment Visibility Toggle Button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleShowComments}
+          className={cn(
+            'h-7 w-7 transition-colors rounded-md border',
+            showComments
+              ? 'bg-blue-600/20 text-blue-400 border-blue-500/40 hover:bg-blue-600/30'
+              : 'border-transparent text-muted-foreground hover:bg-muted hover:text-foreground'
+          )}
+          title={showComments ? 'Hide comments on canvas' : 'Show comments on canvas'}
+        >
+          <MessageSquare className="h-3.5 w-3.5 fill-current" />
         </Button>
 
         {/* Theme Toggle */}

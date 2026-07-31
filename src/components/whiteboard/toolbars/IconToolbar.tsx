@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
+import { useOnClickOutside } from '@/lib/hooks/useOnClickOutside';
 import { ICON_MAP } from '@/lib/icons/icon-catalog';
 import { CloudIconPicker } from '../CloudIconPicker';
 import {
@@ -38,19 +39,16 @@ export function IconToolbar() {
 
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Click outside to dismiss popups immediately
-  useEffect(() => {
-    if (!iconPickerOpen && !colorPickerOpen && !moreMenuOpen) return;
-    const handleClickOutside = (e: Event) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIconPickerOpen(false);
-        setColorPickerOpen(false);
-        setMoreMenuOpen(false);
-      }
-    };
-    document.addEventListener('pointerdown', handleClickOutside, true);
-    return () => document.removeEventListener('pointerdown', handleClickOutside, true);
-  }, [iconPickerOpen, colorPickerOpen, moreMenuOpen]);
+  // Click outside to dismiss popups immediately via reusable hook
+  useOnClickOutside(
+    containerRef,
+    useCallback(() => {
+      setIconPickerOpen(false);
+      setColorPickerOpen(false);
+      setMoreMenuOpen(false);
+    }, []),
+    iconPickerOpen || colorPickerOpen || moreMenuOpen
+  );
 
   const selectedCloudElements = elements.filter(
     (el): el is CloudIconElement => selectedIds.includes(el.id) && el.type === 'cloud'

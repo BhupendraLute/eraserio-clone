@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
+import { useOnClickOutside } from '@/lib/hooks/useOnClickOutside';
 import { WHITEBOARD_COLORS, WHITEBOARD_COLOR_KEYS } from '@/lib/whiteboard/whiteboard-types';
 import { Pencil, Eraser, MoreHorizontal, Trash2, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -43,17 +44,12 @@ export function PencilToolbar() {
 
   const isVisible = activeTool === 'pencil' || activeTool === 'eraser' || !!selectedPencilElement;
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    if (!showMoreMenu) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowMoreMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showMoreMenu]);
+  // Close dropdown on outside click via reusable hook
+  useOnClickOutside(
+    menuRef,
+    useCallback(() => setShowMoreMenu(false), []),
+    showMoreMenu
+  );
 
   if (!isVisible) return null;
 

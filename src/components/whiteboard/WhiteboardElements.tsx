@@ -8,6 +8,7 @@ import { DiagramPreview } from '@/components/docs/DiagramPreview';
 import { useDiagramRegistry } from '@/lib/store/diagram-registry';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { Server, MessageSquare, Check, Frame } from 'lucide-react';
+import { CommentThread } from './CommentThread';
 import { cn, generateId } from '@/lib/utils';
 import {
   getDirectionalOrthogonalPathD,
@@ -222,6 +223,7 @@ export function WhiteboardElements({
   };
 
   const activeTool = useWhiteboardStore((s) => s.activeTool);
+  const showComments = useWhiteboardStore((s) => s.showComments);
   const isHandMode = activeTool === 'hand';
   const shapeCursorClass = isHandMode ? 'cursor-grab' : endpointDragState ? 'cursor-grabbing' : 'cursor-move';
 
@@ -538,38 +540,12 @@ export function WhiteboardElements({
         }
 
         if (el.type === 'comment') {
-          const style = WHITEBOARD_COLORS[el.color as keyof typeof WHITEBOARD_COLORS] ?? WHITEBOARD_COLORS.blue;
+          if (!showComments) return null;
           return (
-            <g key={el.id} onPointerDown={(e) => onElementPointerDown(e, el)} onClick={(e) => onElementClick(e, el)} onDoubleClick={(e) => onElementDoubleClick(e, el)} onContextMenu={(e) => onElementContextMenu?.(e, el)}>
-              <rect x={el.x} y={el.y} width={el.width} height={el.height} rx={8}
-                fill={el.fillColor ?? style.bg} stroke={el.strokeColor ?? style.border}
-                strokeWidth={isSelected ? 2 : 1} className="cursor-move shadow-sm"
-                strokeDasharray={el.resolved ? '4 4' : ''} opacity={el.resolved ? 0.6 : 1} />
-              <foreignObject x={el.x} y={el.y} width={24} height={24}>
-                <div className="flex h-full w-full items-center justify-center">
-                  <MessageSquare className="h-3.5 w-3.5" style={{ color: style.border }} />
-                </div>
+            <g key={el.id}>
+              <foreignObject x={el.x} y={el.y} width={1} height={1} className="overflow-visible pointer-events-none">
+                <CommentThread element={el} />
               </foreignObject>
-              <foreignObject x={el.x + 28} y={el.y + 4} width={el.width - 36} height={el.height - 8}>
-                {editingElementId === el.id ? (
-                  <textarea value={el.text} onChange={(evt) => updateElement(el.id, { text: evt.target.value })}
-                    className="h-full w-full resize-none bg-transparent text-[11px] font-medium outline-none" style={{ color: style.text }} autoFocus />
-                ) : (
-                  <div className="text-[11px] font-medium" style={{ color: style.text }}>
-                    {el.resolved ? <span className="line-through opacity-60">{el.text}</span> : el.text}
-                    <div className="mt-1 text-[9px] opacity-50">{el.author}</div>
-                  </div>
-                )}
-              </foreignObject>
-              {isSelected && (
-                <foreignObject x={el.x + el.width - 28} y={el.y + 4} width={24} height={24}>
-                  <button onClick={(evt) => { evt.stopPropagation(); useWhiteboardStore.getState().toggleResolvedComment(el.id); }}
-                    className="flex h-full w-full items-center justify-center rounded hover:bg-foreground/10"
-                    title={el.resolved ? 'Unresolve' : 'Resolve'}>
-                    <Check className="h-3 w-3" style={{ color: el.resolved ? '#22c55e' : style.border }} />
-                  </button>
-                </foreignObject>
-              )}
             </g>
           );
         }

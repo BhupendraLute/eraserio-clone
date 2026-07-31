@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
+import { useOnClickOutside } from '@/lib/hooks/useOnClickOutside';
 import {
   ChevronDown,
   Minus,
@@ -44,17 +45,12 @@ export function ZoomPanMenu({
   const containerRef = useRef<HTMLDivElement>(null);
   const zoomPercent = Math.round(scale * 100);
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen]);
+  // Close menu on click outside via reusable hook
+  useOnClickOutside(
+    containerRef,
+    useCallback(() => setIsOpen(false), []),
+    isOpen
+  );
 
   return (
     <>

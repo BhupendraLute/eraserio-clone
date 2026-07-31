@@ -186,7 +186,7 @@ export function WhiteboardOverlays({
             )}
 
             {activeTool === 'comment' && (
-              <rect x={start.x - 16} y={start.y - 16} width={200} height={80} rx={8}
+              <circle cx={start.x} cy={start.y} r={14}
                 fill="none" stroke="var(--canvas-accent)" strokeWidth={1.5} strokeDasharray="4 4" />
             )}
             {activeTool === 'cloud' && (() => {
@@ -396,7 +396,7 @@ export function WhiteboardOverlays({
 
       {/* Selection Bounding Box & Resize Handles (Corner-only for cloud icons) */}
       {selectedElements
-        .filter((el) => !['arrow', 'line', 'pencil'].includes(el.type))
+        .filter((el) => !['arrow', 'line', 'pencil', 'comment'].includes(el.type))
         .map((el) => (
           <g key={`select-box-${el.id}`}>
           <rect

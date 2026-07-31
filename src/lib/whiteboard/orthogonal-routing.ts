@@ -272,7 +272,7 @@ export function findNearestShapePort(
 
   elements.forEach((el) => {
     if (el.id === ignoreElementId) return;
-    if (isConnectorElement(el) || el.type === 'pencil') return;
+    if (isConnectorElement(el) || el.type === 'pencil' || el.type === 'comment') return;
 
     const ports = getShapePorts(el);
 

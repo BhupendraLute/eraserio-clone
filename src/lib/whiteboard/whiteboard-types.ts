@@ -310,12 +310,26 @@ export interface DiagramElement extends BaseElement {
   diagramId: string;
 }
 
+export interface CommentReply {
+  id: string;
+  text: string;
+  author: string;
+  authorAvatar?: string;
+  createdAt: number;
+  updatedAt?: number;
+}
+
 export interface CommentElement extends BaseElement {
   type: 'comment';
   text: string;
   author: string;
+  authorAvatar?: string;
   resolved: boolean;
   color: WhiteboardColor;
+  createdAt?: number;
+  updatedAt?: number;
+  replies?: CommentReply[];
+  isDraft?: boolean;
 }
 
 export type WhiteboardElement =
@@ -393,6 +407,9 @@ export interface PortPosition {
 }
 
 export function getShapePorts(el: WhiteboardElement): PortPosition[] {
+  if (isConnectorElement(el) || el.type === 'pencil' || el.type === 'comment') {
+    return [];
+  }
   return [
     { port: 'top', x: el.x + el.width / 2, y: el.y },
     { port: 'bottom', x: el.x + el.width / 2, y: el.y + el.height },

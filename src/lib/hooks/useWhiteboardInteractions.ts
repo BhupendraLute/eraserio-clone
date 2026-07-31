@@ -202,6 +202,8 @@ export function useWhiteboardInteractions({
         return;
       }
 
+      if (isInputFocused) return;
+
       if (e.shiftKey) {
         if (e.key === '!' || e.key === '1') {
           e.preventDefault();
@@ -214,8 +216,6 @@ export function useWhiteboardInteractions({
           return;
         }
       }
-
-      if (isInputFocused) return;
 
       // Tool shortcuts
       switch (e.key.toLowerCase()) {
@@ -236,8 +236,14 @@ export function useWhiteboardInteractions({
         case 'delete':
         case 'backspace':
           if (selectedIds.length > 0) {
-            e.preventDefault();
-            deleteElements(selectedIds);
+            const deletableIds = selectedIds.filter((id) => {
+              const el = elements.find((e) => e.id === id);
+              return el?.type !== 'comment';
+            });
+            if (deletableIds.length > 0) {
+              e.preventDefault();
+              deleteElements(deletableIds);
+            }
           }
           return;
         case 'escape':
@@ -336,7 +342,7 @@ export function useWhiteboardInteractions({
   const selectedElements = elements.filter((el) => selectedIds.includes(el.id));
   const hasSelection = selectedElements.length > 0;
   const singleSelectedShape =
-    selectedElements.length === 1 && !isConnectorElement(selectedElements[0]) && selectedElements[0].type !== 'pencil'
+    selectedElements.length === 1 && !isConnectorElement(selectedElements[0]) && selectedElements[0].type !== 'pencil' && selectedElements[0].type !== 'comment'
       ? selectedElements[0]
       : null;
 
@@ -378,6 +384,7 @@ export function useWhiteboardInteractions({
       const maxY = Math.max(selectionBox.start.y, coords.y);
       const enclosedIds = elements
         .filter((el) => {
+          if (el.type === 'comment') return false;
           const bounds = getElementBounds(el);
           return bounds.x >= minX && bounds.x + bounds.width <= maxX && bounds.y >= minY && bounds.y + bounds.height <= maxY;
         })
@@ -712,10 +719,24 @@ export function useWhiteboardInteractions({
       }
     } else if (activeTool === 'comment') {
       addElement({
-        id, type: 'comment', x: start.x - 16, y: start.y - 16, width: 200, height: 80,
-        text: 'Add a comment...', author: 'You', resolved: false,
-        color: activeColor, strokeColor: strokeHex, fillColor: fillHex, strokeWidth: 1,
+        id,
+        type: 'comment',
+        x: start.x - 14,
+        y: start.y - 14,
+        width: 320,
+        height: 200,
+        text: '',
+        author: 'User',
+        resolved: false,
+        isDraft: true,
+        createdAt: Date.now(),
+        color: activeColor,
+        strokeColor: strokeHex,
+        fillColor: fillHex,
+        strokeWidth: 1,
       });
+      setSelectedIds([id]);
+      setActiveTool('select');
     } else if (activeTool === 'cloud') {
       const rawW = Math.abs(current.x - start.x);
       const rawH = Math.abs(current.y - start.y);
@@ -778,6 +799,7 @@ export function useWhiteboardInteractions({
       return;
     }
     if (activeTool === 'select') {
+      if (el.type === 'comment') return;
       if (e.shiftKey) {
         if (selectedIds.includes(el.id)) {
           setSelectedIds(selectedIds.filter((id) => id !== el.id));
@@ -795,12 +817,14 @@ export function useWhiteboardInteractions({
 
   const handleElementDoubleClick = (e: React.MouseEvent, el: WhiteboardElement) => {
     e.stopPropagation();
+    if (el.type === 'comment') return;
     setEditingElementId(el.id);
   };
 
   const handleElementPointerDown = (e: React.PointerEvent, el: WhiteboardElement) => {
     if (activeTool !== 'select') return;
     e.stopPropagation();
+    if (el.type === 'comment') return;
 
     if (!selectedIds.includes(el.id)) {
       if (e.shiftKey) {

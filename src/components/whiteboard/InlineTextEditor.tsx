@@ -13,11 +13,11 @@ interface InlineTextEditorProps {
 }
 
 export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
+  if (element.type === 'comment') return null;
   const updateElement = useWhiteboardStore((s) => s.updateElement);
   const inputRef = useRef<HTMLTextAreaElement | HTMLInputElement>(null);
 
   const isText = element.type === 'text';
-  const isComment = element.type === 'comment';
   const isFrame = element.type === 'frame';
   const isShape = ['rectangle', 'circle', 'diamond', 'cylinder'].includes(element.type);
   const isConnector = element.type === 'arrow' || element.type === 'line';
@@ -47,14 +47,6 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
     textColor = isCodeMode ? '#f8fafc' : element.strokeColor;
     isMultiline = true;
     placeholder = isCodeMode ? 'print("Hello world");' : 'Type text...';
-  } else if (isComment) {
-    textValue = (element as any).text ?? '';
-    fontSize = 11;
-    fontFamily = 'inherit';
-    fontWeight = 'normal';
-    placeholder = 'Type a comment...';
-    const colorKey = (element as any).color ?? 'blue';
-    textColor = WHITEBOARD_COLORS[colorKey as keyof typeof WHITEBOARD_COLORS]?.text ?? 'var(--foreground)';
   } else if (isShape) {
     textValue = (element as any).label ?? '';
     fontSize = (element as any).labelFontSize ?? (element as any).fontSize ?? 14;
@@ -91,14 +83,13 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
         height: (element as any).isUserResized ? element.height : newSize.height,
       } as any);
     }
-    else if (isComment) updateElement(element.id, { text: value } as any);
     else if (isShape) {
       const newHeight = computeShapeAutoHeight(value, element.width, element.height, fontSize);
       updateElement(element.id, { label: value, height: newHeight } as any);
     }
     else if (isConnector) updateElement(element.id, { label: value } as any);
     else if (isFrame) updateElement(element.id, { title: value } as any);
-  }, [element.id, element.width, element.height, fontSize, updateElement, isText, isComment, isShape, isConnector, isFrame]);
+  }, [element.id, element.width, element.height, fontSize, updateElement, isText, isShape, isConnector, isFrame]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!isMultiline && e.key === 'Enter') {

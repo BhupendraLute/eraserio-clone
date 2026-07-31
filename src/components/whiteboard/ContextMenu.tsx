@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useCallback } from 'react';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
+import { useOnClickOutside } from '@/lib/hooks/useOnClickOutside';
 import {
   Copy,
   Clipboard,
@@ -61,26 +62,15 @@ export function ContextMenu({ x, y, onClose, context }: ContextMenuProps) {
   const hasClipboard = clipboard.length > 0;
   const hasGroups = elements.some((el) => el.groupId && selectedIds.includes(el.id));
 
-  // Close on click outside or Escape
+  useOnClickOutside(ref, onClose);
+
+  // Close on Escape key
   useEffect(() => {
-    const handler = (e: MouseEvent | TouchEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
     const escHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
-    // Use a microtask to avoid immediate close from the same right-click event that opened it
-    const raf = requestAnimationFrame(() => {
-      document.addEventListener('mousedown', handler);
-      document.addEventListener('touchstart', handler);
-    });
     document.addEventListener('keydown', escHandler);
     return () => {
-      cancelAnimationFrame(raf);
-      document.removeEventListener('mousedown', handler);
-      document.removeEventListener('touchstart', handler);
       document.removeEventListener('keydown', escHandler);
     };
   }, [onClose]);
