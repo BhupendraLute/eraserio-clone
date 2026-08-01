@@ -63,23 +63,30 @@ flowchart TD
 
 | File | Purpose |
 |---|---|
-| `layout.tsx` | Root layout: fonts, `ThemeProvider`, `QueryProvider`, `AppNav` |
-| `page.tsx` | Home page — simply `redirect('/whiteboard')` |
-| `whiteboard/page.tsx` | The canvas page: sets view mode to `canvas`, hydrates whiteboard, renders header + workspace |
+| `layout.tsx` | Root layout: fonts, `ThemeProvider`, `AuthProvider`, `QueryProvider` |
+| `page.tsx` | Landing page: hero, features, demo, auth modal CTAs |
+| `whiteboard/page.tsx` | The canvas page: `useAuthSync`, sets view mode to `canvas`, hydrates whiteboard, renders header + workspace |
+| `login/page.tsx` | Full-page OAuth sign-in (also NextAuth's `pages.signIn` target) |
+| `signup/page.tsx` | Full-page OAuth sign-up |
+| `share/[token]/page.tsx` | Public read-only view of a shared document |
 | `settings/page.tsx` | Settings page: theme switch + keyboard shortcuts reference |
 | `globals.css` | Tailwind import + global styles |
+| `api/auth/[...nextauth]/route.ts` | NextAuth route handler (GET/POST) |
+| `api/documents/route.ts` + `api/documents/[...]` | Document CRUD + share API (auth-scoped, see [24-authentication-and-database.md](24-authentication-and-database.md)) |
 
 ### 2.2 `src/components/` — React UI
 
 | Folder | Purpose |
 |---|---|
-| `ui/` | shadcn/ui primitives (`button`, `dialog`, `dropdown-menu`, ...) |
-| `workspace/` | `EraserWorkspace.tsx` — the shared tabbed shell + AI sidebar |
+| `ui/` | shadcn/ui primitives (`button`, `dialog`, `dropdown-menu`, ...) + shared primitives (`AppButton`, `StatusDot`, `SyncStatusBadge`) |
+| `auth/` | `AuthModal.tsx`, `UserNav.tsx`, `OAuthIcons.tsx` — sign-in modal, avatar menu, OAuth brand icons |
+| `providers/` | `AuthProvider.tsx` (next-auth SessionProvider), `QueryProvider.tsx` |
+| `workspace/` | `EraserWorkspace.tsx` — the shared tabbed shell + AI sidebar; `DocumentSwitcher.tsx`, `ShareModal.tsx`, `SyncStatusBadge.tsx` |
 | `canvas/` | `CanvasVerticalToolbar.tsx` (left tool palette) + `InsertItemPopup.tsx` (insert catalog) |
 | `editor/` | Diagram-as-Code: `CodeEditor.tsx`, `FlowchartCanvas.tsx`, `SequenceDiagramCanvas.tsx`, `NodeIcon.tsx`, `DiagramEditorView.tsx` |
 | `docs/` | Tiptap: `diagram-embed-extension.ts`, `DiagramEmbedView.tsx`, `DiagramPickerDialog.tsx`, `DiagramPreview.tsx`, `DocBottomToolbar.tsx`, `slash-command-extension.ts`, `SlashMenuList.tsx` |
 | `whiteboard/` | The freeform canvas: `WhiteboardCanvas.tsx`, `WhiteboardElements.tsx`, `WhiteboardOverlays.tsx`, `CommentThread.tsx`, `ContextMenu.tsx`, `CommandPalette.tsx`, `ExportMenu.tsx`, `InlineTextEditor.tsx`, `ZoomPanMenu.tsx`, `ThemeToggle.tsx`, `CloudIconPicker.tsx`, plus `toolbars/` and `ui/` subfolders |
-| `AppNav.tsx`, `EraserHeader.tsx`, `providers/QueryProvider.tsx` | App chrome |
+| `AppNav.tsx` (legacy, unused — see [05-app-shell-navigation.md](05-app-shell-navigation.md)), `EraserHeader.tsx`, `providers/` | App chrome |
 
 ### 2.3 `src/lib/` — Logic, Stores, Engine (no React components, mostly pure TS)
 
@@ -89,17 +96,22 @@ flowchart TD
 | `layout/` | **Auto-layout**: `dagre-adapter.ts`, `sequence-layout.ts`, `types.ts`, `sequence-types.ts`, `text-measure.ts` (OffscreenCanvas), `wrap-text.ts` |
 | `render/` | **SVG helpers**: `node-style.ts` (colors/icons), `edge-geometry.ts` (edge paths), `text-style.ts` (font constants) |
 | `export/` | `svg-export.ts` — SVG/PNG download |
-| `store/` | The 5 Zustand stores |
-| `hooks/` | `usePipelineWorker.ts`, `usePanZoom.ts`, `useWhiteboardInteractions.ts`, `useIconSearch.ts`, `useOnClickOutside.ts` |
+| `store/` | The 6 Zustand stores (incl. `document-store.ts` — auth-aware persistence) |
+| `auth/` | `session.ts` — `getUserId()` (getServerSession wrapper) |
+| `db/` | `prisma.ts` — PrismaClient + PrismaPg/pg Pool adapter (Neon) |
+| `hooks/` | `usePipelineWorker.ts`, `usePanZoom.ts`, `useWhiteboardInteractions.ts`, `useIconSearch.ts`, `useOnClickOutside.ts`, `useAuthSync.ts` |
+| `api-validation.ts` | Zod schemas + payload size limits for the document API |
 | `icons/` | `icon-catalog.ts` — system-design icon registry (Iconify + react-icons) |
 | `whiteboard/` | `whiteboard-types.ts` (element types), `orthogonal-routing.ts` (elbow paths), `tool-definitions.ts`, `code-highlighter.tsx` |
-| `utils.ts` | `cn()` (tailwind-merge) + `generateId()` |
+| `utils.ts` | `cn()` (tailwind-merge) + `generateId()` + `safeCallbackUrl()` (open-redirect guard) |
 
-### 2.4 `src/workers/`
+### 2.4 `src/workers/` + root `src/` extras
 
 | File | Purpose |
 |---|---|
-| `pipeline.worker.ts` | Web Worker entry: receives `{id, source}`, runs lex→parse→ast→validate→layout, posts back the result |
+| `src/workers/pipeline.worker.ts` | Web Worker entry: receives `{id, source}`, runs lex→parse→ast→validate→layout, posts back the result |
+| `src/proxy.ts` | Next.js 16 **proxy** (middleware): auth redirects + security headers (see [24-authentication-and-database.md](24-authentication-and-database.md)) |
+| `src/types/next-auth.d.ts` | NextAuth type augmentation (`session.user.id`, `token.id`) |
 
 ---
 

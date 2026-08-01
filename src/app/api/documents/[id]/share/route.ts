@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
-import { generateId } from '@/lib/utils';
+import { getUserId } from '@/lib/auth/session';
+import { shareDocumentSchema } from '@/lib/api-validation';
+import { randomBytes } from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,26 +12,30 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const body = await req.json().catch(() => ({}));
-    const isPublic = body.isPublic ?? true;
+    const userId = await getUserId();
 
-    if (!process.env.DATABASE_URL) {
-      return NextResponse.json({
-        shareToken: `share_${id}`,
-        isPublic,
-        shareUrl: `/share/share_${id}`,
-        mode: 'offline',
-      });
+    // Sharing requires an authenticated owner
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
+    const body = await req.json().catch(() => ({}));
+    const parsed = shareDocumentSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+
+    const isPublic = parsed.data.isPublic;
+
     const existing = await prisma.document.findUnique({ where: { id } });
-    if (!existing) {
+    if (!existing || existing.ownerId !== userId) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 });
     }
 
     let shareToken = existing.shareToken;
     if (isPublic && !shareToken) {
-      shareToken = generateId('share');
+      // Cryptographically-secure, unguessable share token
+      shareToken = randomBytes(24).toString('base64url');
     }
 
     const updated = await prisma.document.update({

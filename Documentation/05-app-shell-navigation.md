@@ -1,7 +1,7 @@
 # 05 · App Shell & Navigation
 
-> **What this document covers**: the three components that form the app's chrome —
-> `AppNav`, `EraserHeader`, and `EraserWorkspace` — plus how the view-mode/tab system works.
+> **What this document covers**: the components that form the app's chrome — `AppNav`
+> (legacy/unused), `EraserHeader`, and `EraserWorkspace` — plus how the view-mode/tab system works.
 
 ---
 
@@ -10,7 +10,6 @@
 ```mermaid
 flowchart TD
     Body["RootLayout (body)"]
-    Body --> Nav["AppNav — left sidebar"]
     Body --> Main["main (flex-1)"]
     Main --> Header["EraserHeader — top bar"]
     Main --> WS["EraserWorkspace — the working area"]
@@ -24,17 +23,21 @@ flowchart TD
 
 ---
 
-## 2. `AppNav` — the Collapsible Left Sidebar
+## 2. `AppNav` — Legacy (Unused) Left Sidebar
 
 **File**: `src/components/AppNav.tsx`
 
-This is a thin, static sidebar that:
+> ⚠️ **Legacy component**: `AppNav` was removed from the root layout during the auth/landing work
+> (Slice 4) and is **no longer rendered** anywhere — the landing page and whiteboard each render
+> their own headers. The file remains only as dead code.
 
-- Shows the brand mark ("E" logo) and a collapse toggle.
-- Lists three navigation items: **Whiteboard**, **Diagram-as-Code**, **Markdown Docs**.
-- Shows two placeholder quick actions (**New File**, **Documents**) and a **Settings** footer button.
+For reference, it was a thin, static sidebar that:
 
-The important detail: it drives `activeTab` in the workspace store, **not** the URL.
+- Showed the brand mark and a collapse toggle.
+- Listed three navigation items: **Whiteboard**, **Diagram-as-Code**, **Markdown Docs**.
+- Showed two placeholder quick actions (**New File**, **Documents**) and a **Settings** footer button.
+
+Its one notable detail: it drove `activeTab` in the workspace store, **not** the URL.
 
 ```tsx
 const NAV_ITEMS = [
@@ -65,10 +68,13 @@ const setActiveTab = useWorkspaceStore((s) => s.setActiveTab);
 
 It contains (left → right):
 
-1. Brand icon + **editable file name** input (`fileName` in the workspace store).
+1. Brand icon + **`DocumentSwitcher`** — the active document title (click to rename), the
+   **sync status badge** (`SyncStatusBadge` — emerald "Cloud sync" / amber "Local only"), and the
+   documents dropdown (list, create, share, delete).
 2. The **Eraser view switcher**: `[Document | Both | Canvas]` — writes `viewMode`.
-3. Actions: **Commands** (opens `CommandPalette`, Ctrl+K), **Share**, **Eraser AI** (toggles the AI
-   chat sidebar), **Comment visibility** toggle, **ThemeToggle**, and a **Settings** link.
+3. Actions: **Commands** (opens `CommandPalette`, Ctrl+K), GitHub link, **Share** (opens
+   `ShareModal`), **Eraser AI** (toggles the AI chat sidebar), **Comment visibility** toggle,
+   **ThemeToggle**, **`UserNav`** (auth avatar / guest menu), and a **Settings** link.
 
 ```tsx
 const viewOptions = [
@@ -170,7 +176,9 @@ The drawer is draggable: `handleHeaderPointerDown/Move/Up` track the pointer and
 |---|---|---|
 | `activeTab` | `EraserWorkspace` (which tab to render) | `AppNav` |
 | `viewMode` | (reserved for document/both/canvas layouts) | `EraserHeader`, `whiteboard/page.tsx` |
-| `fileName` | `EraserHeader` (input value) | `EraserHeader` |
+| `documents` / `activeDocumentId` | `DocumentSwitcher` (list + dropdown) | `document-store` (fetched from `/api/documents`) |
+| `syncStatus` / `mode` | `DocumentSwitcher` (badge), `UserNav` (avatar menu) | `document-store` (`saveCurrentDocumentState`, `fetchDocuments`) |
+| `authStatus` | `DocumentSwitcher`, `UserNav`, `ShareModal` | `useAuthSync` → `setAuthStatus` |
 | `aiChatOpen` | `EraserWorkspace` (render AI sidebar), `EraserHeader` (button state) | `EraserHeader`, `EraserWorkspace`, `CanvasVerticalToolbar`, `InsertItemPopup` |
 | `diagramCodeOpen` | `EraserWorkspace` (render drawer) | `EraserWorkspace`, `InsertItemPopup` |
 | `hideUI` | `WhiteboardCanvas` + `EraserWorkspace` (hide chrome) | `ZoomPanMenu` |
@@ -179,8 +187,9 @@ The drawer is draggable: `handleHeaderPointerDown/Move/Up` track the pointer and
 
 ## 6. Summary
 
-- **AppNav** = navigation *tabs* (which tool).
-- **EraserHeader** = title, *view mode*, and global actions.
+- **AppNav** = legacy/unused (navigation *tabs* was its original role — no longer rendered).
+- **EraserHeader** = document switcher + sync status, *view mode*, and global actions (incl.
+  auth via `UserNav` and sharing via `ShareModal`).
 - **EraserWorkspace** = the tabbed body + floating panels.
-- All of them communicate **only through the workspace store** — no prop drilling, no callbacks
-  threading through the tree.
+- Shell components communicate through the **workspace store** and the **document store** — no
+  prop drilling, no callbacks threading through the tree.

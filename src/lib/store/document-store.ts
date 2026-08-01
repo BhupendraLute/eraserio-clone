@@ -3,6 +3,8 @@ import { useWhiteboardStore } from './whiteboard-store';
 import { useDiagramRegistry } from './diagram-registry';
 import { generateId } from '@/lib/utils';
 
+type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
+
 export interface DocumentMetadata {
   id: string;
   title: string;
@@ -22,7 +24,9 @@ interface DocumentStoreState {
   isPublic: boolean;
   shareToken: string | null;
   mode: 'cloud' | 'offline';
+  authStatus: AuthStatus;
 
+  setAuthStatus: (status: AuthStatus) => void;
   fetchDocuments: () => Promise<void>;
   createDocument: (title?: string) => Promise<string>;
   selectDocument: (id: string) => Promise<void>;
@@ -46,6 +50,16 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
   isPublic: false,
   shareToken: null,
   mode: 'offline',
+  authStatus: 'loading',
+
+  setAuthStatus: (authStatus) => {
+    const prev = get().authStatus;
+    set({ authStatus });
+    // Refetch the document list whenever auth state actually changes
+    if (prev !== authStatus) {
+      void get().fetchDocuments();
+    }
+  },
 
   fetchDocuments: async () => {
     try {
@@ -55,7 +69,16 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
       const docs: DocumentMetadata[] = data.documents || [];
       const mode = data.mode || 'offline';
 
-      set({ documents: docs, mode });
+      const currentId = get().activeDocumentId;
+      const stillExists = currentId ? docs.some((d) => d.id === currentId) : false;
+
+      set({
+        documents: docs,
+        mode,
+        // Reset the active document when it no longer exists (e.g. after sign-out
+        // the cloud doc list is replaced by an empty guest list).
+        ...(currentId && !stillExists ? { activeDocumentId: null } : {}),
+      });
 
       if (docs.length > 0 && !get().activeDocumentId) {
         await get().selectDocument(docs[0].id);

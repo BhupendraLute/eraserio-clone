@@ -3,9 +3,11 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { AppButton } from '@/components/ui/app-button';
 import {
   Sparkles,
-  ArrowRight,
+  UserPlus,
+  LogIn,
   Code2,
   Layout,
   FileText,
@@ -13,7 +15,6 @@ import {
   ShieldCheck,
   Globe,
   Database,
-  Layers,
   ChevronRight,
 } from 'lucide-react';
 import { AuthModal } from '@/components/auth/AuthModal';
@@ -67,22 +68,21 @@ export default function LandingPage() {
               </svg>
               <span>GitHub</span>
             </a>
-            <Button
+            <AppButton
               variant="ghost"
               size="sm"
               className="text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800"
+              icon={<LogIn className="h-3.5 w-3.5" />}
+              label="Sign In"
               onClick={() => openAuth('login')}
-            >
-              Sign In
-            </Button>
-            <Button
+            />
+            <AppButton
+              appearance="brand"
               size="sm"
-              className="text-xs font-semibold gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-600/25 border border-white/10"
+              label="Get Started"
+              icon={<UserPlus className="h-3.5 w-3.5" />}
               onClick={() => openAuth('signup')}
-            >
-              <span>Get Started</span>
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
+            />
           </div>
         </div>
       </header>
@@ -117,15 +117,14 @@ export default function LandingPage() {
                 <span>Launch Interactive Workspace</span>
               </Button>
             </Link>
-            <Button
-              variant="outline"
+            <AppButton
+              appearance="brand-outline"
               size="lg"
-              className="w-full sm:w-auto h-12 px-8 text-sm font-semibold gap-2 border-slate-800 bg-slate-900/60 text-slate-200 hover:bg-slate-800 rounded-2xl"
+              label="Create Account"
+              icon={<UserPlus className="h-4 w-4" />}
+              className="w-full sm:w-auto h-12 rounded-2xl"
               onClick={() => openAuth('signup')}
-            >
-              <span>Create Account</span>
-              <ArrowRight className="h-4 w-4" />
-            </Button>
+            />
           </div>
 
           {/* Stats Bar */}
@@ -224,7 +223,7 @@ export default function LandingPage() {
                 </>
               ) : (
                 <>
-                  <div className="text-slate-400">// Freeform canvas element tree</div>
+                  <div className="text-slate-400">{'// Freeform canvas element tree'}</div>
                   <div className="text-cyan-400">const rectangle = &#123; type: &apos;rectangle&apos;, x: 120, y: 80 &#125;;</div>
                   <div className="text-cyan-400">const arrow = &#123; type: &apos;arrow&apos;, style: &apos;orthogonal&apos; &#125;;</div>
                   <div className="text-amber-400">const comment = &quot;LGTM! Architecture updated.&quot;;</div>
@@ -376,14 +375,14 @@ export default function LandingPage() {
                   Open Free Workspace
                 </Button>
               </Link>
-              <Button
-                variant="outline"
+              <AppButton
+                appearance="light-outline"
                 size="lg"
-                className="h-12 px-8 text-sm font-semibold border-white/30 text-white hover:bg-white/10 rounded-2xl"
+                label="Create Account"
+                icon={<UserPlus className="h-4 w-4" />}
+                className="h-12 rounded-2xl shadow-none"
                 onClick={() => openAuth('signup')}
-              >
-                Create Account
-              </Button>
+              />
             </div>
           </div>
         </div>

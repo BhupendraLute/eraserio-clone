@@ -35,12 +35,38 @@ cd eraserio-clone
 # 2. Install all dependencies
 npm install
 
-# 3. Start the development server
+# 3. Set up environment variables (copy the template)
+cp .env.example .env
+#    Then fill in DATABASE_URL, DIRECT_URL and NEXTAUTH_SECRET (see section 2.1)
+
+# 4. Create the database schema & generate the Prisma client
+npx prisma db push      # dev — applies schema.prisma to Neon
+npx prisma generate     # generates the client used by @prisma/client
+
+# 5. Start the development server
 npm run dev
 ```
 
-Open **http://localhost:3000** in your browser. The home page (`/`) automatically
-redirects to **/whiteboard** where the canvas lives.
+Open **http://localhost:3000** in your browser. The home page (`/`) is the Architecta landing
+page; the canvas lives at **/whiteboard**.
+
+### 2.1 Environment variables (`.env`)
+
+The app needs a few env vars for auth + cloud persistence. Everything is optional for **offline
+mode** — the app runs as a guest (local-only documents) with none of them set. To enable sign-in
+and cloud sync:
+
+| Variable | Required for | Notes |
+|---|---|---|
+| `DATABASE_URL` | Cloud mode | Neon **pooled** Postgres URL, `sslmode=verify-full` |
+| `DIRECT_URL` | `prisma db push` / migrations | Neon **direct** URL |
+| `NEXTAUTH_SECRET` | Auth | Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"` |
+| `NEXTAUTH_URL` | Auth (dev) | e.g. `http://localhost:3000` |
+| `GITHUB_ID` / `GITHUB_SECRET` | GitHub OAuth | Button auto-hides when empty |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth | Button auto-hides when empty |
+
+See [24-authentication-and-database.md](24-authentication-and-database.md) for the full breakdown
+of the auth + persistence layer.
 
 > ⚠️ **First-run note**: the diagram engine runs in a **Web Worker**. When you edit any file
 > imported by `src/workers/pipeline.worker.ts` (that's `lexer.ts`, `parser.ts`, `dagre-adapter.ts`,
@@ -131,6 +157,7 @@ flowchart TD
 - **"Where is the whiteboard state?"** → `src/lib/store/whiteboard-store.ts` (see [14-whiteboard-core.md](14-whiteboard-core.md)).
 - **"How does the DSL become a diagram?"** → the Web Worker pipeline, see [07-dsl-engine.md](07-dsl-engine.md) and [08-worker-pipeline.md](08-worker-pipeline.md).
 - **"Where is the app layout?"** → `src/components/workspace/EraserWorkspace.tsx` (see [05-app-shell-navigation.md](05-app-shell-navigation.md)).
+- **"How does sign-in / cloud sync work?"** → NextAuth + the document API + `document-store` (see [24-authentication-and-database.md](24-authentication-and-database.md)).
 
 ---
 
@@ -160,7 +187,8 @@ tests/
 │             #   codemirror-language (highlighting), codemirror-lint + diagnostics (lint bridge)
 ├── layout/   # dagre-adapter, sequence-layout, text-measure, wrap-text
 ├── store/    # workspace-store, diagram-store, diagram-registry, diagram-library-store,
-│             #   whiteboard-store (undo/redo, element CRUD, persistence)
+│             #   whiteboard-store (undo/redo, element CRUD, persistence),
+│             #   document-store (auth-aware cloud/offline persistence)
 ├── render/   # orthogonal-routing, edge-geometry
 └── export/   # svg-export (SVG/PNG serialization & downloads)
 ```

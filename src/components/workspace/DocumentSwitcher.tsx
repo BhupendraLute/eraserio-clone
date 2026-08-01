@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useDocumentStore } from '@/lib/store/document-store';
-import { Button } from '@/components/ui/button';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import {
   FileText,
   ChevronDown,
@@ -10,11 +11,11 @@ import {
   Trash2,
   Cloud,
   CloudOff,
-  CheckCircle2,
-  Loader2,
   Edit2,
   Share2,
+  LogIn,
 } from 'lucide-react';
+import { SyncStatusBadge } from '@/components/workspace/SyncStatusBadge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,16 +43,24 @@ export function DocumentSwitcher({ onOpenShare }: DocumentSwitcherProps) {
     deleteDocument,
   } = useDocumentStore();
 
+  const { status: authStatus } = useSession();
+  const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [titleInput, setTitleInput] = useState(activeDocumentTitle);
+
+  const isSignedIn = authStatus === 'authenticated';
 
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
 
-  useEffect(() => {
+  // Keep the rename input in sync with the active document title.
+  // Guarded with an intermediate flag to avoid setting state in render/effect.
+  const [renderedTitle, setRenderedTitle] = useState(activeDocumentTitle);
+  if (renderedTitle !== activeDocumentTitle) {
+    setRenderedTitle(activeDocumentTitle);
     setTitleInput(activeDocumentTitle);
-  }, [activeDocumentTitle]);
+  }
 
   const handleTitleSubmit = () => {
     setIsEditing(false);
@@ -59,33 +68,6 @@ export function DocumentSwitcher({ onOpenShare }: DocumentSwitcherProps) {
       renameDocument(activeDocumentId, titleInput.trim());
     } else {
       setTitleInput(activeDocumentTitle);
-    }
-  };
-
-  const renderSyncBadge = () => {
-    switch (syncStatus) {
-      case 'saving':
-        return (
-          <span className="flex items-center gap-1 text-[11px] text-amber-500 font-medium">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            <span>Saving...</span>
-          </span>
-        );
-      case 'synced':
-        return (
-          <span className="flex items-center gap-1 text-[11px] text-emerald-600 font-medium dark:text-emerald-400">
-            <CheckCircle2 className="h-3 w-3" />
-            <span>{mode === 'cloud' ? 'Saved' : 'Local'}</span>
-          </span>
-        );
-      case 'error':
-      case 'offline':
-        return (
-          <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-            <CloudOff className="h-3 w-3" />
-            <span>Offline</span>
-          </span>
-        );
     }
   };
 
@@ -115,7 +97,7 @@ export function DocumentSwitcher({ onOpenShare }: DocumentSwitcherProps) {
 
       {/* Sync Status Badge */}
       <div className="hidden sm:flex items-center border-l pl-2 pr-1">
-        {renderSyncBadge()}
+        <SyncStatusBadge mode={mode} syncStatus={syncStatus} />
       </div>
 
       {/* Documents Switcher Dropdown */}
@@ -126,13 +108,21 @@ export function DocumentSwitcher({ onOpenShare }: DocumentSwitcherProps) {
         <DropdownMenuContent align="start" className="w-56">
           <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
             <span>Your Documents</span>
-            <Cloud className="h-3 w-3" />
+            {isSignedIn ? (
+              <Cloud className="h-3 w-3 text-blue-500" />
+            ) : (
+              <CloudOff className="h-3 w-3 text-muted-foreground" />
+            )}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
 
           <div className="max-h-48 overflow-y-auto">
             {documents.length === 0 ? (
-              <div className="px-2 py-1.5 text-xs text-muted-foreground">No saved documents yet</div>
+              <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                {isSignedIn
+                  ? 'No saved documents yet'
+                  : 'Guest mode — documents stay in your browser'}
+              </div>
             ) : (
               documents.map((doc) => (
                 <DropdownMenuItem
@@ -153,6 +143,16 @@ export function DocumentSwitcher({ onOpenShare }: DocumentSwitcherProps) {
               ))
             )}
           </div>
+
+          {!isSignedIn && (
+            <DropdownMenuItem
+              onClick={() => router.push('/login')}
+              className="flex items-center gap-2 text-xs font-medium text-blue-600 dark:text-blue-400 cursor-pointer"
+            >
+              <LogIn className="h-3.5 w-3.5" />
+              <span>Sign in to sync documents</span>
+            </DropdownMenuItem>
+          )}
 
           <DropdownMenuSeparator />
 

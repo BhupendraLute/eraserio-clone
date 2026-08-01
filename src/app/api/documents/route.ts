@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
+import { getUserId } from '@/lib/auth/session';
+import { createDocumentSchema } from '@/lib/api-validation';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,13 +19,35 @@ Auth Service > Database: check session
 `;
 const DEFAULT_DOC_CONTENT = '<h1 class="text-2xl font-bold mb-4">Untitled Document</h1><p></p>';
 
-export async function GET() {
-  try {
-    if (!process.env.DATABASE_URL) {
-      return NextResponse.json({ documents: [], mode: 'offline' });
-    }
+function offlineDocStub(title: string) {
+  const now = new Date().toISOString();
+  return {
+    document: {
+      id: `doc_${Date.now()}`,
+      title,
+      whiteboardData: DEFAULT_WHITEBOARD_DATA,
+      diagramSource: DEFAULT_DIAGRAM_SOURCE,
+      docContent: DEFAULT_DOC_CONTENT,
+      isPublic: false,
+      shareToken: null,
+      createdAt: now,
+      updatedAt: now,
+    },
+    mode: 'offline' as const,
+  };
+}
 
+export async function GET() {
+  const userId = await getUserId();
+
+  // Guests see an empty, local-only document list (never other users' data)
+  if (!userId) {
+    return NextResponse.json({ documents: [], mode: 'offline' });
+  }
+
+  try {
     const documents = await prisma.document.findMany({
+      where: { ownerId: userId },
       orderBy: { updatedAt: 'desc' },
       select: {
         id: true,
@@ -37,41 +61,39 @@ export async function GET() {
 
     return NextResponse.json({ documents, mode: 'cloud' });
   } catch {
-    // If DB is unreachable or schema is not pushed yet, fallback to offline mode gracefully
     return NextResponse.json({ documents: [], mode: 'offline' });
   }
 }
 
 export async function POST(req: NextRequest) {
+  const userId = await getUserId();
+
   const body = await req.json().catch(() => ({}));
-  const title = body.title || 'Untitled Document';
-  const whiteboardData = body.whiteboardData || DEFAULT_WHITEBOARD_DATA;
-  const diagramSource = body.diagramSource || DEFAULT_DIAGRAM_SOURCE;
-  const docContent = body.docContent || DEFAULT_DOC_CONTENT;
+  const parsed = createDocumentSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Invalid request body', details: parsed.error.flatten().fieldErrors },
+      { status: 400 }
+    );
+  }
+
+  const { title } = parsed.data;
+  const whiteboardData = parsed.data.whiteboardData ?? DEFAULT_WHITEBOARD_DATA;
+  const diagramSource = parsed.data.diagramSource ?? DEFAULT_DIAGRAM_SOURCE;
+  const docContent = parsed.data.docContent ?? DEFAULT_DOC_CONTENT;
+
+  // Guests create local-only documents (offline stubs, no DB write)
+  if (!userId) {
+    return NextResponse.json(offlineDocStub(title));
+  }
 
   try {
-    if (!process.env.DATABASE_URL) {
-      // In offline / unconfigured DB mode, return a client-usable ID stub
-      return NextResponse.json({
-        document: {
-          id: `doc_${Date.now()}`,
-          title,
-          whiteboardData,
-          diagramSource,
-          docContent,
-          isPublic: false,
-          shareToken: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        mode: 'offline',
-      });
-    }
-
     const newDoc = await prisma.document.create({
       data: {
         title,
-        whiteboardData: typeof whiteboardData === 'string' ? whiteboardData : JSON.stringify(whiteboardData),
+        ownerId: userId,
+        whiteboardData,
         diagramSource,
         docContent,
       },
@@ -79,19 +101,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ document: newDoc, mode: 'cloud' }, { status: 201 });
   } catch {
-    return NextResponse.json({
-      document: {
-        id: `doc_${Date.now()}`,
-        title,
-        whiteboardData,
-        diagramSource,
-        docContent,
-        isPublic: false,
-        shareToken: null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      mode: 'offline',
-    });
+    // DB unreachable — fall back to a local stub so the user is never blocked
+    return NextResponse.json(offlineDocStub(title));
   }
 }

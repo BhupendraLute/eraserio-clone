@@ -1,21 +1,82 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Sparkles, ArrowRight, ArrowLeft, ShieldCheck } from 'lucide-react';
+import { Sparkles, ArrowRight, ArrowLeft, ShieldCheck, Loader2 } from 'lucide-react';
+import { GithubIcon, GoogleIcon } from '@/components/auth/OAuthIcons';
+import { signIn, getProviders } from 'next-auth/react';
+import { toast } from 'sonner';
+import { safeCallbackUrl } from '@/lib/utils';
 
-export default function SignupPage() {
-  const [loading, setLoading] = useState(false);
+function SignupForm() {
+  const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
+  const [providers, setProviders] = useState<{ id: string; name: string }[]>([]);
+  const [providersLoading, setProvidersLoading] = useState(true);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = safeCallbackUrl(searchParams.get('callbackUrl'));
 
-  const handleOAuthSignup = (provider: string) => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      router.push('/whiteboard');
-    }, 400);
+  useEffect(() => {
+    let cancelled = false;
+    getProviders().then((result) => {
+      if (cancelled) return;
+      if (result) {
+        setProviders(
+          Object.values(result)
+            .filter((p) => p.id === 'github' || p.id === 'google')
+            .map((p) => ({ id: p.id, name: p.name }))
+        );
+      }
+      setProvidersLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleOAuthSignup = async (provider: string) => {
+    setLoadingProvider(provider);
+    try {
+      const result = await signIn(provider, { callbackUrl, redirect: false });
+      if (result?.error) {
+        toast.error(`Sign up failed. ${result.error}`);
+      } else if (result?.ok) {
+        toast.success('Account created successfully!');
+        router.push(callbackUrl);
+      }
+    } catch {
+      toast.error('Could not reach the provider. Please try again.');
+    } finally {
+      setLoadingProvider(null);
+    }
+  };
+
+  const handleGuest = () => {
+    toast.info('Continuing as guest — workspace stays local in your browser.');
+    router.push('/whiteboard');
+  };
+
+  const renderProviderButton = (provider: { id: string; name: string }) => {
+    const isLoading = loadingProvider === provider.id;
+    const Icon = provider.id === 'github' ? GithubIcon : GoogleIcon;
+    return (
+      <Button
+        key={provider.id}
+        variant="outline"
+        disabled={loadingProvider !== null}
+        onClick={() => handleOAuthSignup(provider.id)}
+        className="h-11 text-xs font-semibold gap-3 border-slate-700 bg-slate-800/50 text-white hover:bg-slate-800 justify-center rounded-xl"
+      >
+        {isLoading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Icon />
+        )}
+        <span>Sign up with {provider.name}</span>
+      </Button>
+    );
   };
 
   return (
@@ -40,44 +101,18 @@ export default function SignupPage() {
 
         {/* OAuth Buttons */}
         <div className="flex flex-col gap-3 mb-6">
-          <Button
-            variant="outline"
-            disabled={loading}
-            onClick={() => handleOAuthSignup('github')}
-            className="h-11 text-xs font-semibold gap-3 border-slate-700 bg-slate-800/50 text-white hover:bg-slate-800 justify-center rounded-xl"
-          >
-            <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24">
-              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
-            </svg>
-            <span>Sign up with GitHub</span>
-          </Button>
-
-          <Button
-            variant="outline"
-            disabled={loading}
-            onClick={() => handleOAuthSignup('google')}
-            className="h-11 text-xs font-semibold gap-3 border-slate-700 bg-slate-800/50 text-white hover:bg-slate-800 justify-center rounded-xl"
-          >
-            <svg className="h-4 w-4" viewBox="0 0 24 24">
-              <path
-                fill="#4285F4"
-                d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.27v3.15C3.25 21.3 7.31 24 12 24z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.27C.46 8.2 0 10.04 0 12s.46 3.8 1.27 5.42l4.01-3.15z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.25 2.7 1.27 6.58l4.01 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-              />
-            </svg>
-            <span>Sign up with Google</span>
-          </Button>
+          {providersLoading ? (
+            <div className="flex h-11 items-center justify-center gap-2 text-xs text-slate-400">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span>Checking providers...</span>
+            </div>
+          ) : providers.length > 0 ? (
+            providers.map(renderProviderButton)
+          ) : (
+            <div className="rounded-xl border border-dashed border-slate-700 p-4 text-center text-xs text-slate-400">
+              No social providers configured yet. You can still continue as a guest.
+            </div>
+          )}
         </div>
 
         <div className="relative flex items-center justify-center mb-6">
@@ -90,7 +125,8 @@ export default function SignupPage() {
         </div>
 
         <Button
-          onClick={() => handleOAuthSignup('guest')}
+          onClick={handleGuest}
+          disabled={loadingProvider !== null}
           className="w-full h-11 text-xs font-semibold gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl shadow-lg shadow-blue-600/30"
         >
           <Sparkles className="h-4 w-4 text-amber-300" />
@@ -104,5 +140,19 @@ export default function SignupPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950">
+          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+        </div>
+      }
+    >
+      <SignupForm />
+    </Suspense>
   );
 }

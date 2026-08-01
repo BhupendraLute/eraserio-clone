@@ -20,10 +20,10 @@ export default function SharePage({ params }: SharePageProps) {
     // Enable read-only UI state for shared canvas
     useWhiteboardStore.setState({ hideUI: false });
 
-    // Fetch shared document data
+    // Fetch shared document data via the public share-token endpoint
     async function loadSharedDoc() {
       try {
-        const res = await fetch(`/api/documents/${token}`);
+        const res = await fetch(`/api/documents/share/${token}`);
         if (res.ok) {
           const { document: doc } = await res.json();
           if (doc) {
@@ -35,10 +35,15 @@ export default function SharePage({ params }: SharePageProps) {
                   : doc.whiteboardData;
               useWhiteboardStore.setState({ elements });
             }
+          } else {
+            setTitle('Shared Whiteboard');
           }
+        } else {
+          setTitle('Shared Whiteboard');
         }
       } catch {
         // Fall back gracefully
+        setTitle('Shared Whiteboard');
       } finally {
         setLoading(false);
       }

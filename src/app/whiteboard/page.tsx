@@ -5,8 +5,10 @@ import { useWorkspaceStore } from '@/lib/store/workspace-store';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { EraserHeader } from '@/components/EraserHeader';
 import { EraserWorkspace } from '@/components/workspace/EraserWorkspace';
+import { useAuthSync } from '@/hooks/useAuthSync';
 
 export default function WhiteboardPage() {
+  useAuthSync();
   const setViewMode = useWorkspaceStore((s) => s.setViewMode);
   const hydrate = useWhiteboardStore((s) => s.hydrate);
 

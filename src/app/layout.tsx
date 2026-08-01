@@ -3,6 +3,7 @@ import { Public_Sans } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { QueryProvider } from "@/components/providers/QueryProvider";
+import { AuthProvider } from "@/components/providers/AuthProvider";
 import { ThemeProvider } from "next-themes";
 
 const publicSans = Public_Sans({ subsets: ["latin"], variable: "--font-sans" });
@@ -30,11 +31,13 @@ export default function RootLayout({
       >
          <body suppressHydrationWarning className="h-screen w-screen overflow-hidden flex flex-row bg-background text-foreground">
             <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-               <QueryProvider>
-                  <main className="flex flex-1 flex-col h-full w-full overflow-hidden">
-                     {children}
-                  </main>
-               </QueryProvider>
+               <AuthProvider>
+                  <QueryProvider>
+                     <main className="flex flex-1 flex-col h-full w-full overflow-hidden">
+                        {children}
+                     </main>
+                  </QueryProvider>
+               </AuthProvider>
             </ThemeProvider>
          </body>
       </html>
