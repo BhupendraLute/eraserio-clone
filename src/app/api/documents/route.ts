@@ -36,20 +36,20 @@ export async function GET() {
     });
 
     return NextResponse.json({ documents, mode: 'cloud' });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Failed to fetch documents';
-    return NextResponse.json({ error: message, mode: 'offline' }, { status: 500 });
+  } catch {
+    // If DB is unreachable or schema is not pushed yet, fallback to offline mode gracefully
+    return NextResponse.json({ documents: [], mode: 'offline' });
   }
 }
 
 export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json().catch(() => ({}));
-    const title = body.title || 'Untitled Document';
-    const whiteboardData = body.whiteboardData || DEFAULT_WHITEBOARD_DATA;
-    const diagramSource = body.diagramSource || DEFAULT_DIAGRAM_SOURCE;
-    const docContent = body.docContent || DEFAULT_DOC_CONTENT;
+  const body = await req.json().catch(() => ({}));
+  const title = body.title || 'Untitled Document';
+  const whiteboardData = body.whiteboardData || DEFAULT_WHITEBOARD_DATA;
+  const diagramSource = body.diagramSource || DEFAULT_DIAGRAM_SOURCE;
+  const docContent = body.docContent || DEFAULT_DOC_CONTENT;
 
+  try {
     if (!process.env.DATABASE_URL) {
       // In offline / unconfigured DB mode, return a client-usable ID stub
       return NextResponse.json({
@@ -78,8 +78,20 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ document: newDoc, mode: 'cloud' }, { status: 201 });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Failed to create document';
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json({
+      document: {
+        id: `doc_${Date.now()}`,
+        title,
+        whiteboardData,
+        diagramSource,
+        docContent,
+        isPublic: false,
+        shareToken: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      mode: 'offline',
+    });
   }
 }

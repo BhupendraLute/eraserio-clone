@@ -1,5 +1,5 @@
 {
-  "name": "eraserio-clone",
+  "name": "architecta",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -25,7 +25,7 @@
     "@iconify/react": "^6.0.2",
     "@lezer/highlight": "^1.2.3",
     "@phosphor-icons/react": "^2.1.10",
-    "@prisma/client": "^6.4.0",
+    "@prisma/client": "^7.9.1",
     "@tanstack/react-query": "^5.101.4",
     "@tiptap/extension-placeholder": "^3.28.0",
     "@tiptap/react": "^3.28.0",
@@ -40,6 +40,7 @@
     "jspdf": "^4.2.1",
     "lucide-react": "^1.25.0",
     "next": "16.2.11",
+    "next-auth": "^4.24.15",
     "next-themes": "^0.4.6",
     "perfect-freehand": "^1.2.3",
     "prismjs": "^1.30.0",
@@ -66,7 +67,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.11",
     "jsdom": "^30.0.1",
-    "prisma": "^6.4.0",
+    "prisma": "^7.9.1",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.10"

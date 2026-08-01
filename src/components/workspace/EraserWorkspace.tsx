@@ -174,7 +174,7 @@ export function EraserWorkspace() {
           <div className="flex h-11 items-center justify-between border-b px-3">
             <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
               <Sparkles className="h-4 w-4 text-blue-600" />
-              <span>EraserAI Assistant</span>
+              <span>Architecta AI Assistant</span>
             </div>
             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAiChatOpen(false)}>
               <X className="h-3.5 w-3.5" />

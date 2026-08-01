@@ -72,7 +72,7 @@ export default function SettingsPage() {
           </span>
         </Link>
         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-sm font-bold text-xs">
-          E
+          A
         </div>
         <span className="text-sm font-semibold text-foreground">Settings</span>
       </header>
