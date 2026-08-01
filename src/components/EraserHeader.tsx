@@ -9,7 +9,6 @@ import {
   Share2,
   Search,
   MessageSquare,
-  MoreHorizontal,
   Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -17,12 +16,13 @@ import Link from 'next/link';
 import type { WorkspaceViewMode } from '@/lib/store/workspace-store';
 import { ThemeToggle } from '@/components/whiteboard/ThemeToggle';
 import { CommandPalette } from '@/components/whiteboard/CommandPalette';
+import { DocumentSwitcher } from '@/components/workspace/DocumentSwitcher';
+import { UserNav } from '@/components/auth/UserNav';
+import { ShareModal } from '@/components/workspace/ShareModal';
 
 export function EraserHeader() {
   const viewMode = useWorkspaceStore((s) => s.viewMode);
   const setViewMode = useWorkspaceStore((s) => s.setViewMode);
-  const fileName = useWorkspaceStore((s) => s.fileName);
-  const setFileName = useWorkspaceStore((s) => s.setFileName);
   const aiChatOpen = useWorkspaceStore((s) => s.aiChatOpen);
   const toggleAiChat = useWorkspaceStore((s) => s.toggleAiChat);
 
@@ -30,6 +30,7 @@ export function EraserHeader() {
   const toggleShowComments = useWhiteboardStore((s) => s.toggleShowComments);
 
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
 
   // Global Ctrl+K / Cmd+K handler
   useEffect(() => {
@@ -51,20 +52,12 @@ export function EraserHeader() {
 
   return (
     <header className="flex h-11 shrink-0 items-center justify-between border-b bg-background px-3 select-none">
-      {/* Left: Brand Icon & File Title */}
+      {/* Left: Brand Icon & Document Switcher */}
       <div className="flex items-center gap-2">
         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-sm font-bold text-xs">
           E
         </div>
-        <input
-          type="text"
-          value={fileName}
-          onChange={(e) => setFileName(e.target.value)}
-          className="bg-transparent text-xs font-semibold text-foreground outline-none focus:ring-1 focus:ring-primary focus:ring-offset-1 rounded px-1"
-        />
-        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground">
-          <MoreHorizontal className="h-3.5 w-3.5" />
-        </Button>
+        <DocumentSwitcher onOpenShare={() => setShareModalOpen(true)} />
       </div>
 
       {/* Center: Eraser View Switcher [ Document | Both | Canvas ] */}
@@ -85,7 +78,7 @@ export function EraserHeader() {
         ))}
       </div>
 
-      {/* Right: Actions */}
+      {/* Right: Actions & User Account */}
       <div className="flex items-center gap-2">
         {/* Command Palette (Ctrl+K) */}
         <Button
@@ -100,7 +93,12 @@ export function EraserHeader() {
         </Button>
 
         {/* Share Button */}
-        <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5 px-2.5">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 text-xs gap-1.5 px-2.5"
+          onClick={() => setShareModalOpen(true)}
+        >
           <Share2 className="h-3 w-3" />
           <span>Share</span>
         </Button>
@@ -135,17 +133,22 @@ export function EraserHeader() {
         {/* Theme Toggle */}
         <ThemeToggle />
 
+        {/* User Account / Navigation */}
+        <UserNav />
+
         {/* Settings Link */}
         <Link href="/settings">
           <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
             <Settings className="h-3.5 w-3.5" />
           </Button>
         </Link>
-
       </div>
 
       {/* Command Palette Modal */}
       <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
+
+      {/* Share Modal */}
+      <ShareModal open={shareModalOpen} onOpenChange={setShareModalOpen} />
     </header>
   );
 }
