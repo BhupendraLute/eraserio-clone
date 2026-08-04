@@ -9,7 +9,6 @@ import {
   Share2,
   Search,
   MessageSquare,
-  MoreHorizontal,
   Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -17,12 +16,13 @@ import Link from 'next/link';
 import type { WorkspaceViewMode } from '@/lib/store/workspace-store';
 import { ThemeToggle } from '@/components/whiteboard/ThemeToggle';
 import { CommandPalette } from '@/components/whiteboard/CommandPalette';
+import { DocumentSwitcher } from '@/components/workspace/DocumentSwitcher';
+import { UserNav } from '@/components/auth/UserNav';
+import { ShareModal } from '@/components/workspace/ShareModal';
 
 export function EraserHeader() {
   const viewMode = useWorkspaceStore((s) => s.viewMode);
   const setViewMode = useWorkspaceStore((s) => s.setViewMode);
-  const fileName = useWorkspaceStore((s) => s.fileName);
-  const setFileName = useWorkspaceStore((s) => s.setFileName);
   const aiChatOpen = useWorkspaceStore((s) => s.aiChatOpen);
   const toggleAiChat = useWorkspaceStore((s) => s.toggleAiChat);
 
@@ -30,6 +30,7 @@ export function EraserHeader() {
   const toggleShowComments = useWhiteboardStore((s) => s.toggleShowComments);
 
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
 
   // Global Ctrl+K / Cmd+K handler
   useEffect(() => {
@@ -51,20 +52,12 @@ export function EraserHeader() {
 
   return (
     <header className="flex h-11 shrink-0 items-center justify-between border-b bg-background px-3 select-none">
-      {/* Left: Brand Icon & File Title */}
+      {/* Left: Brand Icon & Document Switcher */}
       <div className="flex items-center gap-2">
         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-sm font-bold text-xs">
-          E
+          A
         </div>
-        <input
-          type="text"
-          value={fileName}
-          onChange={(e) => setFileName(e.target.value)}
-          className="bg-transparent text-xs font-semibold text-foreground outline-none focus:ring-1 focus:ring-primary focus:ring-offset-1 rounded px-1"
-        />
-        <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground">
-          <MoreHorizontal className="h-3.5 w-3.5" />
-        </Button>
+        <DocumentSwitcher onOpenShare={() => setShareModalOpen(true)} />
       </div>
 
       {/* Center: Eraser View Switcher [ Document | Both | Canvas ] */}
@@ -85,7 +78,7 @@ export function EraserHeader() {
         ))}
       </div>
 
-      {/* Right: Actions */}
+      {/* Right: Actions & User Account */}
       <div className="flex items-center gap-2">
         {/* Command Palette (Ctrl+K) */}
         <Button
@@ -99,8 +92,26 @@ export function EraserHeader() {
           <kbd className="rounded bg-muted px-1 py-0.5 text-[9px] font-medium">Ctrl+K</kbd>
         </Button>
 
+        {/* GitHub Repository Link */}
+        <a
+          href="https://github.com/BhupendraLute/eraserio-clone"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hidden sm:inline-flex h-7 items-center justify-center rounded-md border px-2 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          title="GitHub Repository"
+        >
+          <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
+            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+          </svg>
+        </a>
+
         {/* Share Button */}
-        <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5 px-2.5">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 text-xs gap-1.5 px-2.5"
+          onClick={() => setShareModalOpen(true)}
+        >
           <Share2 className="h-3 w-3" />
           <span>Share</span>
         </Button>
@@ -113,7 +124,7 @@ export function EraserHeader() {
           onClick={toggleAiChat}
         >
           <Sparkles className="h-3 w-3 text-amber-300" />
-          <span>Eraser AI</span>
+          <span>Architecta AI</span>
         </Button>
 
         {/* 💬 Comment Visibility Toggle Button */}
@@ -135,17 +146,22 @@ export function EraserHeader() {
         {/* Theme Toggle */}
         <ThemeToggle />
 
+        {/* User Account / Navigation */}
+        <UserNav />
+
         {/* Settings Link */}
         <Link href="/settings">
           <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
             <Settings className="h-3.5 w-3.5" />
           </Button>
         </Link>
-
       </div>
 
       {/* Command Palette Modal */}
       <CommandPalette open={commandPaletteOpen} onClose={() => setCommandPaletteOpen(false)} />
+
+      {/* Share Modal */}
+      <ShareModal open={shareModalOpen} onOpenChange={setShareModalOpen} />
     </header>
   );
 }

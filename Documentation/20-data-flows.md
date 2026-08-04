@@ -257,3 +257,56 @@ state.moveSelectedElements(dx, dy);
 
 This is used in `useWhiteboardInteractions` (e.g. `activeFillStyle` read at pointerup) and in
 `usePipelineWorker` (reading `editorView` inside `onmessage`).
+
+---
+
+## 11. Profile Settings: Edit Display Name / Avatar
+
+Signed-in users edit their profile (display name + avatar URL) from `/settings/profile`, reached
+via the avatar menu. The save path updates the DB **and** refreshes the NextAuth session so the
+header reflects the change everywhere without a reload:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant UV as UserNav (avatar menu)
+    participant P as /settings/profile
+    participant A as /api/user/profile
+    participant DB as Neon (Prisma)
+    participant NA as NextAuth jwt callback
+    participant H as Header (UserNav)
+
+    U->>UV: clicks avatar → Profile Settings
+    UV->>P: router.push('/settings/profile')
+    P->>A: GET /api/user/profile
+    A->>A: getUserId() → 401 if guest
+    A->>DB: findUnique(user + earliest-linked account)
+    DB-->>A: name, email, image, provider, memberSince
+    A-->>P: { profile }
+    U->>P: edits name / avatar URL → Save
+    P->>A: PATCH { name, image }
+    A->>A: updateProfileSchema (zod)
+    A->>DB: user.update
+    DB-->>A: updated profile
+    A-->>P: { profile }
+    P->>NA: update() → jwt(trigger='update')
+    NA->>DB: findUnique(name, email, image)
+    DB-->>NA: fresh values
+    NA-->>NA: token.name / email / picture = fresh values
+    NA-->>P: refreshed session
+    P-->>H: header name/avatar update everywhere
+```
+
+**Key details**:
+
+- **Guest guard** — `getUserId()` returns `null` for signed-out visitors, so both GET and PATCH
+  answer `401`, and the page shows a "Sign in to manage your profile" card instead of the form.
+- **Validation** — `updateProfileSchema` trims `name` (must be 1–80 chars) and accepts an avatar
+  URL or an **empty string to clear** the image (`image: ''` → `null` in the DB).
+- **Session refresh** — after a successful PATCH the page calls `update()` from `useSession()`,
+  which re-runs the NextAuth `jwt` callback with `trigger: 'update'`. The callback re-reads the
+  DB (wrapped in `try/catch`, so sessions survive a DB outage) and the refreshed session updates
+  the header instantly.
+
+> Full auth/database context: [24-authentication-and-database.md](24-authentication-and-database.md) §6.

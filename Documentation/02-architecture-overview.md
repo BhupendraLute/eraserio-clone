@@ -21,7 +21,7 @@ All three share the **same UI shell** (`EraserWorkspace`), the same **Zustand st
 flowchart TB
     subgraph UI["UI LAYER — React Components (src/components)"]
         Shell["EraserWorkspace<br/>(tab switcher + AI sidebar)"]
-        Nav["AppNav + EraserHeader"]
+        Header["EraserHeader<br/>(document switcher + auth + actions)"]
         Editor["Diagram Editor<br/>CodeEditor + FlowchartCanvas"]
         Docs["Docs Editor<br/>Tiptap + DiagramEmbed"]
         WB["Whiteboard<br/>WhiteboardCanvas + toolbars"]
@@ -32,6 +32,7 @@ flowchart TB
         DiagramS["diagram-store<br/>(source, nodes, errors)"]
         RegistryS["diagram-registry<br/>(saved diagrams CRUD)"]
         WhiteboardS["whiteboard-store<br/>(elements, tool, history)"]
+        DocumentS["document-store<br/>(documents, mode, syncStatus, auth)"]
     end
 
     subgraph ENGINE["ENGINE LAYER — Pure TypeScript (src/lib)"]
@@ -79,6 +80,11 @@ thread, and (in the future) in Node.js.
 | **Tiptap (ProseMirror)** | Rich-text document editor | `src/components/docs/` |
 | **React Query** | Caches the icon-search queries | `src/lib/hooks/useIconSearch.ts` |
 | **html-to-image / jspdf** | PNG/PDF export on the whiteboard | `ExportMenu.tsx` |
+| **NextAuth.js v4** | OAuth (GitHub/Google) + JWT sessions, Prisma adapter | `src/lib/auth.ts`, `src/app/api/auth/[...nextauth]/route.ts` |
+| **Prisma 7 + Neon Postgres** | Cloud document persistence (driver adapter `PrismaPg` + `pg`) | `src/lib/db/prisma.ts`, `prisma/schema.prisma` |
+
+> The **auth + persistence layer** (Slice 4) is covered in depth in
+> [24-authentication-and-database.md](24-authentication-and-database.md).
 
 ---
 
@@ -101,9 +107,27 @@ thread, and (in the future) in Node.js.
 - A single-pass, main-thread version used by Tiptap's diagram embed previews.
 - No worker overhead for small static diagrams.
 
+### 3.4 API Routes (`src/app/api/`) — server-only boundary
+
+The route handlers are the app's **only server-side entry points** (besides NextAuth itself):
+
+| Folder | Purpose | Boundary rule |
+|---|---|---|
+| `api/auth/[...nextauth]/route.ts` | NextAuth OAuth handler (GET/POST) | Delegates to `authOptions`; never called directly by components |
+| `api/documents/**` | Document CRUD + public share | Every query scoped by `ownerId === userId` via `getUserId()`; guests get offline stubs — **never other users' data** |
+| `api/user/profile/route.ts` | The signed-in user's **own profile** (GET/PATCH name/avatar) | `getUserId()` scoping — a user can only read/edit their own row; guests → `401` |
+
+Shared rules:
+
+- All routes are marked `export const dynamic = 'force-dynamic'`.
+- Request bodies are validated with zod schemas from `src/lib/api-validation.ts` (incl.
+  `updateProfileSchema` for profile edits).
+- Handlers are the only modules allowed to import `prisma` / `getUserId` — components never
+  talk to the database directly.
+
 ---
 
-## 4. The 5 Zustand Stores (one-liner summary)
+## 4. The 6 Zustand Stores (one-liner summary)
 
 | Store | File | Responsibility |
 |---|---|---|
@@ -112,13 +136,45 @@ thread, and (in the future) in Node.js.
 | `useDiagramRegistry` | `diagram-registry.ts` | Saved diagram records (create/rename/save/delete), active diagram id |
 | `useDiagramLibraryStore` | `diagram-library-store.ts` | Derived selector over the registry (a list of saved diagrams) |
 | `useWhiteboardStore` | `whiteboard-store.ts` | All whiteboard elements, active tool/color, undo/redo history |
+| `useDocumentStore` | `document-store.ts` | Auth-aware persistence: documents, mode (`cloud`/`offline`), `syncStatus`, share state, `authStatus` |
 
 > `useDiagramLibraryStore` is **not** a separate state container — it *derives* from
-> `useDiagramRegistry`. Full details in [06-state-management.md](06-state-management.md).
+> `useDiagramRegistry`. Full details in [06-state-management.md](06-state-management.md). The
+> auth-aware `useDocumentStore` is covered in [24-authentication-and-database.md](24-authentication-and-database.md).
 
 ---
 
-## 5. What Happens When You Type in the Diagram Editor?
+## 5. Auth & Cloud Persistence (Slice 4) — The Other Pipeline
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant UI as AuthModal / UserNav
+    participant NA as NextAuth /api/auth/[...nextauth]
+    participant DB as Neon Postgres (Prisma)
+    participant DS as document-store
+    participant API as /api/documents/**
+
+    U->>UI: click "Sign In" (GitHub/Google)
+    UI->>NA: signIn(provider) → OAuth redirect
+    NA->>DB: PrismaAdapter upserts User/Account
+    NA-->>UI: JWT issued (token.id = user.id)
+    UI->>DS: useAuthSync → setAuthStatus('authenticated')
+    DS->>API: fetchDocuments() (GET /api/documents)
+    API->>NA: getServerSession / getUserId()
+    API-->>DS: owner-scoped docs, mode: 'cloud'
+    DS-->>UI: SyncStatusBadge shows "Cloud sync" (emerald)
+```
+
+Guests stay in **offline mode** (`mode: 'offline'`) with local-only documents; the UI reflects
+this with amber "Local only" sync status. Signed-in users can additionally edit their own
+profile (display name + avatar) via `GET`/`PATCH /api/user/profile` from `/settings/profile` —
+the route follows the same `getUserId()` scoping as the document APIs (§3.4). See
+[24-authentication-and-database.md](24-authentication-and-database.md).
+
+---
+
+## 6. What Happens When You Type in the Diagram Editor?
 
 ```mermaid
 sequenceDiagram
@@ -147,17 +203,18 @@ This flow is the heart of the app — see [08-worker-pipeline.md](08-worker-pipe
 
 ---
 
-## 6. Where Things Render
+## 7. Where Things Render
 
 - **Flowcharts** → `src/components/editor/FlowchartCanvas.tsx` (SVG `<g>` per node/edge).
 - **Sequence diagrams** → `src/components/editor/SequenceDiagramCanvas.tsx`.
 - **Whiteboard** → `src/components/whiteboard/WhiteboardCanvas.tsx` (one big `<svg>` with a
   `<g transform="translate(...) scale(...)">` for pan/zoom).
 - **Docs embeds** → `src/components/docs/DiagramPreview.tsx` (read-only SVG from the sync pipeline).
+- **Profile settings** → `src/app/settings/profile/page.tsx` (display name/avatar editing, provider info, sign out).
 
 ---
 
-## 7. Suggested Mental Model
+## 8. Suggested Mental Model
 
 > Think of it as **three apps sharing one engine**:
 > - The **DSL engine** turns text into geometry (pure functions, worker-friendly).

@@ -6,7 +6,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # Eraser.io Clone — Agent Context Index
 
-**Stack**: Next.js 16 · React 19 · TailwindCSS v4 · shadcn/ui · Chevrotain · Dagre · Zustand · CodeMirror 6 · Tiptap
+**Stack**: Next.js 16 · React 19 · TailwindCSS v4 · shadcn/ui · Chevrotain · Dagre · Zustand · CodeMirror 6 · Tiptap · NextAuth.js v4 · Prisma 7 + Neon Postgres
 
 ## ⚡ Primary Documentation — READ FIRST
 
@@ -20,11 +20,12 @@ This version has breaking changes — APIs, conventions, and file structure may 
 | [`Documentation/index.md`](Documentation/index.md) | The full documentation index & quickstart |
 | [`Documentation/02-architecture-overview.md`](Documentation/02-architecture-overview.md) | System topology, tech stack, module boundaries |
 | [`Documentation/03-project-structure.md`](Documentation/03-project-structure.md) | Annotated folder tree & "where is X" table |
-| [`Documentation/06-state-management.md`](Documentation/06-state-management.md) | All 5 Zustand stores in detail |
+| [`Documentation/06-state-management.md`](Documentation/06-state-management.md) | All 6 Zustand stores in detail |
 | [`Documentation/07-dsl-engine.md`](Documentation/07-dsl-engine.md) | DSL lexer → parser → AST → validator |
 | [`Documentation/08-worker-pipeline.md`](Documentation/08-worker-pipeline.md) | Web Worker pipeline + `usePipelineWorker` |
 | [`Documentation/14-whiteboard-core.md`](Documentation/14-whiteboard-core.md) | Whiteboard store & element types |
 | [`Documentation/20-data-flows.md`](Documentation/20-data-flows.md) | End-to-end sequence diagrams of key flows |
+| [`Documentation/24-authentication-and-database.md`](Documentation/24-authentication-and-database.md) | NextAuth OAuth, Prisma/Neon schema, document API routes, share flow, profile settings, proxy, env vars |
 | [`Documentation/21-development-guide.md`](Documentation/21-development-guide.md) | Golden rules, verification commands, pitfalls |
 
 ## Context Files (`.agents/`) — Condensed Summaries
@@ -32,8 +33,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 | File | Contents | Full docs |
 |---|---|---|
 | [`architecture.md`](.agents/architecture.md) | System topology, tech stack, module boundaries, state stores, file structure | [02-architecture-overview.md](Documentation/02-architecture-overview.md) · [03-project-structure.md](Documentation/03-project-structure.md) |
-| [`dataflows.md`](.agents/dataflows.md) | Sequence diagrams for pipeline, embeds, node drag, whiteboard creation, export | [20-data-flows.md](Documentation/20-data-flows.md) |
-| [`dev-rules.md`](.agents/dev-rules.md) | Engine isolation, worker rules, SSR safety, export safety, theme colors, build commands | [21-development-guide.md](Documentation/21-development-guide.md) |
+| [`dataflows.md`](.agents/dataflows.md) | Sequence diagrams for pipeline, embeds, node drag, whiteboard creation, export, auth/sync/share | [20-data-flows.md](Documentation/20-data-flows.md) · [24-authentication-and-database.md](Documentation/24-authentication-and-database.md) |
+| [`dev-rules.md`](.agents/dev-rules.md) | Engine isolation, worker rules, SSR safety, export safety, theme colors, build commands, auth/API rules | [21-development-guide.md](Documentation/21-development-guide.md) · [24-authentication-and-database.md](Documentation/24-authentication-and-database.md) |
 | [`project-status.md`](.agents/project-status.md) | Delivery slices, feature inventory, roadmap | [01-getting-started.md](Documentation/01-getting-started.md) · [index.md](Documentation/index.md) |
 
 ## Quick Rules for Agents
@@ -43,3 +44,4 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **Export Safety**: No SVG `<foreignObject>` — use static SVG paths (`NodeIcon.tsx`).
 - **Theme Colors**: Use `text-foreground/50` + `stroke="currentColor"`. No hardcoded colors.
 - **Navigation**: Use Next.js `Link` for client routing. No `<a href>`.
+- **Auth**: `getUserId()` from `src/lib/auth/session.ts` scopes every document query; public reads are sanitized; `proxy.ts` does optimistic redirects only (real authz lives in route handlers).

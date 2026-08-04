@@ -1,6 +1,6 @@
 # 06 · State Management (Zustand Stores)
 
-> **What this document covers**: all five Zustand stores — what state they hold, what actions they
+> **What this document covers**: all six Zustand stores — what state they hold, what actions they
 > expose, and how components consume them.
 
 ---
@@ -36,6 +36,8 @@ flowchart LR
         REG["diagram-registry"]
         LIB["diagram-library-store (derived)"]
         WBS["whiteboard-store"]
+        DOC["document-store"]
+        PREF["preferences-store"]
     end
 
     WS -->|"viewMode, activeTab, fileName, panel toggles"| SHELL["AppNav, EraserHeader, EraserWorkspace"]
@@ -44,6 +46,8 @@ flowchart LR
     REG -->|"diagrams list"| LIB
     LIB -->|"diagrams + save/get/update"| DOCS["docs components (DiagramEmbedView, picker)"]
     WBS -->|"elements, tool, color, history"| WBC["whiteboard components"]
+    DOC -->|"mode, syncStatus, documents, share, guest import"| AUTH["DocumentSwitcher, UserNav, ShareModal, EraserHeader, ImportGuestDocsModal"]
+    PREF -->|"gridStyle, defaultExportFormat, exportScale"| PREF_UI["WhiteboardCanvas, SettingsPage, ExportMenu"]
 ```
 
 ---
@@ -178,7 +182,43 @@ A quick summary of what it holds:
 
 ---
 
-## 8. Reading Stores Correctly (common pattern)
+## 8. `useDocumentStore` — Auth-Aware Document Persistence
+
+**File**: `src/lib/store/document-store.ts`
+
+This is the **6th store**, added with Slice 4 (auth + cloud persistence). It bridges NextAuth
+session state and the document API, and drives the header's sync badge and avatar menu.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `documents` | `DocumentMetadata[]` | Current document list (owned docs) |
+| `activeDocumentId` / `activeDocumentTitle` | `string \| null` / `string` | Active selection |
+| `syncStatus` | `'synced' \| 'saving' \| 'offline' \| 'error'` | Save lifecycle |
+| `isPublic` / `shareToken` | `boolean` / `string \| null` | Share state |
+| `mode` | `'cloud' \| 'offline'` | Persistence mode (signed in vs guest) |
+| `authStatus` | `'loading' \| 'authenticated' \| 'unauthenticated'` | Auth state, written by `useAuthSync` |
+
+**Key actions:**
+
+- `setAuthStatus(status)` — called by `useAuthSync` on session changes; refetches documents when
+  auth state actually changes (this is how sign-in/sign-out swaps the doc list).
+- `fetchDocuments()` — GET `/api/documents`; guests get `mode: 'offline'`. Resets
+  `activeDocumentId` when the active doc disappears (e.g. after sign-out).
+- `createDocument(title?)` — POST; guests get a local-only stub (no DB write).
+- `selectDocument(id)` / `renameDocument` / `deleteDocument` — CRUD against `/api/documents/[id]`.
+- `saveCurrentDocumentState(data)` — debounced (500ms) PATCH of whiteboard/diagram/docs content.
+- `togglePublicShare(isPublic)` — POST `/api/documents/[id]/share`; stores `isPublic` + `shareToken`.
+
+Consumers: `DocumentSwitcher` (list + sync badge), `ShareModal` (share toggle), `UserNav`
+(mode/syncStatus), `EraserHeader` (via `DocumentSwitcher`).
+
+> 💡 **Mode vs syncStatus**: `mode` is *where* data lives (cloud vs offline); `syncStatus` is the
+> *lifecycle* of the last save. The `SyncStatusBadge` renders both together — see
+> [23-shared-ui-primitives.md](23-shared-ui-primitives.md).
+
+---
+
+## 9. Reading Stores Correctly (common pattern)
 
 Always subscribe with a **selector** — never grab the whole store unless you must:
 

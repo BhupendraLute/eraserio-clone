@@ -35,6 +35,8 @@ code snippets, and plain-English explanations.
 | 20 | [Data Flows](20-data-flows.md) | End-to-end flows: keystroke→canvas, export, undo/redo, etc. |
 | 21 | [Development Guide](21-development-guide.md) | Coding rules, verification commands, common pitfalls |
 | 22 | [Testing Guide](22-testing-guide.md) | One reference for the test workflow, conventions & coverage gate |
+| 23 | [Shared UI Primitives](23-shared-ui-primitives.md) | `AppButton`, `StatusDot`, `SyncStatusBadge` & the emerald/amber/red color language |
+| 24 | [Auth, Database & Cloud Persistence](24-authentication-and-database.md) | NextAuth OAuth, Prisma/Neon schema, document API routes, share flow, profile settings, proxy, env vars |
 
 ---
 
@@ -78,7 +80,7 @@ flowchart TB
 
 - **Stack**: Next.js 16 · React 19 · TailwindCSS v4 · Zustand v5 · Chevrotain · Dagre · CodeMirror 6 · Tiptap
 - **Three products in one app**: Diagram-as-Code editor, Markdown-style Docs editor, and a Freeform Whiteboard.
-- **State** lives in 5 small Zustand stores (see [06-state-management.md](06-state-management.md)).
+- **State** lives in 6 small Zustand stores (see [06-state-management.md](06-state-management.md)).
 - **Heavy parsing work** happens in a Web Worker so the UI never freezes (see [08-worker-pipeline.md](08-worker-pipeline.md)).
 - **The DSL engine** (`src/lib/dsl/` + `src/lib/layout/`) is *pure TypeScript* — no React, no DOM.
 
