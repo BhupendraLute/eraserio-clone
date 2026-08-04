@@ -235,6 +235,10 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
         await get().selectDocument(duplicated.id);
         return duplicated.id;
       }
+
+      // Nothing was duplicated — return to idle instead of leaving the UI
+      // stuck on 'saving'.
+      set({ syncStatus: 'synced' });
       return null;
     } catch {
       set({ syncStatus: 'error' });

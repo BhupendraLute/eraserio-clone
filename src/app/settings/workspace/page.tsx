@@ -6,7 +6,6 @@ import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
-  Users,
   Building2,
   UserPlus,
   Mail,

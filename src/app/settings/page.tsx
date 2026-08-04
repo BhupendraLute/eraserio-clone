@@ -2,10 +2,10 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Sun, Moon, Monitor, Keyboard, MousePointer, Undo2, Search, Grid, Sliders, Download } from 'lucide-react';
+import { ArrowLeft, Sun, Keyboard, MousePointer, Undo2, Search, Grid, Sliders, Download } from 'lucide-react';
 import { ThemeToggle } from '@/components/whiteboard/ThemeToggle';
 import { SettingsNav } from '@/components/settings/SettingsNav';
-import { usePreferencesStore, GridStyle, ExportFormat } from '@/lib/store/preferences-store';
+import { usePreferencesStore, GridStyle } from '@/lib/store/preferences-store';
 
 interface ShortcutGroup {
   title: string;
@@ -65,7 +65,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
 ];
 
 export default function SettingsPage() {
-  const { gridStyle, defaultExportFormat, exportScale, setGridStyle, setDefaultExportFormat, setExportScale } = usePreferencesStore();
+  const { gridStyle, exportScale, setGridStyle, setExportScale } = usePreferencesStore();
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-background">

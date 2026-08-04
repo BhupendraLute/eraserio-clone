@@ -25,6 +25,9 @@ export default defineConfig({
         'src/lib/render/**/*.ts',
         'src/lib/export/**/*.ts',
       ],
+      // Pure type-definition modules contain zero executable statements, so v8
+      // reports a misleading 0% for them. They are not unit-testable.
+      exclude: ['src/lib/layout/sequence-types.ts', 'src/lib/layout/types.ts'],
       reporter: ['text', 'html'], // terminal table + browsable coverage/ report
       reportsDirectory: 'coverage',
       // Fail the coverage run if the tracked areas regress below the baseline
