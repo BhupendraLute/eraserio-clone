@@ -13,7 +13,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -79,5 +80,11 @@
   "overrides": {
     "postcss": "^8.5.25",
     "sharp": "^0.35.3"
+  },
+  "allowScripts": {
+    "core-js": true,
+    "prisma": true,
+    "unrs-resolver": true,
+    "@prisma/engines": true
   }
 }
