@@ -5,6 +5,7 @@ import { useWorkspaceStore } from '@/lib/store/workspace-store';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { EraserHeader } from '@/components/EraserHeader';
 import { EraserWorkspace } from '@/components/workspace/EraserWorkspace';
+import { ImportGuestDocsModal } from '@/components/auth/ImportGuestDocsModal';
 import { useAuthSync } from '@/hooks/useAuthSync';
 
 export default function WhiteboardPage() {
@@ -25,6 +26,7 @@ export default function WhiteboardPage() {
     <div className="flex h-screen w-full flex-col overflow-hidden bg-background">
       <EraserHeader />
       <EraserWorkspace />
+      <ImportGuestDocsModal />
     </div>
   );
 }

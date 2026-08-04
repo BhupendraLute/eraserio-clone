@@ -1,8 +1,11 @@
 'use client';
 
+import React from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Sun, Moon, Monitor, Keyboard, MousePointer, Undo2, Search } from 'lucide-react';
+import { ArrowLeft, Sun, Moon, Monitor, Keyboard, MousePointer, Undo2, Search, Grid, Sliders, Download } from 'lucide-react';
 import { ThemeToggle } from '@/components/whiteboard/ThemeToggle';
+import { SettingsNav } from '@/components/settings/SettingsNav';
+import { usePreferencesStore, GridStyle, ExportFormat } from '@/lib/store/preferences-store';
 
 interface ShortcutGroup {
   title: string;
@@ -62,25 +65,30 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
 ];
 
 export default function SettingsPage() {
+  const { gridStyle, defaultExportFormat, exportScale, setGridStyle, setDefaultExportFormat, setExportScale } = usePreferencesStore();
+
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-background">
       {/* Header */}
-      <header className="flex h-11 shrink-0 items-center gap-3 border-b px-4">
-        <Link href="/whiteboard">
-          <span className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent transition-colors">
-            <ArrowLeft className="h-4 w-4" />
-          </span>
-        </Link>
-        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-sm font-bold text-xs">
-          A
+      <header className="flex h-11 shrink-0 items-center justify-between gap-3 border-b px-4">
+        <div className="flex items-center gap-3">
+          <Link href="/whiteboard">
+            <span className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent transition-colors">
+              <ArrowLeft className="h-4 w-4" />
+            </span>
+          </Link>
+          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-sm font-bold text-xs">
+            A
+          </div>
+          <span className="text-sm font-semibold text-foreground">Settings</span>
         </div>
-        <span className="text-sm font-semibold text-foreground">Settings</span>
+        <SettingsNav active="settings" />
       </header>
 
       <div className="flex-1 overflow-auto">
         <div className="mx-auto max-w-2xl px-6 py-8">
           {/* Theme Section */}
-          <section className="mb-10">
+          <section className="mb-8">
             <div className="mb-4 flex items-center gap-2">
               <Sun className="h-5 w-5 text-muted-foreground" />
               <h2 className="text-lg font-bold text-foreground">Theme</h2>
@@ -93,23 +101,70 @@ export default function SettingsPage() {
                 </div>
                 <ThemeToggle />
               </div>
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                {[
-                  { value: 'light', label: 'Light', icon: Sun },
-                  { value: 'dark', label: 'Dark', icon: Moon },
-                  { value: 'system', label: 'System', icon: Monitor },
-                ].map((t) => {
-                  const Icon = t.icon;
-                  return (
-                    <div
-                      key={t.value}
-                      className="flex flex-col items-center gap-2 rounded-lg border bg-background p-3"
+            </div>
+          </section>
+
+          {/* Canvas & Editor Preferences Section */}
+          <section className="mb-8">
+            <div className="mb-4 flex items-center gap-2">
+              <Sliders className="h-5 w-5 text-muted-foreground" />
+              <h2 className="text-lg font-bold text-foreground">Editor Preferences</h2>
+            </div>
+
+            <div className="space-y-4 rounded-xl border bg-card p-5">
+              {/* Canvas Background Grid */}
+              <div>
+                <div className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Grid className="h-4 w-4 text-blue-500" />
+                  Default Canvas Grid Style
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5 mb-3">
+                  Choose your default background grid pattern for new whiteboards.
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: 'dots', label: 'Dots Pattern' },
+                    { value: 'grid', label: 'Grid Lines' },
+                    { value: 'plain', label: 'Plain Solid' },
+                  ].map((item) => (
+                    <button
+                      key={item.value}
+                      onClick={() => setGridStyle(item.value as GridStyle)}
+                      className={`flex items-center justify-center rounded-lg border p-2.5 text-xs font-medium transition-all ${
+                        gridStyle === item.value
+                          ? 'border-primary bg-primary/10 text-primary font-bold shadow-sm'
+                          : 'bg-background text-muted-foreground hover:bg-accent'
+                      }`}
                     >
-                      <Icon className="h-6 w-6 text-muted-foreground" />
-                      <span className="text-xs font-medium text-foreground">{t.label}</span>
-                    </div>
-                  );
-                })}
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <div className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Download className="h-4 w-4 text-purple-500" />
+                  Default Export Quality
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5 mb-3">
+                  Set default resolution multiplier when exporting diagrams to PNG/SVG.
+                </p>
+                <div className="flex gap-2">
+                  {[1, 2, 3].map((scale) => (
+                    <button
+                      key={scale}
+                      onClick={() => setExportScale(scale)}
+                      className={`flex-1 rounded-lg border p-2 text-xs font-semibold transition-all ${
+                        exportScale === scale
+                          ? 'border-primary bg-primary/10 text-primary font-bold'
+                          : 'bg-background text-muted-foreground hover:bg-accent'
+                      }`}
+                    >
+                      {scale}x Scale
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </section>

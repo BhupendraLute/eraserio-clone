@@ -46,10 +46,28 @@ export const authOptions: NextAuthOptions = {
   },
   providers,
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       // Persist the DB user id into the JWT on sign-in
       if (user) {
         token.id = user.id;
+      }
+      // Re-fetch the user's profile after an explicit session update (e.g. after
+      // editing the display name / avatar in Profile Settings) so the refreshed
+      // session reflects the latest DB values.
+      if (trigger === 'update' && token.id) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id },
+            select: { name: true, email: true, image: true },
+          });
+          if (dbUser) {
+            token.name = dbUser.name;
+            token.email = dbUser.email;
+            token.picture = dbUser.image;
+          }
+        } catch {
+          // DB unreachable — keep the existing token values so sessions keep working
+        }
       }
       return token;
     },

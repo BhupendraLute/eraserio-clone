@@ -12,6 +12,7 @@ flowchart LR
     ROOT["/ (Landing page)"] -->|CTA| WB["/whiteboard"]
     ROOT -->|Auth modal| AUTH["OAuth sign in / up"]
     WB --> SET["/settings"]
+    SET --> PROFILE["/settings/profile"]
     LOGIN["/login"] -->|OAuth| WB
     SIGNUP["/signup"] -->|OAuth| WB
     SHARE["/share/[token]"] -->|public read| API["/api/documents/share/[token]"]
@@ -29,11 +30,13 @@ flowchart LR
 | `/signup` | `src/app/signup/page.tsx` | Full-page OAuth sign-up |
 | `/share/[token]` | `src/app/share/[token]/page.tsx` | Public read-only view of a shared document |
 | `/settings` | `src/app/settings/page.tsx` | Theme settings + keyboard shortcut reference |
+| `/settings/profile` | `src/app/settings/profile/page.tsx` | Profile settings: edit display name + avatar, view provider/member-since, sign out (guests see a sign-in prompt) |
 | `/api/auth/[...nextauth]` | `src/app/api/auth/[...nextauth]/route.ts` | NextAuth route handler (GET/POST) |
 | `/api/documents` | `src/app/api/documents/route.ts` | List + create documents (auth-scoped) |
 | `/api/documents/[id]` | `src/app/api/documents/[id]/route.ts` | Read / update / delete one document |
 | `/api/documents/[id]/share` | `src/app/api/documents/[id]/share/route.ts` | Toggle public share + token |
 | `/api/documents/share/[token]` | `src/app/api/documents/share/[token]/route.ts` | Public fetch by share token |
+| `/api/user/profile` | `src/app/api/user/profile/route.ts` | Get / update the signed-in user's own profile (GET/PATCH, auth-scoped) |
 
 ---
 
@@ -161,6 +164,19 @@ const SHORTCUT_GROUPS = [
 
 > 💡 **Beginner tip**: if you add a new keyboard shortcut in
 > `useWhiteboardInteractions.ts`, add it to this page too so users can discover it.
+
+### 5.1 Profile Settings — `src/app/settings/profile/page.tsx`
+
+A sibling page at `/settings/profile`, reached from the avatar menu ("Profile Settings") and the
+**Settings | Profile** switcher in the settings header (`SettingsNav`). Signed-in users can:
+
+- Edit their **display name** and **avatar URL** (the avatar preview live-updates as you type).
+- View their read-only **email**, sign-in **provider** (GitHub/Google) and "member since" date.
+- **Sign out** back to guest mode.
+
+Guests see a "Sign in to manage your profile" card instead of the form. Saving calls
+`PATCH /api/user/profile`, then refreshes the NextAuth session so the header updates everywhere —
+see [24-authentication-and-database.md](24-authentication-and-database.md) §6 for the full flow.
 
 ---
 

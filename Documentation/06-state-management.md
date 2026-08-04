@@ -37,6 +37,7 @@ flowchart LR
         LIB["diagram-library-store (derived)"]
         WBS["whiteboard-store"]
         DOC["document-store"]
+        PREF["preferences-store"]
     end
 
     WS -->|"viewMode, activeTab, fileName, panel toggles"| SHELL["AppNav, EraserHeader, EraserWorkspace"]
@@ -45,7 +46,8 @@ flowchart LR
     REG -->|"diagrams list"| LIB
     LIB -->|"diagrams + save/get/update"| DOCS["docs components (DiagramEmbedView, picker)"]
     WBS -->|"elements, tool, color, history"| WBC["whiteboard components"]
-    DOC -->|"mode, syncStatus, documents, share"| AUTH["DocumentSwitcher, UserNav, ShareModal, EraserHeader"]
+    DOC -->|"mode, syncStatus, documents, share, guest import"| AUTH["DocumentSwitcher, UserNav, ShareModal, EraserHeader, ImportGuestDocsModal"]
+    PREF -->|"gridStyle, defaultExportFormat, exportScale"| PREF_UI["WhiteboardCanvas, SettingsPage, ExportMenu"]
 ```
 
 ---

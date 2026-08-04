@@ -34,5 +34,6 @@
 | **Save** | whiteboard/diagram/docs edit → `saveCurrentDocumentState` (500ms debounce) → PATCH `/api/documents/[id]` → `syncStatus` saving→synced/error |
 | **Share** | `ShareModal` → POST `/api/documents/[id]/share` → `isPublic` + `shareToken` → `/share/[token]` page reads via public GET `/api/documents/share/[token]` |
 | **Sign-out** | `UserNav` `signOut()` → session null → `setAuthStatus` refetch → cloud list replaced by empty guest list; `activeDocumentId` reset when missing |
+| **Profile edit** | `/settings/profile` → GET/PATCH `/api/user/profile` (getUserId-scoped) → `update()` re-runs jwt callback (trigger='update') → fresh name/avatar in header |
 
 > 📚 **Full detail:** [`Documentation/24-authentication-and-database.md`](../Documentation/24-authentication-and-database.md)

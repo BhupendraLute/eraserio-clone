@@ -76,6 +76,18 @@ It contains (left → right):
    `ShareModal`), **Eraser AI** (toggles the AI chat sidebar), **Comment visibility** toggle,
    **ThemeToggle**, **`UserNav`** (auth avatar / guest menu), and a **Settings** link.
 
+**The `UserNav` avatar menu is the account entry point:**
+
+- **Signed in** — the trigger shows the avatar + name. The dropdown contains the sync-status
+  badge, a **Profile Settings** item that navigates to
+  `/settings/profile` (`router.push`), and **Sign Out**.
+- **Guest** — the trigger shows a generic avatar; the menu offers **Sign In** / **Create
+  Account**, which open the auth modal (local-only mode).
+
+> 🧭 The Profile Settings page (`src/app/settings/profile/page.tsx`) lets users edit their
+> display name + avatar and view their sign-in provider — see
+> [24-authentication-and-database.md](24-authentication-and-database.md) §6.
+
 ```tsx
 const viewOptions = [
   { mode: 'document', label: 'Document' },

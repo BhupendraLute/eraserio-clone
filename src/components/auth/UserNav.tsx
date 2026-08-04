@@ -91,7 +91,10 @@ export function UserNav() {
             <DropdownMenuItem className="text-xs gap-2 cursor-default" disabled>
               <SyncStatusBadge mode={mode} syncStatus={syncStatus} className="text-xs" />
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-xs gap-2 cursor-pointer">
+            <DropdownMenuItem
+              className="text-xs gap-2 cursor-pointer"
+              onClick={() => router.push('/settings/profile')}
+            >
               <User className="h-3.5 w-3.5" />
               <span>Profile Settings</span>
             </DropdownMenuItem>

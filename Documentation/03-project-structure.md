@@ -39,6 +39,7 @@ flowchart TD
     APP --> PAGE["page.tsx<br/>redirects to /whiteboard"]
     APP --> WB["whiteboard/page.tsx"]
     APP --> SET["settings/page.tsx"]
+    APP --> SETP["settings/profile/page.tsx"]
 
     COMP --> UI["ui/ — shadcn primitives"]
     COMP --> WORKSPACE["workspace/EraserWorkspace.tsx"]
@@ -69,10 +70,12 @@ flowchart TD
 | `login/page.tsx` | Full-page OAuth sign-in (also NextAuth's `pages.signIn` target) |
 | `signup/page.tsx` | Full-page OAuth sign-up |
 | `share/[token]/page.tsx` | Public read-only view of a shared document |
-| `settings/page.tsx` | Settings page: theme switch + keyboard shortcuts reference |
+| `settings/page.tsx` | Settings page: theme switch + keyboard shortcuts reference; header has a Settings \| Profile switcher |
+| `settings/profile/page.tsx` | Profile settings: edit display name + avatar URL, view provider/member-since, sign out (see [24-authentication-and-database.md](24-authentication-and-database.md) §6) |
 | `globals.css` | Tailwind import + global styles |
 | `api/auth/[...nextauth]/route.ts` | NextAuth route handler (GET/POST) |
 | `api/documents/route.ts` + `api/documents/[...]` | Document CRUD + share API (auth-scoped, see [24-authentication-and-database.md](24-authentication-and-database.md)) |
+| `api/user/profile/route.ts` | The signed-in user's own profile: GET + PATCH (display name / avatar), scoped by `getUserId()` |
 
 ### 2.2 `src/components/` — React UI
 
@@ -100,7 +103,7 @@ flowchart TD
 | `auth/` | `session.ts` — `getUserId()` (getServerSession wrapper) |
 | `db/` | `prisma.ts` — PrismaClient + PrismaPg/pg Pool adapter (Neon) |
 | `hooks/` | `usePipelineWorker.ts`, `usePanZoom.ts`, `useWhiteboardInteractions.ts`, `useIconSearch.ts`, `useOnClickOutside.ts`, `useAuthSync.ts` |
-| `api-validation.ts` | Zod schemas + payload size limits for the document API |
+| `api-validation.ts` | Zod schemas + payload size limits for the document API and profile edits (`updateProfileSchema`) |
 | `icons/` | `icon-catalog.ts` — system-design icon registry (Iconify + react-icons) |
 | `whiteboard/` | `whiteboard-types.ts` (element types), `orthogonal-routing.ts` (elbow paths), `tool-definitions.ts`, `code-highlighter.tsx` |
 | `utils.ts` | `cn()` (tailwind-merge) + `generateId()` + `safeCallbackUrl()` (open-redirect guard) |
@@ -163,3 +166,5 @@ never import from `components/*` or `react`.
 | Change how elements are stored | `src/lib/store/whiteboard-store.ts` |
 | Add a Tiptap command | `src/components/docs/slash-command-extension.ts` + `SlashMenuList.tsx` |
 | Change pan/zoom behavior | `src/lib/hooks/usePanZoom.ts` |
+| Edit the profile settings page / API | `src/app/settings/profile/page.tsx` + `src/app/api/user/profile/route.ts` |
+| Change which profile fields are editable | `src/lib/api-validation.ts` (`updateProfileSchema`) |

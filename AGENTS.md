@@ -25,7 +25,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 | [`Documentation/08-worker-pipeline.md`](Documentation/08-worker-pipeline.md) | Web Worker pipeline + `usePipelineWorker` |
 | [`Documentation/14-whiteboard-core.md`](Documentation/14-whiteboard-core.md) | Whiteboard store & element types |
 | [`Documentation/20-data-flows.md`](Documentation/20-data-flows.md) | End-to-end sequence diagrams of key flows |
-| [`Documentation/24-authentication-and-database.md`](Documentation/24-authentication-and-database.md) | NextAuth OAuth, Prisma/Neon schema, document API routes, share flow, proxy, env vars |
+| [`Documentation/24-authentication-and-database.md`](Documentation/24-authentication-and-database.md) | NextAuth OAuth, Prisma/Neon schema, document API routes, share flow, profile settings, proxy, env vars |
 | [`Documentation/21-development-guide.md`](Documentation/21-development-guide.md) | Golden rules, verification commands, pitfalls |
 
 ## Context Files (`.agents/`) — Condensed Summaries

@@ -36,7 +36,7 @@ code snippets, and plain-English explanations.
 | 21 | [Development Guide](21-development-guide.md) | Coding rules, verification commands, common pitfalls |
 | 22 | [Testing Guide](22-testing-guide.md) | One reference for the test workflow, conventions & coverage gate |
 | 23 | [Shared UI Primitives](23-shared-ui-primitives.md) | `AppButton`, `StatusDot`, `SyncStatusBadge` & the emerald/amber/red color language |
-| 24 | [Auth, Database & Cloud Persistence](24-authentication-and-database.md) | NextAuth OAuth, Prisma/Neon schema, document API routes, share flow, proxy, env vars |
+| 24 | [Auth, Database & Cloud Persistence](24-authentication-and-database.md) | NextAuth OAuth, Prisma/Neon schema, document API routes, share flow, profile settings, proxy, env vars |
 
 ---
 

@@ -107,6 +107,24 @@ thread, and (in the future) in Node.js.
 - A single-pass, main-thread version used by Tiptap's diagram embed previews.
 - No worker overhead for small static diagrams.
 
+### 3.4 API Routes (`src/app/api/`) — server-only boundary
+
+The route handlers are the app's **only server-side entry points** (besides NextAuth itself):
+
+| Folder | Purpose | Boundary rule |
+|---|---|---|
+| `api/auth/[...nextauth]/route.ts` | NextAuth OAuth handler (GET/POST) | Delegates to `authOptions`; never called directly by components |
+| `api/documents/**` | Document CRUD + public share | Every query scoped by `ownerId === userId` via `getUserId()`; guests get offline stubs — **never other users' data** |
+| `api/user/profile/route.ts` | The signed-in user's **own profile** (GET/PATCH name/avatar) | `getUserId()` scoping — a user can only read/edit their own row; guests → `401` |
+
+Shared rules:
+
+- All routes are marked `export const dynamic = 'force-dynamic'`.
+- Request bodies are validated with zod schemas from `src/lib/api-validation.ts` (incl.
+  `updateProfileSchema` for profile edits).
+- Handlers are the only modules allowed to import `prisma` / `getUserId` — components never
+  talk to the database directly.
+
 ---
 
 ## 4. The 6 Zustand Stores (one-liner summary)
@@ -149,7 +167,9 @@ sequenceDiagram
 ```
 
 Guests stay in **offline mode** (`mode: 'offline'`) with local-only documents; the UI reflects
-this with amber "Local only" sync status. See
+this with amber "Local only" sync status. Signed-in users can additionally edit their own
+profile (display name + avatar) via `GET`/`PATCH /api/user/profile` from `/settings/profile` —
+the route follows the same `getUserId()` scoping as the document APIs (§3.4). See
 [24-authentication-and-database.md](24-authentication-and-database.md).
 
 ---
@@ -190,6 +210,7 @@ This flow is the heart of the app — see [08-worker-pipeline.md](08-worker-pipe
 - **Whiteboard** → `src/components/whiteboard/WhiteboardCanvas.tsx` (one big `<svg>` with a
   `<g transform="translate(...) scale(...)">` for pan/zoom).
 - **Docs embeds** → `src/components/docs/DiagramPreview.tsx` (read-only SVG from the sync pipeline).
+- **Profile settings** → `src/app/settings/profile/page.tsx` (display name/avatar editing, provider info, sign out).
 
 ---
 

@@ -12,6 +12,9 @@ export interface DocumentMetadata {
   shareToken?: string | null;
   createdAt: string;
   updatedAt: string;
+  whiteboardData?: string;
+  diagramSource?: string;
+  docContent?: string;
 }
 
 export type SyncStatus = 'synced' | 'saving' | 'offline' | 'error';
@@ -25,10 +28,12 @@ interface DocumentStoreState {
   shareToken: string | null;
   mode: 'cloud' | 'offline';
   authStatus: AuthStatus;
+  hasPendingGuestDocs: boolean;
 
   setAuthStatus: (status: AuthStatus) => void;
   fetchDocuments: () => Promise<void>;
   createDocument: (title?: string) => Promise<string>;
+  duplicateDocument: (id: string) => Promise<string | null>;
   selectDocument: (id: string) => Promise<void>;
   renameDocument: (id: string, newTitle: string) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
@@ -38,9 +43,32 @@ interface DocumentStoreState {
     docContent?: string;
   }) => void;
   togglePublicShare: (isPublic: boolean) => Promise<{ shareUrl: string | null }>;
+  checkGuestDocuments: () => boolean;
+  importGuestDocuments: () => Promise<boolean>;
+  clearGuestDocuments: () => void;
 }
 
 let _saveDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+const GUEST_DOCS_KEY = 'eraserio_guest_docs';
+
+function getStoredGuestDocs(): DocumentMetadata[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(GUEST_DOCS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function setStoredGuestDocs(docs: DocumentMetadata[]) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(GUEST_DOCS_KEY, JSON.stringify(docs));
+  } catch {
+    // quota exceeded or SSR
+  }
+}
 
 export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
   documents: [],
@@ -51,14 +79,59 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
   shareToken: null,
   mode: 'offline',
   authStatus: 'loading',
+  hasPendingGuestDocs: false,
 
   setAuthStatus: (authStatus) => {
     const prev = get().authStatus;
     set({ authStatus });
-    // Refetch the document list whenever auth state actually changes
+
     if (prev !== authStatus) {
       void get().fetchDocuments();
+      if (authStatus === 'authenticated') {
+        get().checkGuestDocuments();
+      }
     }
+  },
+
+  checkGuestDocuments: () => {
+    const guestDocs = getStoredGuestDocs();
+    const hasDocs = guestDocs.length > 0;
+    set({ hasPendingGuestDocs: hasDocs });
+    return hasDocs;
+  },
+
+  importGuestDocuments: async () => {
+    const guestDocs = getStoredGuestDocs();
+    if (guestDocs.length === 0) return false;
+
+    set({ syncStatus: 'saving' });
+    try {
+      const res = await fetch('/api/documents/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documents: guestDocs }),
+      });
+
+      if (!res.ok) throw new Error('Import failed');
+
+      // Purge local storage guest documents immediately upon successful import
+      localStorage.removeItem(GUEST_DOCS_KEY);
+      set({ hasPendingGuestDocs: false, syncStatus: 'synced' });
+
+      // Refresh the cloud document list
+      await get().fetchDocuments();
+      return true;
+    } catch {
+      set({ syncStatus: 'error' });
+      return false;
+    }
+  },
+
+  clearGuestDocuments: () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(GUEST_DOCS_KEY);
+    }
+    set({ hasPendingGuestDocs: false });
   },
 
   fetchDocuments: async () => {
@@ -75,8 +148,6 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
       set({
         documents: docs,
         mode,
-        // Reset the active document when it no longer exists (e.g. after sign-out
-        // the cloud doc list is replaced by an empty guest list).
         ...(currentId && !stillExists ? { activeDocumentId: null } : {}),
       });
 
@@ -118,6 +189,12 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
         shareToken: null,
       }));
 
+      // If in offline guest mode, save to localStorage
+      if (get().mode === 'offline') {
+        const currentGuestDocs = getStoredGuestDocs();
+        setStoredGuestDocs([newMeta, ...currentGuestDocs]);
+      }
+
       // Initialize empty canvas and diagram for new doc
       useWhiteboardStore.setState({ elements: [] });
       const reg = useDiagramRegistry.getState();
@@ -127,6 +204,41 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
     } catch {
       set({ syncStatus: 'error' });
       return generateId('doc');
+    }
+  },
+
+  duplicateDocument: async (id: string) => {
+    set({ syncStatus: 'saving' });
+    try {
+      const res = await fetch(`/api/documents/${id}/duplicate`, {
+        method: 'POST',
+      });
+      if (!res.ok) throw new Error('Failed to duplicate');
+      const data = await res.json();
+      const duplicated = data.document;
+
+      if (duplicated) {
+        const newMeta: DocumentMetadata = {
+          id: duplicated.id,
+          title: duplicated.title,
+          isPublic: false,
+          shareToken: null,
+          createdAt: duplicated.createdAt,
+          updatedAt: duplicated.updatedAt,
+        };
+
+        set((state) => ({
+          documents: [newMeta, ...state.documents],
+          syncStatus: 'synced',
+        }));
+
+        await get().selectDocument(duplicated.id);
+        return duplicated.id;
+      }
+      return null;
+    } catch {
+      set({ syncStatus: 'error' });
+      return null;
     }
   },
 

@@ -1,8 +1,9 @@
 # 24 · Authentication, Database & Cloud Persistence
 
 > **What this document covers**: the auth + persistence layer (Slice 4) — NextAuth.js OAuth,
-> the Prisma/Neon database schema, the document API routes, the public share flow, the proxy
-> middleware, and how the app switches between cloud (signed-in) and offline (guest) modes.
+> the Prisma/Neon database schema, the document API routes, the public share flow, the
+> **profile settings** page & API, the proxy middleware, and how the app switches between
+> cloud (signed-in) and offline (guest) modes.
 
 ---
 
@@ -46,8 +47,25 @@ export const authOptions: NextAuthOptions = {
   pages: { signIn: '/login', error: '/login' },
   providers,
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) token.id = user.id;   // persist DB user id into the JWT on sign-in
+      // Profile edits re-run this callback with trigger: 'update' and re-fetch the
+      // latest name/email/image from the DB so sessions never go stale (see §6).
+      if (trigger === 'update' && token.id) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id },
+            select: { name: true, email: true, image: true },
+          });
+          if (dbUser) {
+            token.name = dbUser.name;
+            token.email = dbUser.email;
+            token.picture = dbUser.image;
+          }
+        } catch {
+          // DB unreachable — keep existing token values so sessions keep working
+        }
+      }
       return token;
     },
     async session({ session, token }) {
@@ -67,6 +85,10 @@ Key decisions:
   present. `getProviders()` therefore automatically hides unconfigured provider buttons in the UI.
 - **`token.id`** carries the DB user id through the JWT and is exposed as `session.user.id`, which
   API routes use for ownership scoping.
+- **Profile refresh on demand** — `update()` from `useSession()` re-runs the `jwt` callback with
+  `trigger: 'update'`, re-fetching `name`/`email`/`image` from the DB so an edited profile appears
+  everywhere immediately (see §6). The DB call is wrapped in `try/catch` so sessions keep working
+  if Neon is unreachable.
 
 ### 2.2 Route handler — `src/app/api/auth/[...nextauth]/route.ts`
 
@@ -188,9 +210,9 @@ export async function getUserId(): Promise<string | null> {
 }
 ```
 
-Every **authenticated-scoped** document route calls `getUserId()` first; `null` means
-guest/offline mode. The one exception is `/api/documents/share/[token]`, which is intentionally
-public (no auth) — see §5.
+Every **authenticated-scoped** route — the document routes and the profile API (§6) — calls
+`getUserId()` first; `null` means guest/offline mode. The one exception is
+`/api/documents/share/[token]`, which is intentionally public (no auth) — see §5.
 
 ---
 
@@ -234,7 +256,114 @@ clears its token).
 
 ---
 
-## 6. Request Validation (zod)
+## 6. Profile API & Profile Settings
+
+Users can edit their own profile — **display name + avatar URL** — from **Profile Settings** at
+`/settings/profile`, backed by a dedicated user-scoped API at `/api/user/profile`. This section
+covers the route, its validation, the page, and how the session stays in sync.
+
+### 6.1 Route — `src/app/api/user/profile/route.ts`
+
+Marked `export const dynamic = 'force-dynamic'`, like the document routes:
+
+| Method | Behavior |
+|---|---|
+| GET | Returns the signed-in user's own profile: `id`, `name`, `email`, `image`, `provider`, `memberSince` |
+| PATCH | Updates `name` / `image` (zod-validated). Guests → `401`, invalid body → `400`, missing user → `404` |
+
+Like every authenticated route, it starts with `getUserId()` and rejects guests:
+
+```ts
+export async function GET() {
+  const userId = await getUserId();
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // ...
+}
+```
+
+Notable behaviors:
+
+- `PROFILE_SELECT` fetches `name`, `email`, `image`, `createdAt` plus the user's **earliest-linked
+  OAuth account** (`accounts` ordered by id, take 1) so the UI can show a stable
+  "signed in with GitHub/Google" badge — even for multi-provider users.
+- `PATCH` maps `image: ''` → `null` (clearing the avatar) and distinguishes a missing user
+  (Prisma `P2025` → `404`) from a DB failure (`500`).
+
+### 6.2 Validation — `updateProfileSchema`
+
+Added to `src/lib/api-validation.ts`:
+
+```ts
+export const MAX_NAME_LENGTH = 80;
+export const MAX_IMAGE_URL_LENGTH = 500;
+
+export const updateProfileSchema = z.object({
+  name: z.string().trim().min(1, 'Display name cannot be empty').max(MAX_NAME_LENGTH).optional(),
+  image: z
+    .union([
+      z.literal(''),
+      z.url('Avatar URL must be a valid URL').trim().max(MAX_IMAGE_URL_LENGTH),
+    ])
+    .optional(),
+});
+```
+
+- `name` is trimmed and must be 1–80 chars (empty/whitespace is rejected).
+- `image` is either an **empty string** (clear the avatar) or a **valid URL** — via the top-level
+  `z.url()` format (the Zod 4 way to validate URLs).
+- Omitted fields are left untouched, so the client can send just `{ name }` or just `{ image }`.
+
+### 6.3 Page — `src/app/settings/profile/page.tsx`
+
+A client component that mirrors the `/settings` layout (header with back-arrow + `SettingsNav`):
+
+| Section | What it shows |
+|---|---|
+| Identity summary | Avatar preview (live-updates as the URL is typed), name, email, provider badge, "member since" date |
+| Personal Information | Display name input, avatar URL input, read-only email, **Save changes** button |
+| Session | Sign-out button (same flow as `UserNav`) |
+
+- **Guest state**: signed-out visitors see a "Sign in to manage your profile" card instead of the form.
+- On mount it fetches `GET /api/user/profile`; if the DB is unreachable it falls back to the
+  session data so the page never breaks offline.
+- After a successful `PATCH` it calls `update()` from `useSession()`, which re-runs the JWT
+  callback with `trigger: 'update'` (§2.1) so the header name/avatar refresh immediately
+  everywhere. A failed session refresh is swallowed — the profile is already saved.
+
+### 6.4 Entry points
+
+| Where | How |
+|---|---|
+| Avatar menu | `UserNav` → "Profile Settings" item → `router.push('/settings/profile')` |
+| Settings header | `SettingsNav` (`src/components/settings/SettingsNav.tsx`) renders the **Settings \| Profile** segmented switcher on both pages |
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant P as /settings/profile
+    participant A as /api/user/profile
+    participant DB as Neon (Prisma)
+    participant S as NextAuth session
+
+    U->>P: opens Profile Settings
+    P->>A: GET /api/user/profile
+    A->>DB: findUnique(user, accounts[0])
+    DB-->>A: profile
+    A-->>P: { profile }
+    U->>P: edits name / avatar URL → Save
+    P->>A: PATCH { name, image }
+    A->>DB: user.update
+    DB-->>A: updated profile
+    A-->>P: { profile }
+    P->>S: update() → jwt(trigger='update')
+    S->>DB: re-fetch name/email/image
+    DB-->>S: fresh profile
+    S-->>P: refreshed session (header updates)
+```
+
+---
+
+## 7. Request Validation (zod)
 
 **File**: `src/lib/api-validation.ts`
 
@@ -250,11 +379,14 @@ export const MAX_TITLE_LENGTH = 200;
 - A `jsonString(maxBytes)` transformer accepts a string **or** object/array, stringifies it, and
   **rejects payloads over the byte limit** — protecting the DB from abuse.
 - `shareDocumentSchema` validates `isPublic` is a boolean.
+- `updateProfileSchema` validates profile edits — `name` (trimmed, 1–80 chars, non-empty) and
+  `image` (empty string to clear, or a valid URL ≤ 500 chars via `z.url()`). Used by
+  `/api/user/profile` — see §6.
 - Invalid bodies → `400` with `details: parsed.error.flatten().fieldErrors`.
 
 ---
 
-## 7. Proxy (Middleware) — `src/proxy.ts`
+## 8. Proxy (Middleware) — `src/proxy.ts`
 
 Next.js 16 renamed middleware to **proxy**. The file does two things:
 
@@ -275,7 +407,7 @@ export const config = {
 
 ---
 
-## 8. Client-Side Auth Sync — `src/hooks/useAuthSync.ts`
+## 9. Client-Side Auth Sync — `src/hooks/useAuthSync.ts`
 
 ```ts
 export function useAuthSync() {
@@ -293,7 +425,7 @@ sign-in/sign-out.
 
 ---
 
-## 9. The Auth-Aware Document Store — `src/lib/store/document-store.ts`
+## 10. The Auth-Aware Document Store — `src/lib/store/document-store.ts`
 
 The 6th Zustand store (see [06-state-management.md](06-state-management.md)). Holds:
 
@@ -322,7 +454,7 @@ renders `mode` + `syncStatus` consistently in the header and avatar menu.
 
 ---
 
-## 10. Auth UI
+## 11. Auth UI
 
 | Component / page | File | Purpose |
 |---|---|---|
@@ -332,6 +464,8 @@ renders `mode` + `syncStatus` consistently in the header and avatar menu.
 | Login page | `src/app/login/page.tsx` | Full-page OAuth sign-in, Suspense-wrapped `useSearchParams`, `safeCallbackUrl` |
 | Signup page | `src/app/signup/page.tsx` | Full-page OAuth sign-up, same safeguards |
 | Share page | `src/app/share/[token]/page.tsx` | Public read-only view of a shared document (uses `/api/documents/share/[token]`) |
+| Profile settings page | `src/app/settings/profile/page.tsx` | Edit display name + avatar URL, view provider/member-since, sign out (guests see a sign-in prompt) — backed by `/api/user/profile` (§6) |
+| Settings tab nav | `src/components/settings/SettingsNav.tsx` | Segmented "Settings \| Profile" switcher shared by the `/settings` and `/settings/profile` headers |
 
 - The auth modal's guest flow keeps documents **local in the browser** (offline mode).
 - `safeCallbackUrl` in `src/lib/utils.ts` prevents open-redirects — only same-origin paths are
@@ -339,7 +473,7 @@ renders `mode` + `syncStatus` consistently in the header and avatar menu.
 
 ---
 
-## 11. Environment Variables (`.env`)
+## 12. Environment Variables (`.env`)
 
 See `.env.example`. Required:
 
@@ -357,7 +491,7 @@ See `.env.example`. Required:
 
 ---
 
-## 12. Setup Commands
+## 13. Setup Commands
 
 ```bash
 # 1. Install deps (includes @prisma/client, @prisma/adapter-pg, next-auth, @next-auth/prisma-adapter)
@@ -378,7 +512,7 @@ npm run dev
 
 ---
 
-## 13. Security Checklist (Slice 4)
+## 14. Security Checklist (Slice 4)
 
 - [ ] Every document query scoped by `ownerId === userId` (`getUserId()`).
 - [ ] Public reads sanitized — no `ownerId`/`workspaceId` in responses.
@@ -388,3 +522,5 @@ npm run dev
 - [ ] Strong `NEXTAUTH_SECRET` in production.
 - [ ] `safeCallbackUrl` used on login/signup to prevent open redirects.
 - [ ] Security headers applied in `proxy.ts`.
+- [ ] Profile API scoped by `getUserId()` — users can only read/edit their own name/avatar.
+- [ ] `updateProfileSchema` (zod) validates name length and avatar URL on `PATCH /api/user/profile`.

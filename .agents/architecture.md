@@ -13,7 +13,7 @@
 | Dagre | Flowchart auto-layout |
 | CodeMirror 6 | DSL editor + syntax highlighting + lint |
 | Tiptap (ProseMirror) | Docs editor + diagram embed nodes |
-| Zustand v5 | Global state (6 stores) |
+| Zustand v5 | Global state (7 stores) |
 | React Query | Icon search query cache |
 | **NextAuth.js v4** | OAuth (GitHub/Google) + JWT sessions (Slice 4) |
 | **Prisma 7 + Neon Postgres** | Cloud persistence via `PrismaPg`/`pg` driver adapter (Slice 4) |
@@ -26,10 +26,10 @@
 | Web Worker | `src/workers/pipeline.worker.ts` | Client-only; debounce + stale-request guard |
 | Sync pipeline | `src/lib/dsl/run-pipeline-sync.ts` | Main-thread previews for docs embeds |
 | Auth | `src/lib/auth.ts`, `src/lib/auth/session.ts`, `src/app/api/auth/[...nextauth]/route.ts`, `src/proxy.ts` | NextAuth config + `getUserId()` server helper; JWT sessions |
-| Database | `src/lib/db/prisma.ts`, `prisma/schema.prisma` | PrismaClient + PrismaPg/pg Pool (Neon); `User/Account/Document/...` |
-| API | `src/app/api/documents/**` | Auth-scoped CRUD + share; zod validation (`src/lib/api-validation.ts`) |
-| Stores | `src/lib/store/` | Single source of truth, **6 stores** (incl. auth-aware `document-store`) |
-| UI | `src/components/` | Thin window over stores + engine |
+| Database | `src/lib/db/prisma.ts`, `prisma/schema.prisma` | PrismaClient + PrismaPg/pg Pool (Neon); `User/Account/Workspace/WorkspaceMember/WorkspaceInvite/Document` |
+| API | `src/app/api/documents/**`, `src/app/api/user/**`, `src/app/api/workspaces/**` | Auth-scoped CRUD + batch import + duplicate + share + profile/preferences + JSON data export + Danger Zone deletion + workspace invite tokens; zod validation (`src/lib/api-validation.ts`) |
+| Stores | `src/lib/store/` | Single source of truth, **7 stores** (incl. `document-store` & `preferences-store`) |
+| UI | `src/components/` + app pages | Thin window over stores + engine (`settings/profile/page.tsx`, `settings/workspace/page.tsx`, `ImportGuestDocsModal.tsx`) |
 | Tests | `tests/` | Vitest suites mirroring `src/` (commands + conventions: dev-rules → Testing) |
 
 ## Stores
@@ -41,7 +41,8 @@
 | `useDiagramRegistry` | `diagram-registry.ts` | saved diagrams CRUD, active diagram id |
 | `useDiagramLibraryStore` | `diagram-library-store.ts` | derived list view over registry |
 | `useWhiteboardStore` | `whiteboard-store.ts` | elements, tool/color, undo/redo history |
-| `useDocumentStore` | `document-store.ts` | documents, active doc, syncStatus, mode (cloud/offline), authStatus, share |
+| `useDocumentStore` | `document-store.ts` | documents, active doc, syncStatus, mode (cloud/offline), authStatus, share, guest import & cleanup |
+| `usePreferencesStore` | `preferences-store.ts` | gridStyle (dots/grid/plain), defaultExportFormat, exportScale (1x/2x/3x), codeKeymap |
 
 ## Where Things Render
 
@@ -53,5 +54,18 @@
 | Docs embeds | `components/docs/DiagramPreview.tsx` |
 | Auth modal / avatar | `components/auth/AuthModal.tsx`, `components/auth/UserNav.tsx` |
 | Sync status | `components/workspace/SyncStatusBadge.tsx` (header badge + avatar menu) |
+| Guest doc import modal | `components/auth/ImportGuestDocsModal.tsx` (prompt & localStorage purge) |
+| Document Switcher | `components/workspace/DocumentSwitcher.tsx` (search filter + document duplication) |
+| Profile settings | `app/settings/profile/page.tsx` (name/avatar edit, reset to provider avatar, JSON data export, Danger Zone account deletion modal) |
+| General settings | `app/settings/page.tsx` (appearance, canvas grid patterns, export scale multipliers) |
+| Workspace settings | `app/settings/workspace/page.tsx` (workspace creation, team member role invites) |
+
+## Key Flows (Quick Reference)
+
+| Flow | Essence |
+|---|---|
+| **Profile edit & Reset** | avatar menu → `/settings/profile` → GET/PATCH `/api/user/profile` (getUserId-scoped) → Reset Avatar clears override → `update()` re-runs jwt callback → fresh avatar in header |
+| **Guest Doc Migration** | sign-in → detects `eraserio_guest_docs` in localStorage → `ImportGuestDocsModal` → POST `/api/documents/import` → clears localStorage → merges cloud documents |
+| **Data Export & Danger Zone** | `/settings/profile` → GET `/api/user/export` downloads JSON backup; Danger Zone DELETE `/api/user/account` purges DB records and invalidates session |
 
 > 📚 **Auth & persistence details:** [`Documentation/24-authentication-and-database.md`](../Documentation/24-authentication-and-database.md)
