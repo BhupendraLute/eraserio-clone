@@ -18,9 +18,10 @@ import {
   ShapePortSnap,
 } from '@/lib/whiteboard/orthogonal-routing';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
+import { useAiChatStore } from '@/lib/store/ai-chat-store';
 import { getMarkerId, getStartMarkerId } from '@/components/whiteboard/WhiteboardElements';
 import { ICON_MAP } from '@/lib/icons/icon-catalog';
-import { Server, Frame } from 'lucide-react';
+import { Server, Frame, Sparkles } from 'lucide-react';
 
 interface WhiteboardOverlaysProps {
   elements: WhiteboardElement[];
@@ -61,10 +62,51 @@ export function WhiteboardOverlays({
   onQuickConnectDragStart,
   onPortHover,
 }: WhiteboardOverlaysProps) {
+  const activePreviewElements = useAiChatStore((s) => s.activePreviewElements);
+
   if (activeTool === 'hand') return null;
 
   return (
     <>
+      {/* Projected Live AI Preview Overlay */}
+      {activePreviewElements.length > 0 && (
+        <g key="live-ai-preview-overlay" className="pointer-events-none">
+          {activePreviewElements.map((el: WhiteboardElement) => (
+            <g key={`preview-${el.id}`} className="opacity-80">
+              {el.type !== 'arrow' && el.type !== 'line' && (
+                <rect
+                  x={el.x - 4}
+                  y={el.y - 4}
+                  width={el.width + 8}
+                  height={el.height + 8}
+                  rx={8}
+                  fill="rgba(59, 130, 246, 0.08)"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  strokeDasharray="6 4"
+                  className="animate-pulse"
+                />
+              )}
+            </g>
+          ))}
+          {/* Floating Live AI Preview Badge */}
+          {activePreviewElements[0] && (
+            <foreignObject
+              x={activePreviewElements[0].x}
+              y={Math.max(20, activePreviewElements[0].y - 36)}
+              width={200}
+              height={32}
+              className="overflow-visible pointer-events-none"
+            >
+              <div className="flex items-center gap-1.5 rounded-full border border-blue-500/40 bg-blue-600 px-3 py-1 text-white shadow-lg text-[10px] font-bold tracking-wide w-fit animate-pulse select-none">
+                <Sparkles className="h-3 w-3 text-amber-300" />
+                <span>AI Live Preview (Pending Review)</span>
+              </div>
+            </foreignObject>
+          )}
+        </g>
+      )}
+
       {/* Live Active Drawing Preview */}
       {drawingState && (() => {
         const { start, current, points } = drawingState;

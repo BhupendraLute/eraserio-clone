@@ -14,6 +14,7 @@ import { CodeEditor } from '@/components/editor/CodeEditor';
 import { DiagramEditorView } from '@/components/editor/DiagramEditorView';
 import { usePipelineWorker } from '@/lib/hooks/usePipelineWorker';
 import { AiChatPanel } from '@/components/ai/AiChatPanel';
+import { AiDiagramPreviewModal } from '@/components/ai/AiDiagramPreviewModal';
 import { Button } from '@/components/ui/button';
 import { Sparkles, X, Code2, GripHorizontal, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -194,6 +195,9 @@ export function EraserWorkspace() {
 
       {/* Collapsible Architecta AI sidebar (available in all tabs) */}
       {aiChatOpen && <AiChatPanel />}
+
+      {/* Interactive AI Diagram Edit Preview Popup Modal */}
+      <AiDiagramPreviewModal />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useDiagramRegistry } from '@/lib/store/diagram-registry';
 import { useWorkspaceStore } from '@/lib/store/workspace-store';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { convertDslToWhiteboardElements } from '@/lib/whiteboard/convert-dsl-to-whiteboard';
+import { convertWhiteboardToDsl } from '@/lib/whiteboard/convert-whiteboard-to-dsl';
 
 export type AiChatRole = 'user' | 'assistant';
 export type AiDiagramKind = 'flowchart' | 'sequence' | null;
@@ -40,6 +41,11 @@ interface AiChatState {
   isConfigured: boolean;
   authenticated: boolean;
   model: string;
+  activePreviewDsl: string | null;
+  activePreviewElements: ReturnType<typeof convertDslToWhiteboardElements>;
+  setPreviewDsl: (dsl: string | null) => void;
+  acceptPreviewChanges: () => void;
+  rejectPreviewChanges: () => void;
   refreshConfig: () => Promise<void>;
   sendMessage: (prompt: string) => Promise<void>;
   /** Aborts the in-flight generation; partial output stays in the thread. */
@@ -63,6 +69,31 @@ export const useAiChatStore = create<AiChatState>((set, get) => ({
   isConfigured: false,
   authenticated: false,
   model: 'big-pickle',
+  activePreviewDsl: null,
+  activePreviewElements: [],
+
+  setPreviewDsl: (dsl) => {
+    if (!dsl) {
+      set({ activePreviewDsl: null, activePreviewElements: [] });
+      return;
+    }
+    const elements = convertDslToWhiteboardElements(dsl);
+    set({ activePreviewDsl: dsl, activePreviewElements: elements });
+  },
+
+  acceptPreviewChanges: () => {
+    const { activePreviewDsl, activePreviewElements } = get();
+    if (activePreviewElements.length > 0) {
+      useWhiteboardStore.getState().addElements(activePreviewElements);
+    } else if (activePreviewDsl) {
+      get().applyDslToCanvas(activePreviewDsl);
+    }
+    set({ activePreviewDsl: null, activePreviewElements: [] });
+  },
+
+  rejectPreviewChanges: () => {
+    set({ activePreviewDsl: null, activePreviewElements: [] });
+  },
 
   refreshConfig: async () => {
     try {
@@ -97,9 +128,24 @@ export const useAiChatStore = create<AiChatState>((set, get) => ({
     if (!get().authenticated) return;
 
     // Snapshot history BEFORE pushing the new user message, and read the
-    // current canvas DSL so the model can make context-aware edits.
+    // current canvas / whiteboard DSL so the model can make context-aware edits.
     const history = get().messages.map((m) => ({ role: m.role, content: m.content }));
-    const canvasDsl = useDiagramStore.getState().source;
+
+    const wbState = useWhiteboardStore.getState();
+    let effectiveCanvasDsl = useDiagramStore.getState().source;
+
+    if (wbState.selectedIds.length > 0) {
+      const selectedEls = wbState.elements.filter((el) => wbState.selectedIds.includes(el.id));
+      const selectedDsl = convertWhiteboardToDsl(selectedEls);
+      if (selectedDsl) {
+        effectiveCanvasDsl = `// User selected these specific elements on the whiteboard canvas:\n${selectedDsl}`;
+      }
+    } else if (wbState.elements.length > 0) {
+      const wbDsl = convertWhiteboardToDsl(wbState.elements);
+      if (wbDsl) {
+        effectiveCanvasDsl = wbDsl;
+      }
+    }
 
     const userMsg: AiChatMessage = { id: createId(), role: 'user', content: trimmed };
     const assistantMsg: AiChatMessage = { id: createId(), role: 'assistant', content: '' };
@@ -125,7 +171,7 @@ export const useAiChatStore = create<AiChatState>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [...history.slice(-(40 - 1)), { role: 'user', content: trimmed }],
-          canvasDsl,
+          canvasDsl: effectiveCanvasDsl,
         }),
         signal: controller.signal,
       });

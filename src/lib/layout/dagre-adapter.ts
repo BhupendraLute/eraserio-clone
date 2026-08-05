@@ -53,8 +53,17 @@ function sizeForLabel(label: string, iconAttr: string | undefined): NodeSizing {
 }
 
 export function dagreLayout(ast: DiagramAST): { nodes: LaidOutNode[]; edges: LaidOutEdge[] } {
+  // Dynamically compute separation based on longest edge labels and node labels
+  const maxEdgeLabelLength = Math.max(0, ...ast.edges.map((e) => (e.label || '').length));
+  const maxNodeLabelLength = Math.max(0, ...ast.nodes.map((n) => (n.label || '').length));
+
+  // Longer edge labels require wider rank separation so connector text pills fit comfortably
+  const dynamicRankSep = Math.min(280, Math.max(160, 140 + maxEdgeLabelLength * 4.5));
+  // Longer node text requires dynamic vertical separation between rows
+  const dynamicNodeSep = Math.min(180, Math.max(100, 80 + Math.min(maxNodeLabelLength, 25) * 2));
+
   const g = new dagre.graphlib.Graph();
-  g.setGraph({ rankdir: 'TB', nodesep: 40, ranksep: 60, marginx: 20, marginy: 20 });
+  g.setGraph({ rankdir: 'LR', nodesep: dynamicNodeSep, ranksep: dynamicRankSep, marginx: 50, marginy: 50 });
   g.setDefaultEdgeLabel(() => ({}));
 
   const sizingByNodeId = new Map<string, NodeSizing>();
