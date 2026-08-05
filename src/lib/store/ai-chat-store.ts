@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { useDiagramStore } from '@/lib/store/diagram-store';
 import { useDiagramRegistry } from '@/lib/store/diagram-registry';
 import { useWorkspaceStore } from '@/lib/store/workspace-store';
+import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
+import { convertDslToWhiteboardElements } from '@/lib/whiteboard/convert-dsl-to-whiteboard';
 
 export type AiChatRole = 'user' | 'assistant';
 export type AiDiagramKind = 'flowchart' | 'sequence' | null;
@@ -43,6 +45,8 @@ interface AiChatState {
   /** Aborts the in-flight generation; partial output stays in the thread. */
   stopGenerating: () => void;
   applyDslToCanvas: (dsl: string) => void;
+  /** Converts DSL into native Whiteboard Canvas shapes and appends them to the whiteboard. */
+  insertAsCanvasShapes: (dsl: string) => boolean;
   clearConversation: () => void;
 }
 
@@ -221,6 +225,21 @@ export const useAiChatStore = create<AiChatState>((set, get) => ({
     if (workspace.activeTab === 'whiteboard') {
       workspace.setDiagramCodeOpen(true);
     }
+  },
+
+  insertAsCanvasShapes: (dsl) => {
+    const elements = convertDslToWhiteboardElements(dsl);
+    if (elements.length === 0) return false;
+
+    useWhiteboardStore.getState().addElements(elements);
+
+    // Switch to canvas / whiteboard tab if on code tab
+    const workspace = useWorkspaceStore.getState();
+    if (workspace.activeTab !== 'whiteboard') {
+      workspace.setActiveTab('whiteboard');
+    }
+
+    return true;
   },
 
   clearConversation: () => set({ messages: [], isGenerating: false }),

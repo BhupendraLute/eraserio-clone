@@ -105,6 +105,7 @@ interface WhiteboardStore {
   toggleShowComments: () => void;
 
   addElement: (element: WhiteboardElement) => void;
+  addElements: (elements: WhiteboardElement[]) => void;
   updateElement: (id: string, patch: Partial<WhiteboardElement>) => void;
   deleteElements: (ids: string[]) => void;
   setSelectedIds: (ids: string[]) => void;
@@ -282,6 +283,22 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
       const elements = [...state.elements, element];
       saveElements(elements);
       return { history, future: [], elements, canUndo: true, canRedo: false };
+    }),
+
+  addElements: (newElements) =>
+    set((state) => {
+      if (newElements.length === 0) return state;
+      const history = pushHistory(state);
+      const elements = [...state.elements, ...newElements];
+      saveElements(elements);
+      return {
+        history,
+        future: [],
+        elements,
+        selectedIds: newElements.map((el) => el.id),
+        canUndo: true,
+        canRedo: false,
+      };
     }),
 
   updateElement: (id, patch) =>

@@ -15,9 +15,12 @@ import { DiagramEditorView } from '@/components/editor/DiagramEditorView';
 import { usePipelineWorker } from '@/lib/hooks/usePipelineWorker';
 import { AiChatPanel } from '@/components/ai/AiChatPanel';
 import { Button } from '@/components/ui/button';
-import { Sparkles, X, Code2, GripHorizontal } from 'lucide-react';
+import { Sparkles, X, Code2, GripHorizontal, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
+import { useDiagramStore } from '@/lib/store/diagram-store';
+import { convertDslToWhiteboardElements } from '@/lib/whiteboard/convert-dsl-to-whiteboard';
+import { toast } from 'sonner';
 
 export function EraserWorkspace() {
   usePipelineWorker();
@@ -140,14 +143,35 @@ export function EraserWorkspace() {
                     <Code2 className="h-3.5 w-3.5 text-purple-600" />
                     <span>Diagram Code (DSL)</span>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5 pointer-events-auto"
-                    onClick={toggleDiagramCode}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
+                  <div className="flex items-center gap-1 pointer-events-auto">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-5 px-1.5 gap-1 text-[10px] font-medium"
+                      title="Convert diagram code into native whiteboard shapes"
+                      onClick={() => {
+                        const dsl = useDiagramStore.getState().source;
+                        const elements = convertDslToWhiteboardElements(dsl);
+                        if (elements.length > 0) {
+                          useWhiteboardStore.getState().addElements(elements);
+                          toast.success('Converted diagram to whiteboard shapes!');
+                        } else {
+                          toast.error('Failed to convert diagram code to shapes');
+                        }
+                      }}
+                    >
+                      <Layers className="h-3 w-3 text-blue-500" />
+                      <span>To Shapes</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5"
+                      onClick={toggleDiagramCode}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
                 <div className="flex-1 overflow-hidden pointer-events-auto">
                   <CodeEditor />

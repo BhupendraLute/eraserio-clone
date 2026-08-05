@@ -27,6 +27,8 @@ import {
   Square,
   Code2,
   LogIn,
+  Layers,
+  Wand2,
 } from 'lucide-react';
 
 interface QuickPrompt {
@@ -103,10 +105,12 @@ function StatusBadge({
 function DiagramCodeCard({
   message,
   onApply,
+  onInsertAsShapes,
   onOpenInEditor,
 }: {
   message: AiChatMessage;
   onApply: (dsl: string) => void;
+  onInsertAsShapes: (dsl: string) => void;
   onOpenInEditor: (dsl: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
@@ -165,25 +169,37 @@ function DiagramCodeCard({
       )}
 
       {/* Actions */}
-      <div className="flex items-center gap-1.5 border-t bg-muted/20 px-2.5 py-2">
+      <div className="flex flex-col gap-1.5 border-t bg-muted/20 px-2.5 py-2">
         <Button
           size="sm"
-          className="h-6 flex-1 gap-1 text-[10px]"
+          className="h-7 w-full gap-1.5 text-[10px] font-semibold bg-blue-600 hover:bg-blue-700 text-white"
           disabled={!message.dslValid}
-          onClick={() => onApply(dsl)}
+          onClick={() => onInsertAsShapes(dsl)}
         >
-          <Sparkles className="h-3 w-3" />
-          Apply to Canvas
+          <Layers className="h-3.5 w-3.5 text-white" />
+          Insert as Canvas Shapes
         </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-6 gap-1 text-[10px]"
-          onClick={() => onOpenInEditor(dsl)}
-        >
-          <Code2 className="h-3 w-3" />
-          Code Editor
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-6 flex-1 gap-1 text-[9px]"
+            disabled={!message.dslValid}
+            onClick={() => onApply(dsl)}
+          >
+            <Sparkles className="h-3 w-3 text-blue-500" />
+            Apply to Code
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-6 gap-1 text-[9px]"
+            onClick={() => onOpenInEditor(dsl)}
+          >
+            <Code2 className="h-3 w-3" />
+            Editor
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -198,6 +214,7 @@ export function AiChatPanel() {
   const sendMessage = useAiChatStore((s) => s.sendMessage);
   const stopGenerating = useAiChatStore((s) => s.stopGenerating);
   const applyDslToCanvas = useAiChatStore((s) => s.applyDslToCanvas);
+  const insertAsCanvasShapes = useAiChatStore((s) => s.insertAsCanvasShapes);
   const clearConversation = useAiChatStore((s) => s.clearConversation);
   const refreshConfig = useAiChatStore((s) => s.refreshConfig);
 
@@ -227,7 +244,16 @@ export function AiChatPanel() {
 
   const handleApply = (dsl: string) => {
     applyDslToCanvas(dsl);
-    toast.success('Diagram applied to canvas');
+    toast.success('Diagram code applied to editor');
+  };
+
+  const handleInsertAsShapes = (dsl: string) => {
+    const ok = insertAsCanvasShapes(dsl);
+    if (ok) {
+      toast.success('Inserted diagram as native canvas shapes!');
+    } else {
+      toast.error('Could not convert diagram code to shapes');
+    }
   };
 
   const handleOpenInEditor = (dsl: string) => {
@@ -383,6 +409,7 @@ export function AiChatPanel() {
                         <DiagramCodeCard
                           message={m}
                           onApply={handleApply}
+                          onInsertAsShapes={handleInsertAsShapes}
                           onOpenInEditor={handleOpenInEditor}
                         />
                       )}
