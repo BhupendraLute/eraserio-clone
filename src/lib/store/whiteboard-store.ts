@@ -10,6 +10,7 @@ import type {
   PortDirection,
   FillStyleMode,
 } from '@/lib/whiteboard/whiteboard-types';
+import type { LaidOutNode } from '@/lib/layout/types';
 import { WHITEBOARD_COLORS, isConnectorElement, getShapePorts, getElementBounds, ArrowheadStyle, RoutingStyle } from '@/lib/whiteboard/whiteboard-types';
 import { getOptimalPortPair, getOptimalSinglePort, determineAutoRoutingStyle } from '@/lib/whiteboard/orthogonal-routing';
 import { generateId } from '@/lib/utils';
@@ -78,12 +79,15 @@ interface WhiteboardStore {
   activeFillStyle: FillStyleMode;
   elements: WhiteboardElement[];
   selectedIds: string[];
+  focusTargetNodes: LaidOutNode[] | null;
   history: HistoryState[];
   future: HistoryState[];
   clipboard: WhiteboardElement[];
   showGrid: boolean;
   hideUI: boolean;
   showComments: boolean;
+
+  setFocusTargetNodes: (nodes: LaidOutNode[] | null) => void;
 
   setActiveTool: (tool: WhiteboardTool) => void;
   setActiveColor: (color: WhiteboardColor) => void;
@@ -227,12 +231,15 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
   activeFillStyle: 'plain',
   elements: [],
   selectedIds: [],
+  focusTargetNodes: null,
   history: [],
   future: [],
   clipboard: [],
   showGrid: true,
   hideUI: false,
   showComments: true,
+
+  setFocusTargetNodes: (nodes) => set({ focusTargetNodes: nodes }),
 
   canUndo: false,
   canRedo: false,

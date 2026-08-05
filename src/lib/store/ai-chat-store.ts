@@ -5,6 +5,7 @@ import { useWorkspaceStore } from '@/lib/store/workspace-store';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { convertDslToWhiteboardElements } from '@/lib/whiteboard/convert-dsl-to-whiteboard';
 import { convertWhiteboardToDsl } from '@/lib/whiteboard/convert-whiteboard-to-dsl';
+import { getElementBounds } from '@/lib/whiteboard/whiteboard-types';
 
 export type AiChatRole = 'user' | 'assistant';
 export type AiDiagramKind = 'flowchart' | 'sequence' | null;
@@ -85,6 +86,22 @@ export const useAiChatStore = create<AiChatState>((set, get) => ({
     const { activePreviewDsl, activePreviewElements } = get();
     if (activePreviewElements.length > 0) {
       useWhiteboardStore.getState().addElements(activePreviewElements);
+      useWhiteboardStore.getState().setSelectedIds(activePreviewElements.map((el) => el.id));
+
+      const focusNodes = activePreviewElements.map((el) => {
+        const b = getElementBounds(el);
+        return {
+          id: el.id,
+          label: el.label || '',
+          x: b.x,
+          y: b.y,
+          width: b.width,
+          height: b.height,
+          lines: [],
+          attrs: {},
+        };
+      });
+      useWhiteboardStore.getState().setFocusTargetNodes(focusNodes);
     } else if (activePreviewDsl) {
       get().applyDslToCanvas(activePreviewDsl);
     }
@@ -278,6 +295,22 @@ export const useAiChatStore = create<AiChatState>((set, get) => ({
     if (elements.length === 0) return false;
 
     useWhiteboardStore.getState().addElements(elements);
+    useWhiteboardStore.getState().setSelectedIds(elements.map((el) => el.id));
+
+    const focusNodes = elements.map((el) => {
+      const b = getElementBounds(el);
+      return {
+        id: el.id,
+        label: el.label || '',
+        x: b.x,
+        y: b.y,
+        width: b.width,
+        height: b.height,
+        lines: [],
+        attrs: {},
+      };
+    });
+    useWhiteboardStore.getState().setFocusTargetNodes(focusNodes);
 
     // Switch to canvas / whiteboard tab if on code tab
     const workspace = useWorkspaceStore.getState();

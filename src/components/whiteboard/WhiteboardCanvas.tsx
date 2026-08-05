@@ -104,6 +104,16 @@ export function WhiteboardCanvas() {
   const prevScaleRef = useRef(transform.scale);
   const animTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const focusTargetNodes = useWhiteboardStore((s) => s.focusTargetNodes);
+  const setFocusTargetNodes = useWhiteboardStore((s) => s.setFocusTargetNodes);
+
+  useEffect(() => {
+    if (focusTargetNodes && focusTargetNodes.length > 0) {
+      fitToContent(focusTargetNodes);
+      setFocusTargetNodes(null);
+    }
+  }, [focusTargetNodes, fitToContent, setFocusTargetNodes]);
+
   useEffect(() => {
     const prev = prevScaleRef.current;
     if (prev !== transform.scale) {

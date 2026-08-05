@@ -32,10 +32,14 @@ export function EraserWorkspace() {
   const toggleDiagramCode = useWorkspaceStore((s) => s.toggleDiagramCode);
   const hideUI = useWhiteboardStore((s) => s.hideUI);
 
-  // Draggable Code Drawer State
+  // Draggable & Resizable Code Drawer State (Width & Height)
   const [drawerPos, setDrawerPos] = useState({ x: 20, y: 12 });
+  const [drawerSize, setDrawerSize] = useState({ width: 480, height: 320 });
+
   const isDraggingRef = useRef(false);
+  const isResizingRef = useRef(false);
   const dragStartRef = useRef<{ startX: number; startY: number; initX: number; initY: number } | null>(null);
+  const resizeStartRef = useRef<{ startX: number; startY: number; initW: number; initH: number } | null>(null);
 
   const handleHeaderPointerDown = (e: React.PointerEvent) => {
     isDraggingRef.current = true;
@@ -61,6 +65,34 @@ export function EraserWorkspace() {
   const handleHeaderPointerUp = () => {
     isDraggingRef.current = false;
     dragStartRef.current = null;
+  };
+
+  const handleResizePointerDown = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    isResizingRef.current = true;
+    resizeStartRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      initW: drawerSize.width,
+      initH: drawerSize.height,
+    };
+    (e.target as Element).setPointerCapture(e.pointerId);
+  };
+
+  const handleResizePointerMove = (e: React.PointerEvent) => {
+    if (!isResizingRef.current || !resizeStartRef.current) return;
+    const dw = e.clientX - resizeStartRef.current.startX;
+    const dh = e.clientY - resizeStartRef.current.startY;
+    setDrawerSize({
+      width: Math.max(340, Math.min(950, resizeStartRef.current.initW - dw)),
+      height: Math.max(180, Math.min(750, resizeStartRef.current.initH + dh)),
+    });
+  };
+
+  const handleResizePointerUp = () => {
+    isResizingRef.current = false;
+    resizeStartRef.current = null;
   };
 
   const editor = useEditor({
@@ -123,13 +155,15 @@ export function EraserWorkspace() {
           >
             {!hideUI && <CanvasVerticalToolbar />}
 
-            {/* Draggable CodeMirror DSL Code Editor Drawer */}
+            {/* Draggable & Resizable CodeMirror DSL Code Editor Drawer */}
             {diagramCodeOpen && (
               <div
-                className="absolute z-30 flex h-72 w-96 flex-col rounded-xl border bg-background/95 shadow-2xl backdrop-blur overflow-hidden transition-shadow select-none"
+                className="absolute z-30 flex flex-col rounded-xl border bg-background/95 shadow-2xl backdrop-blur overflow-hidden transition-shadow select-none"
                 style={{
                   top: `${drawerPos.y}px`,
                   right: `${drawerPos.x}px`,
+                  width: `${drawerSize.width}px`,
+                  height: `${drawerSize.height}px`,
                 }}
               >
                 {/* Draggable Drag Header Handle */}
@@ -174,8 +208,20 @@ export function EraserWorkspace() {
                     </Button>
                   </div>
                 </div>
+
                 <div className="flex-1 overflow-hidden pointer-events-auto">
                   <CodeEditor />
+                </div>
+
+                {/* Bottom-Left Resize Handle (Width + Height Drag Grip) */}
+                <div
+                  className="group absolute bottom-1 left-1 h-3.5 w-3.5 cursor-nesw-resize z-50 flex items-center justify-center rounded p-0.5 hover:bg-purple-500/30 active:bg-purple-600/50 transition-colors pointer-events-auto"
+                  onPointerDown={handleResizePointerDown}
+                  onPointerMove={handleResizePointerMove}
+                  onPointerUp={handleResizePointerUp}
+                  title="Drag to resize width and height of Diagram Code panel"
+                >
+                  <div className="h-1.5 w-1.5 rounded-full bg-purple-500/70 group-hover:bg-purple-500 group-hover:scale-125 transition-all" />
                 </div>
               </div>
             )}

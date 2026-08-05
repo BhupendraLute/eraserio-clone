@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useAiChatStore } from '@/lib/store/ai-chat-store';
 import { Button } from '@/components/ui/button';
 import { WhiteboardElements } from '@/components/whiteboard/WhiteboardElements';
+import { getElementBounds } from '@/lib/whiteboard/whiteboard-types';
 import {
   Sparkles,
   Check,
@@ -24,6 +25,23 @@ export function AiDiagramPreviewModal() {
   const [pan, setPan] = useState({ x: 40, y: 40 });
   const [isPanning, setIsPanning] = useState(false);
   const [startPan, setStartPan] = useState({ x: 0, y: 0 });
+
+  React.useEffect(() => {
+    if (activePreviewElements.length > 0) {
+      let minX = Infinity;
+      let minY = Infinity;
+      activePreviewElements.forEach((el) => {
+        const b = getElementBounds(el);
+        if (b.x < minX) minX = b.x;
+        if (b.y < minY) minY = b.y;
+      });
+
+      if (isFinite(minX) && isFinite(minY)) {
+        setPan({ x: -minX + 80, y: -minY + 80 });
+        setScale(1.0);
+      }
+    }
+  }, [activePreviewElements]);
 
   if (!activePreviewDsl || activePreviewElements.length === 0) return null;
 
