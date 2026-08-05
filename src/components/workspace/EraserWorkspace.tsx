@@ -13,6 +13,7 @@ import { WhiteboardCanvas } from '@/components/whiteboard/WhiteboardCanvas';
 import { CodeEditor } from '@/components/editor/CodeEditor';
 import { DiagramEditorView } from '@/components/editor/DiagramEditorView';
 import { usePipelineWorker } from '@/lib/hooks/usePipelineWorker';
+import { AiChatPanel } from '@/components/ai/AiChatPanel';
 import { Button } from '@/components/ui/button';
 import { Sparkles, X, Code2, GripHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -23,7 +24,6 @@ export function EraserWorkspace() {
 
   const activeTab = useWorkspaceStore((s) => s.activeTab);
   const aiChatOpen = useWorkspaceStore((s) => s.aiChatOpen);
-  const setAiChatOpen = useWorkspaceStore((s) => s.setAiChatOpen);
   const diagramCodeOpen = useWorkspaceStore((s) => s.diagramCodeOpen);
   const toggleDiagramCode = useWorkspaceStore((s) => s.toggleDiagramCode);
   const hideUI = useWhiteboardStore((s) => s.hideUI);
@@ -168,41 +168,8 @@ export function EraserWorkspace() {
     <div className="relative flex flex-1 overflow-hidden">
       {renderActiveTab()}
 
-      {/* Collapsible AI Chat Sidebar (available in all tabs) */}
-      {aiChatOpen && (
-        <div className="z-40 flex h-full w-80 flex-col border-l bg-background shadow-xl animate-in slide-in-from-right">
-          <div className="flex h-11 items-center justify-between border-b px-3">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-              <Sparkles className="h-4 w-4 text-blue-600" />
-              <span>Architecta AI Assistant</span>
-            </div>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAiChatOpen(false)}>
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-          <div className="flex-1 overflow-auto p-4 text-xs text-muted-foreground">
-            <p className="mb-2 font-medium text-foreground">What would you like to build?</p>
-            <div className="flex flex-col gap-2">
-              <button className="rounded-lg border p-2 text-left hover:bg-accent">
-                Generate architecture diagram for a microservice setup
-              </button>
-              <button className="rounded-lg border p-2 text-left hover:bg-accent">
-                Create sequence diagram for user authentication
-              </button>
-              <button className="rounded-lg border p-2 text-left hover:bg-accent">
-                Write technical doc outline for a REST API
-              </button>
-            </div>
-          </div>
-          <div className="border-t p-3">
-            <input
-              type="text"
-              placeholder="Ask AI or type a prompt..."
-              className="h-8 w-full rounded-lg border bg-muted/30 px-3 text-xs outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-        </div>
-      )}
+      {/* Collapsible Architecta AI sidebar (available in all tabs) */}
+      {aiChatOpen && <AiChatPanel />}
     </div>
   );
 }

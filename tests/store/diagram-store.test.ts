@@ -206,4 +206,12 @@ describe('node position overrides', () => {
     expect(s.nodeOverrides).toEqual({ A: { x: 10, y: 10 } });
     expect(s.nodes[0]).toMatchObject({ x: 10, y: 10 });
   });
+
+  it('resetNodeOverrides clears every manual position', () => {
+    useDiagramStore.setState({
+      nodeOverrides: { A: { x: 10, y: 10 }, B: { x: 300, y: 150 } },
+    });
+    useDiagramStore.getState().resetNodeOverrides();
+    expect(useDiagramStore.getState().nodeOverrides).toEqual({});
+  });
 });

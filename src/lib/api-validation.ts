@@ -89,3 +89,27 @@ export const inviteMemberSchema = z.object({
   email: z.string().trim().email('Invalid email address'),
   role: z.enum(['ADMIN', 'MEMBER', 'VIEWER']).default('MEMBER'),
 });
+
+/** Max characters in a single AI chat message. */
+export const MAX_AI_MESSAGE_LENGTH = 16_000;
+/** Max chat history messages sent to the AI (guards prompt size). */
+export const MAX_AI_MESSAGES = 60;
+/** Max characters for the active canvas DSL context. */
+export const MAX_AI_DSL_LENGTH = 200_000;
+
+/**
+ * Validates prompts for the Architecta AI assistant (`/api/ai/generate`).
+ * `canvasDsl` is the active diagram-as-code source the model can edit.
+ */
+export const aiChatSchema = z.object({
+  messages: z
+    .array(
+      z.object({
+        role: z.enum(['user', 'assistant']),
+        content: z.string().trim().min(1).max(MAX_AI_MESSAGE_LENGTH),
+      })
+    )
+    .min(1, 'At least one message is required')
+    .max(MAX_AI_MESSAGES),
+  canvasDsl: z.string().max(MAX_AI_DSL_LENGTH).optional(),
+});
