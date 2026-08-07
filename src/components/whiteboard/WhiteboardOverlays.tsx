@@ -43,7 +43,8 @@ interface WhiteboardOverlaysProps {
   onResizeHandlePointerDown: (e: React.PointerEvent, handle: ResizeHandle, targetId: string) => void;
   onSpawnConnectedNode: (sourceId: string, dir: PortDirection) => void;
   onQuickConnectDragStart: (e: React.PointerEvent, sourceId: string, fromPort: PortDirection, pos: Point) => void;
-  onPortHover: (port: { elementId: string; dir: 'top' | 'right' | 'bottom' | 'left' }) => void;
+  onPortHover: (port: { elementId: string; dir: 'top' | 'right' | 'bottom' | 'left' } | null) => void;
+  isHandActive?: boolean;
 }
 
 export function WhiteboardOverlays({
@@ -58,13 +59,14 @@ export function WhiteboardOverlays({
   singleSelectedShape,
   hoveredPort,
   isDraggingShape = false,
+  isHandActive = false,
   onResizeHandlePointerDown,
   onQuickConnectDragStart,
   onPortHover,
 }: WhiteboardOverlaysProps) {
   const activePreviewElements = useAiChatStore((s) => s.activePreviewElements);
 
-  if (activeTool === 'hand') return null;
+  if (activeTool === 'hand' || isHandActive) return null;
 
   return (
     <>

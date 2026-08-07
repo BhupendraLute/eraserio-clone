@@ -234,7 +234,10 @@ function DiagramCodeCard({
           size="sm"
           className="h-8 w-full gap-2 text-[11px] font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-md transition-all hover:scale-[1.01]"
           disabled={!message.dslValid}
-          onClick={() => onInsertAsShapes(dsl)}
+          onClick={(e) => {
+            (e.currentTarget as HTMLElement)?.blur();
+            onInsertAsShapes(dsl);
+          }}
         >
           <Layers className="h-4 w-4" />
           Insert as Canvas Shapes
@@ -245,7 +248,10 @@ function DiagramCodeCard({
             size="sm"
             className="h-7 gap-1 text-[10px] font-medium"
             disabled={!message.dslValid}
-            onClick={() => setPreviewDsl(isPreviewing ? null : dsl)}
+            onClick={(e) => {
+              (e.currentTarget as HTMLElement)?.blur();
+              setPreviewDsl(isPreviewing ? null : dsl);
+            }}
           >
             <Eye className="h-3 w-3 text-blue-500" />
             {isPreviewing ? 'Close' : 'Preview'}
@@ -255,7 +261,10 @@ function DiagramCodeCard({
             size="sm"
             className="h-7 gap-1 text-[10px] font-medium"
             disabled={!message.dslValid}
-            onClick={() => onApply(dsl)}
+            onClick={(e) => {
+              (e.currentTarget as HTMLElement)?.blur();
+              onApply(dsl);
+            }}
           >
             <Sparkles className="h-3 w-3 text-emerald-500" />
             Apply Code
@@ -264,7 +273,10 @@ function DiagramCodeCard({
             variant="outline"
             size="sm"
             className="h-7 gap-1 text-[10px] font-medium"
-            onClick={() => onRefineWithAi(dsl)}
+            onClick={(e) => {
+              (e.currentTarget as HTMLElement)?.blur();
+              onRefineWithAi(dsl);
+            }}
           >
             <MessageSquare className="h-3 w-3 text-purple-500" />
             Refine

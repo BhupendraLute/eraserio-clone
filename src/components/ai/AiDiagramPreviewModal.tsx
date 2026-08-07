@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useAiChatStore } from '@/lib/store/ai-chat-store';
 import { Button } from '@/components/ui/button';
 import { WhiteboardElements } from '@/components/whiteboard/WhiteboardElements';
@@ -22,6 +22,8 @@ export function AiDiagramPreviewModal() {
   const acceptPreviewChanges = useAiChatStore((s) => s.acceptPreviewChanges);
   const rejectPreviewChanges = useAiChatStore((s) => s.rejectPreviewChanges);
 
+  const focusDiagramRef = React.useRef<(() => void) | null>(null);
+
   const {
     transform,
     containerRef,
@@ -33,23 +35,139 @@ export function AiDiagramPreviewModal() {
   } = usePanZoom({
     initial: { scale: 1.0, x: 40, y: 40 },
     enableKeyboardShortcuts: true,
+    onReset: () => focusDiagramRef.current?.(),
   });
+
+  const focusDiagram = useCallback(() => {
+    if (activePreviewElements.length === 0) {
+      setTransform({ scale: 1.0, x: 40, y: 40 });
+      return;
+    }
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    activePreviewElements.forEach((el) => {
+      const b = getElementBounds(el);
+      if (b.x < minX) minX = b.x;
+      if (b.y < minY) minY = b.y;
+      if (b.x + b.width > maxX) maxX = b.x + b.width;
+      if (b.y + b.height > maxY) maxY = b.y + b.height;
+    });
+
+    if (!isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY)) {
+      setTransform({ scale: 1.0, x: 40, y: 40 });
+      return;
+    }
+
+    const container = containerRef.current;
+    const viewportWidth = container?.clientWidth || 1000;
+    const viewportHeight = container?.clientHeight || 600;
+
+    const contentWidth = Math.max(maxX - minX, 20);
+    const contentHeight = Math.max(maxY - minY, 20);
+
+    const padding = 60;
+    const availableWidth = Math.max(viewportWidth - padding * 2, 100);
+    const availableHeight = Math.max(viewportHeight - padding * 2, 100);
+
+    const scaleX = availableWidth / contentWidth;
+    const scaleY = availableHeight / contentHeight;
+
+    const scale = Math.min(Math.max(Math.min(scaleX, scaleY), 0.3), 1.2);
+
+    const contentCenterX = minX + contentWidth / 2;
+    const contentCenterY = minY + contentHeight / 2;
+
+    const x = viewportWidth / 2 - contentCenterX * scale;
+    const y = viewportHeight / 2 - contentCenterY * scale;
+
+    setTransform({ scale, x, y });
+  }, [activePreviewElements, containerRef, setTransform]);
+
+  focusDiagramRef.current = focusDiagram;
+
+  const diagramBounds = React.useMemo(() => {
+    if (activePreviewElements.length === 0) {
+      return { minX: 0, minY: 0, maxX: 100, maxY: 100, width: 100, height: 100 };
+    }
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    activePreviewElements.forEach((el) => {
+      const b = getElementBounds(el);
+      if (b.x < minX) minX = b.x;
+      if (b.y < minY) minY = b.y;
+      if (b.x + b.width > maxX) maxX = b.x + b.width;
+      if (b.y + b.height > maxY) maxY = b.y + b.height;
+    });
+
+    if (!isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY)) {
+      return { minX: 0, minY: 0, maxX: 100, maxY: 100, width: 100, height: 100 };
+    }
+
+    return {
+      minX,
+      minY,
+      maxX,
+      maxY,
+      width: Math.max(maxX - minX, 10),
+      height: Math.max(maxY - minY, 10),
+    };
+  }, [activePreviewElements]);
+
+  const clampTransform = useCallback((t: { scale: number; x: number; y: number }) => {
+    const container = containerRef.current;
+    if (!container || !isFinite(diagramBounds.minX)) return t;
+
+    const viewportWidth = container.clientWidth || 1000;
+    const viewportHeight = container.clientHeight || 600;
+
+    const margin = 100;
+    const minPanX = margin - (diagramBounds.maxX + 28) * t.scale;
+    const maxPanX = viewportWidth - margin - (diagramBounds.minX - 28) * t.scale;
+
+    const minPanY = margin - (diagramBounds.maxY + 28) * t.scale;
+    const maxPanY = viewportHeight - margin - (diagramBounds.minY - 28) * t.scale;
+
+    let clampedX = t.x;
+    let clampedY = t.y;
+
+    if (minPanX <= maxPanX) {
+      clampedX = Math.min(Math.max(t.x, minPanX), maxPanX);
+    } else {
+      clampedX = (viewportWidth - (diagramBounds.minX + diagramBounds.maxX) * t.scale) / 2;
+    }
+
+    if (minPanY <= maxPanY) {
+      clampedY = Math.min(Math.max(t.y, minPanY), maxPanY);
+    } else {
+      clampedY = (viewportHeight - (diagramBounds.minY + diagramBounds.maxY) * t.scale) / 2;
+    }
+
+    if (clampedX === t.x && clampedY === t.y) return t;
+    return { ...t, x: clampedX, y: clampedY };
+  }, [containerRef, diagramBounds]);
+
+  useEffect(() => {
+    const clamped = clampTransform(transform);
+    if (clamped.x !== transform.x || clamped.y !== transform.y) {
+      setTransform(clamped);
+    }
+  }, [transform, clampTransform, setTransform]);
 
   useEffect(() => {
     if (activePreviewElements.length > 0) {
-      let minX = Infinity;
-      let minY = Infinity;
-      activePreviewElements.forEach((el) => {
-        const b = getElementBounds(el);
-        if (b.x < minX) minX = b.x;
-        if (b.y < minY) minY = b.y;
-      });
-
-      if (isFinite(minX) && isFinite(minY)) {
-        setTransform({ scale: 1.0, x: -minX + 80, y: -minY + 80 });
-      }
+      const timer = setTimeout(() => {
+        focusDiagram();
+      }, 50);
+      return () => clearTimeout(timer);
     }
-  }, [activePreviewElements, setTransform]);
+  }, [activePreviewElements, focusDiagram]);
 
   // Handle modal close key (Escape)
   useEffect(() => {
@@ -122,10 +240,11 @@ export function AiDiagramPreviewModal() {
           </div>
         </div>
 
-        {/* Interactive Popup Preview Canvas */}
+        {/* Bounded Diagram Preview Container */}
         <div
           ref={containerRef as React.RefObject<HTMLDivElement>}
-          className="relative flex-1 cursor-grab overflow-hidden bg-dot-grid active:cursor-grabbing"
+          className="relative flex-1 cursor-grab overflow-hidden bg-muted/15 active:cursor-grabbing"
+          onWheel={handlers.onWheel as unknown as React.WheelEventHandler<HTMLDivElement>}
           onPointerDown={handlers.onPointerDown as unknown as React.PointerEventHandler<HTMLDivElement>}
           onPointerMove={handlers.onPointerMove as unknown as React.PointerEventHandler<HTMLDivElement>}
           onPointerUp={handlers.onPointerUp as unknown as React.PointerEventHandler<HTMLDivElement>}
@@ -133,6 +252,18 @@ export function AiDiagramPreviewModal() {
         >
           <svg className="h-full w-full select-none">
             <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.scale})`}>
+              {/* Bounded Diagram Artboard Container Card */}
+              <rect
+                x={diagramBounds.minX - 32}
+                y={diagramBounds.minY - 32}
+                width={diagramBounds.width + 64}
+                height={diagramBounds.height + 64}
+                rx={16}
+                fill="var(--background)"
+                stroke="var(--border)"
+                strokeWidth={1.5}
+                className="shadow-sm"
+              />
               <WhiteboardElements
                 elements={activePreviewElements}
                 selectedIds={[]}

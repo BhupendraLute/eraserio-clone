@@ -48,6 +48,14 @@ export function usePanZoom(
    const lastPointer = useRef<{ x: number; y: number } | null>(null);
    const containerRef = useRef<SVGSVGElement | HTMLElement | null>(null);
    const svgRef = containerRef as unknown as React.RefObject<SVGSVGElement | null>;
+   const [containerEl, setContainerEl] = useState<SVGSVGElement | HTMLElement | null>(null);
+
+   // Sync containerEl state whenever containerRef.current attaches/mounts
+   useEffect(() => {
+      if (containerRef.current !== containerEl) {
+         setContainerEl(containerRef.current);
+      }
+   });
 
    // Smooth scroll-to-pan animation state — start aligned with the initial transform
    const scrollTargetRef = useRef<PanZoomState>({ ...initial });
@@ -225,7 +233,7 @@ export function usePanZoom(
 
       e.preventDefault();
 
-      const container = containerRef.current;
+      const container = containerRef.current || (e.currentTarget as HTMLElement | SVGSVGElement | null);
       if (!container) return;
 
       // Ctrl / Cmd + Scroll → zoom (snap, no smooth scroll)
@@ -235,9 +243,13 @@ export function usePanZoom(
          const pointerX = e.clientX - rect.left;
          const pointerY = e.clientY - rect.top;
 
+         let dy = e.deltaY;
+         if (e.deltaMode === 1) dy *= 16;
+         else if (e.deltaMode === 2) dy *= 800;
+
          setTransform((prev) => {
             const nextScale = clampScale(
-               prev.scale - e.deltaY * ZOOM_SENSITIVITY * prev.scale,
+               prev.scale - dy * ZOOM_SENSITIVITY * prev.scale,
                minScale,
                maxScale,
             );
@@ -268,7 +280,7 @@ export function usePanZoom(
 
    // Attach non-passive touch and wheel listeners directly to the container element
    useEffect(() => {
-      const container = containerRef.current;
+      const container = containerEl || containerRef.current;
       if (!container) return;
 
       const handleTouchStartNative = (e: Event) => handleTouchStart(e as TouchEvent);
@@ -287,7 +299,7 @@ export function usePanZoom(
          container.removeEventListener('touchend', handleTouchEndNative);
          container.removeEventListener('wheel', handleWheelNative);
       };
-   }, [handleTouchStart, handleTouchMove, handleTouchEnd, onWheel]);
+   }, [containerEl, handleTouchStart, handleTouchMove, handleTouchEnd, onWheel]);
 
    // Globally suppress browser's predefined Ctrl / Cmd + wheel page zoom
    useEffect(() => {
@@ -370,7 +382,10 @@ export function usePanZoom(
    }, [zoomBy]);
 
    const reset = useCallback(() => {
-      options.onReset?.();
+      if (options.onReset) {
+         options.onReset();
+         return;
+      }
       animateTo({ scale: 1, x: 0, y: 0 });
    }, [animateTo, options]);
 
