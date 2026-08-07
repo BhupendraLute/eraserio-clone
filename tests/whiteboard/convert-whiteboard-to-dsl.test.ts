@@ -58,4 +58,91 @@ describe('convertWhiteboardToDsl', () => {
     expect(dsl).toContain('icon: postgres');
     expect(dsl).toContain('Auth_Service > User_DB: SQL Session Query');
   });
+
+  it('handles custom shapes (circle, diamond, cylinder) and dashed lines', () => {
+    const elements: WhiteboardElement[] = [
+      {
+        id: 'n1',
+        type: 'circle',
+        x: 0,
+        y: 0,
+        width: 60,
+        height: 60,
+        label: 'Start Node',
+        strokeColor: '#a855f7',
+        strokeWidth: 2,
+      },
+      {
+        id: 'n2',
+        type: 'diamond',
+        x: 100,
+        y: 0,
+        width: 80,
+        height: 80,
+        label: 'Decision Gate',
+        strokeColor: '#f59e0b',
+        strokeWidth: 2,
+      },
+      {
+        id: 'n3',
+        type: 'cylinder',
+        x: 200,
+        y: 0,
+        width: 80,
+        height: 80,
+        label: 'Redis Cache',
+        strokeColor: '#6b7280',
+        strokeWidth: 2,
+      },
+      {
+        id: 'c1',
+        type: 'arrow',
+        x: 60,
+        y: 30,
+        width: 40,
+        height: 10,
+        startX: 60,
+        startY: 30,
+        endX: 100,
+        endY: 30,
+        fromElementId: 'n1',
+        toElementId: 'n2',
+        lineStyle: 'dashed',
+        label: 'Async',
+        strokeColor: '#3b82f6',
+        strokeWidth: 2,
+      },
+    ];
+
+    const dsl = convertWhiteboardToDsl(elements);
+    expect(dsl).toContain('Start_Node: Start Node [shape: circle, color: purple]');
+    expect(dsl).toContain('Decision_Gate: Decision Gate [shape: diamond, color: amber]');
+    expect(dsl).toContain('Redis_Cache: Redis Cache [shape: cylinder, color: gray]');
+    expect(dsl).toContain('Start_Node --> Decision_Gate: Async');
+  });
+
+  it('skips comments, frames, and freehand pencil strokes', () => {
+    const elements: WhiteboardElement[] = [
+      {
+        id: 'comment-1',
+        type: 'comment',
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 100,
+        content: 'This is a comment thread',
+      } as any,
+      {
+        id: 'pencil-1',
+        type: 'pencil',
+        x: 0,
+        y: 0,
+        width: 50,
+        height: 50,
+        points: [{ x: 0, y: 0 }],
+      } as any,
+    ];
+
+    expect(convertWhiteboardToDsl(elements)).toBe('');
+  });
 });
