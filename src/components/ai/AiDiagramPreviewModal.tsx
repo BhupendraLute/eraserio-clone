@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import { useAiChatStore } from '@/lib/store/ai-chat-store';
 import { Button } from '@/components/ui/button';
 import { WhiteboardElements } from '@/components/whiteboard/WhiteboardElements';
 import { getElementBounds } from '@/lib/whiteboard/whiteboard-types';
+import { usePanZoom } from '@/lib/hooks/usePanZoom';
 import {
   Sparkles,
   Check,
@@ -21,12 +22,20 @@ export function AiDiagramPreviewModal() {
   const acceptPreviewChanges = useAiChatStore((s) => s.acceptPreviewChanges);
   const rejectPreviewChanges = useAiChatStore((s) => s.rejectPreviewChanges);
 
-  const [scale, setScale] = useState(1.0);
-  const [pan, setPan] = useState({ x: 40, y: 40 });
-  const [isPanning, setIsPanning] = useState(false);
-  const [startPan, setStartPan] = useState({ x: 0, y: 0 });
+  const {
+    transform,
+    containerRef,
+    handlers,
+    zoomIn,
+    zoomOut,
+    reset,
+    setTransform,
+  } = usePanZoom({
+    initial: { scale: 1.0, x: 40, y: 40 },
+    enableKeyboardShortcuts: true,
+  });
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (activePreviewElements.length > 0) {
       let minX = Infinity;
       let minY = Infinity;
@@ -37,30 +46,26 @@ export function AiDiagramPreviewModal() {
       });
 
       if (isFinite(minX) && isFinite(minY)) {
-        setPan({ x: -minX + 80, y: -minY + 80 });
-        setScale(1.0);
+        setTransform({ scale: 1.0, x: -minX + 80, y: -minY + 80 });
       }
     }
-  }, [activePreviewElements]);
+  }, [activePreviewElements, setTransform]);
+
+  // Handle modal close key (Escape)
+  useEffect(() => {
+    if (!activePreviewDsl) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        rejectPreviewChanges();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activePreviewDsl, rejectPreviewChanges]);
 
   if (!activePreviewDsl || activePreviewElements.length === 0) return null;
-
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (e.button === 0 || e.button === 1) {
-      setIsPanning(true);
-      setStartPan({ x: e.clientX - pan.x, y: e.clientY - pan.y });
-    }
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (isPanning) {
-      setPan({ x: e.clientX - startPan.x, y: e.clientY - startPan.y });
-    }
-  };
-
-  const handlePointerUp = () => {
-    setIsPanning(false);
-  };
 
   const handleRefine = () => {
     rejectPreviewChanges();
@@ -119,14 +124,15 @@ export function AiDiagramPreviewModal() {
 
         {/* Interactive Popup Preview Canvas */}
         <div
+          ref={containerRef as React.RefObject<HTMLDivElement>}
           className="relative flex-1 cursor-grab overflow-hidden bg-dot-grid active:cursor-grabbing"
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerUp}
+          onPointerDown={handlers.onPointerDown as unknown as React.PointerEventHandler<HTMLDivElement>}
+          onPointerMove={handlers.onPointerMove as unknown as React.PointerEventHandler<HTMLDivElement>}
+          onPointerUp={handlers.onPointerUp as unknown as React.PointerEventHandler<HTMLDivElement>}
+          onPointerLeave={handlers.onPointerUp as unknown as React.PointerEventHandler<HTMLDivElement>}
         >
           <svg className="h-full w-full select-none">
-            <g transform={`translate(${pan.x}, ${pan.y}) scale(${scale})`}>
+            <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.scale})`}>
               <WhiteboardElements
                 elements={activePreviewElements}
                 selectedIds={[]}
@@ -146,21 +152,21 @@ export function AiDiagramPreviewModal() {
               variant="ghost"
               size="icon"
               className="h-7 w-7 text-muted-foreground hover:text-foreground"
-              onClick={() => setScale((s) => Math.max(0.4, s - 0.15))}
+              onClick={() => zoomOut()}
               title="Zoom Out"
             >
               <ZoomOut className="h-3.5 w-3.5" />
             </Button>
 
             <span className="min-w-[40px] text-center font-mono text-[11px] font-semibold text-foreground">
-              {Math.round(scale * 100)}%
+              {Math.round(transform.scale * 100)}%
             </span>
 
             <Button
               variant="ghost"
               size="icon"
               className="h-7 w-7 text-muted-foreground hover:text-foreground"
-              onClick={() => setScale((s) => Math.min(2.5, s + 0.15))}
+              onClick={() => zoomIn()}
               title="Zoom In"
             >
               <ZoomIn className="h-3.5 w-3.5" />
@@ -172,10 +178,7 @@ export function AiDiagramPreviewModal() {
               variant="ghost"
               size="icon"
               className="h-7 w-7 text-muted-foreground hover:text-foreground"
-              onClick={() => {
-                setScale(1.0);
-                setPan({ x: 40, y: 40 });
-              }}
+              onClick={reset}
               title="Reset View"
             >
               <Maximize2 className="h-3.5 w-3.5" />

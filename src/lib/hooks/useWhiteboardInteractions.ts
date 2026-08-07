@@ -25,6 +25,8 @@ interface UseWhiteboardInteractionsProps {
   setTransform: React.Dispatch<React.SetStateAction<PanZoomState>>;
   svgRef: React.RefObject<SVGSVGElement | null>;
   reset: () => void;
+  zoomIn?: () => void;
+  zoomOut?: () => void;
   fitToContent: (nodes: LaidOutNode[]) => void;
   panZoomHandlers: {
     onWheel: (e: React.WheelEvent<SVGSVGElement>) => void;
@@ -39,6 +41,8 @@ export function useWhiteboardInteractions({
   setTransform,
   svgRef,
   reset,
+  zoomIn,
+  zoomOut,
   fitToContent,
 }: UseWhiteboardInteractionsProps) {
   const elements = useWhiteboardStore((s) => s.elements);
@@ -222,6 +226,20 @@ export function useWhiteboardInteractions({
             e.preventDefault();
             reset();
             return;
+          case '=':
+          case '+':
+            if (!isInputFocused) {
+              e.preventDefault();
+              zoomIn?.();
+            }
+            return;
+          case '-':
+          case '_':
+            if (!isInputFocused) {
+              e.preventDefault();
+              zoomOut?.();
+            }
+            return;
           case 'a':
             if (!isInputFocused) {
               e.preventDefault();
@@ -306,7 +324,7 @@ export function useWhiteboardInteractions({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedIds, elements, activeTool, reset, handleFitContent, handleFitSelection, setActiveTool, deleteElements, clearSelection, duplicateSelected, copyToClipboard, pasteFromClipboard, groupSelected, ungroupSelected, undo, redo, moveSelectedElements, spawnConnectedNode, setSelectedIds]);
+  }, [selectedIds, elements, activeTool, reset, zoomIn, zoomOut, handleFitContent, handleFitSelection, setActiveTool, deleteElements, clearSelection, duplicateSelected, copyToClipboard, pasteFromClipboard, groupSelected, ungroupSelected, undo, redo, moveSelectedElements, spawnConnectedNode, setSelectedIds]);
 
   const getCanvasCoords = useCallback(
     (e: React.PointerEvent | React.MouseEvent): Point => {

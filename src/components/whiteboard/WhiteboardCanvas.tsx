@@ -49,7 +49,7 @@ export function WhiteboardCanvas() {
   const groupSelected = useWhiteboardStore((s) => s.groupSelected);
   const ungroupSelected = useWhiteboardStore((s) => s.ungroupSelected);
 
-  const { transform, svgRef, handlers, setTransform, zoomIn, zoomOut, reset, fitToContent } = usePanZoom();
+  const { transform, svgRef, handlers, setTransform, zoomIn, zoomOut, reset, fitToContent } = usePanZoom({ enableKeyboardShortcuts: true });
 
   const {
     elements,
@@ -87,6 +87,8 @@ export function WhiteboardCanvas() {
     setTransform,
     svgRef,
     reset,
+    zoomIn,
+    zoomOut,
     fitToContent,
     panZoomHandlers: handlers,
   });
