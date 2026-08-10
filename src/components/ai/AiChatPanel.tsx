@@ -8,14 +8,13 @@ import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import type { WhiteboardElement } from '@/lib/whiteboard/whiteboard-types';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import {
   Sparkles,
   X,
   Send,
   Bot,
   User,
-  Wifi,
-  RotateCcw,
   Copy,
   Check,
   FileJson,
@@ -26,7 +25,6 @@ import {
   GitBranch,
   Lock,
   Square,
-  Code2,
   LogIn,
   Layers,
   Wand2,
@@ -91,7 +89,6 @@ const QUICK_PROMPTS: QuickPrompt[] = [
 
 function StatusBadge({
   authenticated,
-  configured,
 }: {
   authenticated: boolean;
   configured: boolean;
@@ -116,13 +113,12 @@ function DiagramCodeCard({
   message,
   onApply,
   onInsertAsShapes,
-  onOpenInEditor,
   onRefineWithAi,
 }: {
   message: AiChatMessage;
   onApply: (dsl: string) => void;
   onInsertAsShapes: (dsl: string) => void;
-  onOpenInEditor: (dsl: string) => void;
+  onOpenInEditor?: (dsl: string) => void;
   onRefineWithAi: (dsl: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
@@ -407,7 +403,7 @@ export function AiChatPanel() {
   return (
     <aside
       ref={asideRef}
-      className="relative z-40 flex h-full shrink-0 flex-col border-l bg-background shadow-2xl select-none"
+      className={cn("relative z-40 flex h-full shrink-0 flex-col border-l bg-background shadow-2xl select-none", isResizing && "pointer-events-none")}
       style={{ width: `${panelWidth}px` }}
     >
       {/* Left Resizable Drag Handle Bar */}

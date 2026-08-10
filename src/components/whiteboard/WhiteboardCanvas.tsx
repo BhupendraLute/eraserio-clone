@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useSyncExternalStore } from 'react';
+import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import { useWhiteboardStore, GRID_SIZE } from '@/lib/store/whiteboard-store';
 import { STROKE_COLOR_PALETTE, computeTextElementSize } from '@/lib/whiteboard/whiteboard-types';
 import { Maximize, Grid3X3, Download, Copy, CopyPlus, Clipboard, Group, Ungroup, Focus } from 'lucide-react';
@@ -21,7 +21,6 @@ import { TextFormattingToolbar } from './toolbars/TextFormattingToolbar';
 import { FigureToolbar } from './toolbars/FigureToolbar';
 import { ZoomPanMenu } from './ZoomPanMenu';
 import { useTheme } from 'next-themes';
-import type { TextElement } from '@/lib/whiteboard/whiteboard-types';
 
 const SELECT_CURSOR_LIGHT = `url("data:image/svg+xml,%3Csvg width='24px' height='24px' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 21L4 4L21 11L14.7353 13.6849C14.2633 13.8872 13.8872 14.2633 13.6849 14.7353L11 21Z' stroke='%23292929' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E") 4 4, url('/cursor/select-cursor.svg') 4 4, default`;
 
@@ -53,7 +52,6 @@ export function WhiteboardCanvas() {
     elements,
     selectedIds,
     activeTool,
-    isSpacePressed,
     isHandActive,
     isPanning,
     isDraggingShape,
@@ -80,7 +78,6 @@ export function WhiteboardCanvas() {
     handleFitContent,
     handleFitSelection,
     spawnConnectedNode,
-
   } = useWhiteboardInteractions({
     transform,
     setTransform,
@@ -97,10 +94,6 @@ export function WhiteboardCanvas() {
   const setHideUI = useWhiteboardStore((s) => s.setHideUI);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; context: 'canvas' | 'element' | 'multi' } | null>(null);
 
-  const prevScaleRef = useRef(transform.scale);
-  const [zoomAnimState, setZoomAnimState] = useState<'idle' | 'pop-in' | 'pop-out'>('idle');
-  const animTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const focusTargetNodes = useWhiteboardStore((s) => s.focusTargetNodes);
   const setFocusTargetNodes = useWhiteboardStore((s) => s.setFocusTargetNodes);
 
@@ -110,34 +103,6 @@ export function WhiteboardCanvas() {
       setFocusTargetNodes(null);
     }
   }, [focusTargetNodes, fitToContent, setFocusTargetNodes]);
-
-  useEffect(() => {
-    const prev = prevScaleRef.current;
-    if (prev !== transform.scale) {
-      prevScaleRef.current = transform.scale;
-
-      if (animTimerRef.current !== null) {
-        clearTimeout(animTimerRef.current);
-        animTimerRef.current = null;
-      }
-
-      setZoomAnimState('pop-in');
-
-      animTimerRef.current = setTimeout(() => {
-        setZoomAnimState('pop-out');
-        animTimerRef.current = setTimeout(() => {
-          setZoomAnimState('idle');
-          animTimerRef.current = null;
-        }, 300);
-      }, 800);
-    }
-  }, [transform.scale]);
-
-  useEffect(() => {
-    return () => {
-      if (animTimerRef.current !== null) clearTimeout(animTimerRef.current);
-    };
-  }, []);
 
   const handleCanvasDoubleClick = (e: React.MouseEvent<SVGSVGElement>) => {
     if (isHandActive) return;

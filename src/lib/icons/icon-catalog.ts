@@ -269,6 +269,15 @@ SYSTEM_DESIGN_ICONIFY_LIST.forEach((item) => {
   if (!dynamicCatalogMap.has(shortKind)) {
     dynamicCatalogMap.set(shortKind, entry);
   }
+  if (shortKind === 'postgresql') {
+    dynamicCatalogMap.set('postgres', entry);
+  }
+  if (shortKind === 'kubernetes') {
+    dynamicCatalogMap.set('k8s', entry);
+  }
+  if (shortKind === 'mongodb') {
+    dynamicCatalogMap.set('mongo', entry);
+  }
 });
 
 export const ICON_CATALOG: IconCatalogEntry[] = Array.from(dynamicCatalogMap.values());

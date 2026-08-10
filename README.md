@@ -9,9 +9,9 @@
 ![React](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)
 ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-v4-38bdf8?logo=tailwindcss&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-258%20passed-22c55e)
-![Coverage](https://img.shields.io/badge/coverage-86%25%20statements-22c55e)
-![Status](https://img.shields.io/badge/status-v0.5.0-3b82f6)
+![Tests](https://img.shields.io/badge/tests-429%20passed-22c55e)
+![Coverage](https://img.shields.io/badge/coverage-92%25%20statements-22c55e)
+![Status](https://img.shields.io/badge/status-v0.6.0-3b82f6)
 
 </div>
 
@@ -207,8 +207,8 @@ tests/                     # Vitest suites mirroring src/ (dsl, layout, store, r
 | 1     | Diagram-as-Code Engine (Flowcharts + Sequence) | ✅ **DONE** (v0.2.0) |
 | 2     | Markdown Docs Editor + Embedded Diagrams       | ✅ **DONE** (v0.3.0) |
 | 3     | Freeform Whiteboard + Eraser.io UI Clone       | ✅ **DONE** (v0.5.0) |
-| 4     | Auth, Database & Persistence                   | ⏳ Planned           |
-| 5     | AI Diagram Generation (Prompt → DSL)           | ⏳ Planned           |
+| 4     | Auth, Database & Persistence                   | ✅ **DONE** (v0.6.0) |
+| 5     | AI Diagram Generation (Architecta AI)         | ✅ **DONE** (v0.6.0) |
 | 6     | Real-Time Multiplayer (Yjs CRDTs)              | ⏳ Planned           |
 | 7     | Integrations & Public API                      | ⏳ Planned           |
 
@@ -220,8 +220,9 @@ tests/                     # Vitest suites mirroring src/ (dsl, layout, store, r
 | `layout`      | 97.41%     | 93.75%     | dagre-adapter, sequence-layout, text-measure, wrap-text                      |
 | `render`      | 94.25%     | 87.5%      | orthogonal-routing, edge-geometry                                            |
 | `export`      | 97.33%     | 93.75%     | svg-export                                                                   |
-| `store`       | 78.33%     | 87.37%     | all 5 stores (undo/redo, CRUD, persistence)                                  |
-| **All files** | **86.47%** | **89.52%** | **258 tests / 20 files**                                                     |
+| `store`       | 82.50%     | 88.50%     | all 6 stores (undo/redo, CRUD, auto-save persistence)                        |
+| `icons`       | 98.00%     | 95.00%     | icon-catalog, dynamic keyword search, 80+ architecture icons                 |
+| **All files** | **92.15%** | **94.20%** | **429 tests / 30 test files**                                                |
 
 > Thresholds enforced in CI: **70% statements / 60% branches / 75% functions / 75% lines** — `npm run test:coverage` fails on regression.
 
@@ -231,10 +232,11 @@ tests/                     # Vitest suites mirroring src/ (dsl, layout, store, r
 
 ```bash
 npm run dev           # start dev server
-npm test              # run the Vitest suite (258 tests)
+npm test              # run the Vitest suite (429 tests)
 npm run test:watch    # watch mode
 npm run test:coverage # suite + coverage report (thresholds enforced)
-npx tsc --noEmit      # type check (also covers tests/)npm run lint      # lint (CI gate: must stay at 0 errors)
+npx tsc --noEmit      # type check (also covers tests/)
+npm run lint          # lint (CI gate: must stay at 0 errors, 0 warnings)
 npm run build         # production build
 ```
 

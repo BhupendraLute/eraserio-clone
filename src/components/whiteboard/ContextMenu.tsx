@@ -3,9 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { useOnClickOutside } from '@/lib/hooks/useOnClickOutside';
-import { useAiChatStore } from '@/lib/store/ai-chat-store';
 import { useWorkspaceStore } from '@/lib/store/workspace-store';
-import { convertWhiteboardToDsl } from '@/lib/whiteboard/convert-whiteboard-to-dsl';
 import { toast } from 'sonner';
 import {
   Copy,

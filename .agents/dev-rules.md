@@ -17,6 +17,7 @@
 | 9 | Validate API bodies with zod (`src/lib/api-validation.ts`) + payload byte caps | protects DB, predictable 400s |
 | 10 | Guests get offline stubs — **never** write to the DB without a user | keeps guest mode local-only |
 | 11 | Use `safeCallbackUrl()` for any `callbackUrl`; **never** accept raw URLs | prevents open-redirects |
+| 12 | **NEVER read, view, or edit `.env` or `.env.local`** (read `.env.example` only) | protects secret keys and database credentials |
 
 ## SSR / Component Rules
 

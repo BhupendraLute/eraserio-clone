@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LaidOutNode } from "@/lib/layout/types";
 
 const MIN_SCALE = 0.2;
@@ -32,10 +32,12 @@ function clampScale(s: number, min = MIN_SCALE, max = MAX_SCALE) {
 export function usePanZoom(
    optionsOrInitial: PanZoomState | UsePanZoomOptions = { scale: 1, x: 0, y: 0 }
 ) {
-   const options: UsePanZoomOptions =
-      "scale" in optionsOrInitial
-         ? { initial: optionsOrInitial as PanZoomState }
-         : (optionsOrInitial as UsePanZoomOptions);
+   const options = useMemo<UsePanZoomOptions>(() => {
+      if ('scale' in optionsOrInitial) {
+         return { initial: optionsOrInitial as PanZoomState };
+      }
+      return optionsOrInitial as UsePanZoomOptions;
+   }, [optionsOrInitial]);
 
    const initial = options.initial ?? { scale: 1, x: 0, y: 0 };
    const minScale = options.minScale ?? MIN_SCALE;
@@ -55,7 +57,7 @@ export function usePanZoom(
       if (containerRef.current !== containerEl) {
          setContainerEl(containerRef.current);
       }
-   });
+   }, [containerEl]);
 
    // Smooth scroll-to-pan animation state — start aligned with the initial transform
    const scrollTargetRef = useRef<PanZoomState>({ ...initial });
