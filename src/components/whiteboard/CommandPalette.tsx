@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
+import { useWorkspaceStore } from '@/lib/store/workspace-store';
 import { useTheme } from 'next-themes';
-import { Search, Sun, Moon, Monitor, MousePointer, Square, Circle, Diamond, Database, MoveRight, Minus, Pencil, Type, Frame, MessageSquare, Eraser, Hash, Undo2, Redo2, Copy, CopyPlus, Clipboard, Group, Ungroup, Settings, Trash2, Grid3X3 } from 'lucide-react';
+import { Search, Sun, Moon, Monitor, MousePointer, Square, Circle, Diamond, Database, MoveRight, Minus, Pencil, Type, Frame, MessageSquare, Eraser, Hash, Undo2, Redo2, Copy, CopyPlus, Clipboard, Group, Ungroup, Settings, Trash2, Grid3X3, Sparkles } from 'lucide-react';
 
 interface Command {
   id: string;
@@ -22,6 +23,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const { setTheme } = useTheme();
+  const toggleAiChat = useWorkspaceStore((s) => s.toggleAiChat);
 
   const setActiveTool = useWhiteboardStore((s) => s.setActiveTool);
   const undo = useWhiteboardStore((s) => s.undo);
@@ -83,6 +85,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     { id: 'theme-dark', label: 'Dark Theme', shortcut: '', icon: Moon, category: 'View', action: () => setTheme('dark') },
     { id: 'theme-system', label: 'System Theme', shortcut: '', icon: Monitor, category: 'View', action: () => setTheme('system') },
     // Navigation
+    { id: 'nav-ai-chat', label: 'Open Architecta AI Assistant', shortcut: 'Ctrl+J', icon: Sparkles, category: 'Navigation', action: () => toggleAiChat() },
     { id: 'nav-settings', label: 'Settings / Shortcuts', shortcut: '', icon: Settings, category: 'Navigation', action: () => router.push('/settings') },
     { id: 'nav-whiteboard', label: 'Go to Whiteboard', shortcut: '', icon: MousePointer, category: 'Navigation', action: () => router.push('/whiteboard') },
   ];

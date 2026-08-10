@@ -42,12 +42,13 @@ export function ShareModal({ open, onOpenChange }: ShareModalProps) {
 
   const handleToggleAccess = async () => {
     setLoading(true);
-    const { shareUrl } = await togglePublicShare(!isPublic);
+    const nextIsPublic = !isPublic;
+    const { success } = await togglePublicShare(nextIsPublic);
     setLoading(false);
-    if (!shareUrl) {
+    if (!success) {
       toast.error('Could not update sharing. Please try again.');
     } else {
-      toast.success(isPublic ? 'Document is now private.' : 'Public link created!');
+      toast.success(nextIsPublic ? 'Public link created!' : 'Document is now private.');
     }
   };
 

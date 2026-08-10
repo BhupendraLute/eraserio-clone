@@ -3,6 +3,8 @@
 import React, { useEffect, useRef } from 'react';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { useOnClickOutside } from '@/lib/hooks/useOnClickOutside';
+import { useWorkspaceStore } from '@/lib/store/workspace-store';
+import { toast } from 'sonner';
 import {
   Copy,
   Clipboard,
@@ -20,6 +22,7 @@ import {
   AlignEndVertical,
   CheckSquare,
   Scissors,
+  Sparkles,
 } from 'lucide-react';
 
 interface ContextMenuProps {
@@ -56,10 +59,42 @@ export function ContextMenu({ x, y, onClose }: ContextMenuProps) {
   const undo = useWhiteboardStore((s) => s.undo);
   const redo = useWhiteboardStore((s) => s.redo);
 
+  const setAiChatOpen = useWorkspaceStore((s) => s.setAiChatOpen);
+
   const hasSelection = selectedIds.length > 0;
   const hasMulti = selectedIds.length > 1;
   const hasClipboard = clipboard.length > 0;
   const hasGroups = elements.some((el) => el.groupId && selectedIds.includes(el.id));
+
+  const handleEditWithAi = () => {
+    setAiChatOpen(true);
+    onClose();
+
+    const selectedEls = elements.filter((el) => selectedIds.includes(el.id));
+    const count = selectedEls.length;
+    const names = selectedEls
+      .map((el) => el.label)
+      .filter(Boolean)
+      .slice(0, 2)
+      .join(', ');
+    const nameStr = names ? ` (${names}${count > 2 ? '...' : ''})` : '';
+
+    toast.success(`Linked ${count} canvas component${count > 1 ? 's' : ''}${nameStr} to AI Copilot!`, {
+      description: 'Type your instruction below to edit these components.',
+    });
+
+    // Auto-focus AI textarea and pre-fill prompt
+    setTimeout(() => {
+      const textarea = document.querySelector<HTMLTextAreaElement>('aside textarea');
+      if (textarea) {
+        textarea.focus();
+        if (!textarea.value.trim()) {
+          textarea.value = 'Edit selected diagram components to ';
+          textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      }
+    }, 150);
+  };
 
   useOnClickOutside(ref, onClose);
 
@@ -101,6 +136,19 @@ export function ContextMenu({ x, y, onClose }: ContextMenuProps) {
 
       {hasSelection && (
         <>
+          <div className="mx-2 my-1 h-px bg-border/50" />
+
+          {/* Edit with AI Context Item */}
+          <button
+            className="flex w-full items-center gap-2.5 rounded-md bg-blue-500/10 px-2.5 py-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-colors cursor-pointer"
+            onClick={handleEditWithAi}
+          >
+            <Sparkles className="h-3.5 w-3.5 text-blue-500 fill-blue-500/20" />
+            <span>Edit with AI</span>
+            <span className="ml-auto rounded bg-blue-500/20 px-1 py-0.5 text-[9px] font-semibold text-blue-600 dark:text-blue-300">
+              AI Context
+            </span>
+          </button>
           <div className="mx-2 my-1 h-px bg-border/50" />
 
           {/* Cut / Copy / Paste / Duplicate */}

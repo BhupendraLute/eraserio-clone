@@ -45,6 +45,7 @@ interface DiagramState {
    setEditorView: (view: EditorView | null) => void;
    setNodePosition: (id: string, x: number, y: number) => void;
    resetNodePosition: (id: string) => void;
+   resetNodeOverrides: () => void;
 }
 
 const DEFAULT_SOURCE = `flowchart
@@ -150,4 +151,9 @@ export const useDiagramStore = create<DiagramState>((set) => ({
             ),
          };
       }),
+
+   // Drops all manual node positions — used when a generated diagram
+   // replaces the current source so stale drag positions never carry over
+   // into a new layout that happens to reuse the same node ids.
+   resetNodeOverrides: () => set({ nodeOverrides: {} }),
 }));

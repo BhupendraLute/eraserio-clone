@@ -31,27 +31,19 @@ interface WhiteboardElementsProps {
 }
 
 export function getMarkerId(ahStyle: ArrowheadStyle | undefined, color?: string): string {
+  const style = ahStyle || 'arrow';
+  if (style === 'none') return '';
   const cSuffix = color ? `-${color.replace(/[^a-zA-Z0-9]/g, '')}` : '';
-  switch (ahStyle) {
-    case 'triangle': return `url(#wb-arrowhead-triangle${cSuffix})`;
-    case 'diamond': return `url(#wb-arrowhead-diamond${cSuffix})`;
-    case 'circle': return `url(#wb-arrowhead-circle${cSuffix})`;
-    case 'arrow': return `url(#wb-arrowhead${cSuffix})`;
-    case 'none': return '';
-    default: return `url(#wb-arrowhead${cSuffix})`;
-  }
+  const prefix = style === 'arrow' ? 'wb-arrowhead' : `wb-arrowhead-${style}`;
+  return `url(#${prefix}${cSuffix})`;
 }
 
 export function getStartMarkerId(ahStyle: ArrowheadStyle | undefined, color?: string): string {
+  const style = ahStyle || 'none';
+  if (style === 'none') return '';
   const cSuffix = color ? `-${color.replace(/[^a-zA-Z0-9]/g, '')}` : '';
-  switch (ahStyle) {
-    case 'triangle': return `url(#wb-arrowhead-start-triangle${cSuffix})`;
-    case 'diamond': return `url(#wb-arrowhead-start-diamond${cSuffix})`;
-    case 'circle': return `url(#wb-arrowhead-start-circle${cSuffix})`;
-    case 'arrow': return `url(#wb-arrowhead-start${cSuffix})`;
-    case 'none': return '';
-    default: return '';
-  }
+  const prefix = style === 'arrow' ? 'wb-arrowhead-start' : `wb-arrowhead-start-${style}`;
+  return `url(#${prefix}${cSuffix})`;
 }
 
 export function WhiteboardElements({
@@ -69,7 +61,8 @@ export function WhiteboardElements({
   const diagramMap = useDiagramRegistry((s) => s.diagrams);
 
   const renderCloudIconSvg = (kind: CloudIconKind | string, color: string, elementWidth: number = 64) => {
-    const matched = ICON_MAP.get(kind);
+    const kindStr = String(kind);
+    const matched = ICON_MAP.get(kindStr) || ICON_MAP.get(`iconify-${kindStr}`) || ICON_MAP.get(kindStr.replace(/^iconify-/, ''));
     const IconComponent = (matched && matched.icon) ? matched.icon : Server;
 
     // Ultra-fine stroke scaling (1.15px baseline, max 1.8px)
@@ -477,14 +470,42 @@ export function WhiteboardElements({
         }
 
         if (el.type === 'cloud') {
+          const label = el.label;
+          const hasLabel = Boolean(label && label.trim());
+          const labelY = el.y + el.height + 6;
+          const labelWidth = Math.max(120, el.width + 40);
+          const labelX = el.x + el.width / 2 - labelWidth / 2;
+
           return (
             <g key={el.id} onPointerDown={(e) => onElementPointerDown(e, el)} onClick={(e) => onElementClick(e, el)} onDoubleClick={(e) => onElementDoubleClick(e, el)} onContextMenu={(e) => onElementContextMenu?.(e, el)}>
-              <rect x={el.x} y={el.y} width={el.width} height={el.height} fill="transparent" stroke="transparent" strokeWidth={0} className="cursor-move" />
+              {/* Unified hit target covering both icon and label */}
+              <rect x={Math.min(el.x, labelX)} y={el.y} width={Math.max(el.width, labelWidth)} height={el.height + (hasLabel ? 28 : 0)} fill="transparent" stroke="transparent" strokeWidth={0} className="cursor-move" />
               <foreignObject x={el.x} y={el.y} width={el.width} height={el.height} className="pointer-events-none">
                 <div className="flex h-full w-full items-center justify-center p-0.5 select-none pointer-events-none">
                   {renderCloudIconSvg(el.iconKind, el.strokeColor, el.width)}
                 </div>
               </foreignObject>
+              {hasLabel && editingElementId !== el.id && (
+                <foreignObject
+                  x={labelX}
+                  y={labelY}
+                  width={labelWidth}
+                  height={24}
+                  className="pointer-events-none select-none overflow-visible"
+                >
+                  <div
+                    className="w-full text-center transition-colors text-xs font-medium truncate px-1"
+                    style={{
+                      color: el.labelColor || el.strokeColor || 'currentColor',
+                      fontSize: `${el.labelFontSize ?? 12}px`,
+                      fontFamily: el.labelFontFamily ?? 'inherit',
+                      lineHeight: 1.25,
+                    }}
+                  >
+                    {label}
+                  </div>
+                </foreignObject>
+              )}
             </g>
           );
         }

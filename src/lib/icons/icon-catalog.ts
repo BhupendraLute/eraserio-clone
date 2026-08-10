@@ -220,6 +220,66 @@ registerSystemDesignModuleIcons(SiIcons, 'simpleicons', 2);
 registerSystemDesignModuleIcons(GrIcons, 'grommet', 2);
 registerSystemDesignModuleIcons(TbIcons, 'tabler', 2);
 
+// Map direct bundled React Icons for high-frequency architecture tech stacks
+const SI_ICON_FALLBACKS: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
+  'iconify-kafka': SiIcons.SiApachekafka,
+  'iconify-redis': SiIcons.SiRedis,
+  'iconify-postgresql': SiIcons.SiPostgresql,
+  'iconify-mongodb': SiIcons.SiMongodb,
+  'iconify-mysql': SiIcons.SiMysql,
+  'iconify-docker': SiIcons.SiDocker,
+  'iconify-kubernetes': SiIcons.SiKubernetes,
+  'iconify-nginx': SiIcons.SiNginx,
+  'iconify-rabbitmq': SiIcons.SiRabbitmq,
+  'iconify-prometheus': SiIcons.SiPrometheus,
+  'iconify-grafana': SiIcons.SiGrafana,
+  'iconify-auth0': SiIcons.SiAuth0,
+  'iconify-graphql': SiIcons.SiGraphql,
+  'iconify-swagger': SiIcons.SiSwagger,
+  'iconify-socketio': SiIcons.SiSocketdotio,
+};
+
+// Register System Design Iconify curated list into dynamicCatalogMap
+SYSTEM_DESIGN_ICONIFY_LIST.forEach((item) => {
+  const directSiComp = SI_ICON_FALLBACKS[item.kind];
+  let iconComp: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+
+  if (directSiComp) {
+    iconComp = function BundledIconWrapper(props) {
+      return React.createElement(directSiComp, {
+        className: props.className || 'h-full w-full',
+        style: props.style,
+      });
+    };
+  } else {
+    iconComp = createIconifyComponent(item.iconId);
+  }
+
+  const entry: IconCatalogEntry = {
+    kind: item.kind,
+    name: item.name,
+    source: 'iconify',
+    icon: iconComp,
+  };
+
+  dynamicCatalogMap.set(entry.kind, entry);
+
+  // Register alias without 'iconify-' prefix (e.g. 'kafka', 'redis', 'postgres', 'aws-ec2')
+  const shortKind = item.kind.replace(/^iconify-/, '');
+  if (!dynamicCatalogMap.has(shortKind)) {
+    dynamicCatalogMap.set(shortKind, entry);
+  }
+  if (shortKind === 'postgresql') {
+    dynamicCatalogMap.set('postgres', entry);
+  }
+  if (shortKind === 'kubernetes') {
+    dynamicCatalogMap.set('k8s', entry);
+  }
+  if (shortKind === 'mongodb') {
+    dynamicCatalogMap.set('mongo', entry);
+  }
+});
+
 export const ICON_CATALOG: IconCatalogEntry[] = Array.from(dynamicCatalogMap.values());
 
 /** O(1) lookup map by icon kind — use instead of ICON_CATALOG.find() in render paths */

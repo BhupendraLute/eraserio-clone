@@ -25,6 +25,8 @@ interface UseWhiteboardInteractionsProps {
   setTransform: React.Dispatch<React.SetStateAction<PanZoomState>>;
   svgRef: React.RefObject<SVGSVGElement | null>;
   reset: () => void;
+  zoomIn?: () => void;
+  zoomOut?: () => void;
   fitToContent: (nodes: LaidOutNode[]) => void;
   panZoomHandlers: {
     onWheel: (e: React.WheelEvent<SVGSVGElement>) => void;
@@ -39,6 +41,8 @@ export function useWhiteboardInteractions({
   setTransform,
   svgRef,
   reset,
+  zoomIn,
+  zoomOut,
   fitToContent,
 }: UseWhiteboardInteractionsProps) {
   const elements = useWhiteboardStore((s) => s.elements);
@@ -131,14 +135,31 @@ export function useWhiteboardInteractions({
   // Spacebar pan mode listener
   useEffect(() => {
     const handleKeyDownWindow = (e: KeyboardEvent) => {
-      const targetTag = (e.target as HTMLElement)?.tagName?.toLowerCase();
-      if (['input', 'textarea', 'select'].includes(targetTag)) return;
-      if (e.code === 'Space' && !isSpacePressed) {
-        setIsSpacePressed(true);
+      const target = e.target as HTMLElement;
+      const targetTag = target?.tagName?.toLowerCase();
+      const isInput = ['input', 'textarea', 'select'].includes(targetTag) || target?.isContentEditable;
+      if (isInput) return;
+
+      if (e.code === 'Space' || e.key === ' ') {
+        e.preventDefault();
+        if (document.activeElement && document.activeElement !== document.body) {
+          (document.activeElement as HTMLElement).blur?.();
+        }
+        if (!isSpacePressed) {
+          setIsSpacePressed(true);
+        }
       }
     };
     const handleKeyUpWindow = (e: KeyboardEvent) => {
-      if (e.code === 'Space') setIsSpacePressed(false);
+      if (e.code === 'Space' || e.key === ' ') {
+        const target = e.target as HTMLElement;
+        const targetTag = target?.tagName?.toLowerCase();
+        const isInput = ['input', 'textarea', 'select'].includes(targetTag) || target?.isContentEditable;
+        if (!isInput) {
+          e.preventDefault();
+        }
+        setIsSpacePressed(false);
+      }
     };
     window.addEventListener('keydown', handleKeyDownWindow);
     window.addEventListener('keyup', handleKeyUpWindow);
@@ -221,6 +242,20 @@ export function useWhiteboardInteractions({
           case '0':
             e.preventDefault();
             reset();
+            return;
+          case '=':
+          case '+':
+            if (!isInputFocused) {
+              e.preventDefault();
+              zoomIn?.();
+            }
+            return;
+          case '-':
+          case '_':
+            if (!isInputFocused) {
+              e.preventDefault();
+              zoomOut?.();
+            }
             return;
           case 'a':
             if (!isInputFocused) {
@@ -306,7 +341,7 @@ export function useWhiteboardInteractions({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedIds, elements, activeTool, reset, handleFitContent, handleFitSelection, setActiveTool, deleteElements, clearSelection, duplicateSelected, copyToClipboard, pasteFromClipboard, groupSelected, ungroupSelected, undo, redo, moveSelectedElements, spawnConnectedNode, setSelectedIds]);
+  }, [selectedIds, elements, activeTool, reset, zoomIn, zoomOut, handleFitContent, handleFitSelection, setActiveTool, deleteElements, clearSelection, duplicateSelected, copyToClipboard, pasteFromClipboard, groupSelected, ungroupSelected, undo, redo, moveSelectedElements, spawnConnectedNode, setSelectedIds]);
 
   const getCanvasCoords = useCallback(
     (e: React.PointerEvent | React.MouseEvent): Point => {
@@ -824,7 +859,12 @@ export function useWhiteboardInteractions({
     setActiveTool('select');
   };
 
+  const isHandActive = activeTool === 'hand' || isSpacePressed || isPanningState;
+
   const handleElementClick = (e: React.MouseEvent, el: WhiteboardElement) => {
+    if (activeTool === 'hand' || isSpacePressed || isPanningState || e.button === 1) {
+      return;
+    }
     e.stopPropagation();
     if (activeTool === 'eraser') {
       deleteElements([el.id]);
@@ -848,12 +888,19 @@ export function useWhiteboardInteractions({
   };
 
   const handleElementDoubleClick = (e: React.MouseEvent, el: WhiteboardElement) => {
+    if (activeTool === 'hand' || isSpacePressed || isPanningState || e.button === 1) {
+      return;
+    }
     e.stopPropagation();
     if (el.type === 'comment') return;
     setEditingElementId(el.id);
   };
 
   const handleElementPointerDown = (e: React.PointerEvent, el: WhiteboardElement) => {
+    if (activeTool === 'hand' || isSpacePressed || isPanningState || e.button === 1) {
+      handlePointerDown(e);
+      return;
+    }
     if (activeTool !== 'select') return;
     e.stopPropagation();
     if (el.type === 'comment') return;
@@ -895,6 +942,10 @@ export function useWhiteboardInteractions({
   };
 
   const handleResizeHandlePointerDown = (e: React.PointerEvent, handle: ResizeHandle, targetId: string) => {
+    if (activeTool === 'hand' || isSpacePressed || isPanningState || e.button === 1) {
+      handlePointerDown(e);
+      return;
+    }
     e.stopPropagation();
     const coords = getCanvasCoords(e);
     setResizeState({ isResizing: true, handle, targetId, lastPos: coords });
@@ -910,6 +961,7 @@ export function useWhiteboardInteractions({
     activeFontSize,
     setActiveFontSize,
     isSpacePressed,
+    isHandActive,
     isPanning: isPanningState,
     isDraggingShape: dragState.isDragging,
     drawingState,

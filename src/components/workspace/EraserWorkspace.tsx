@@ -13,25 +13,33 @@ import { WhiteboardCanvas } from '@/components/whiteboard/WhiteboardCanvas';
 import { CodeEditor } from '@/components/editor/CodeEditor';
 import { DiagramEditorView } from '@/components/editor/DiagramEditorView';
 import { usePipelineWorker } from '@/lib/hooks/usePipelineWorker';
+import { AiChatPanel } from '@/components/ai/AiChatPanel';
+import { AiDiagramPreviewModal } from '@/components/ai/AiDiagramPreviewModal';
 import { Button } from '@/components/ui/button';
-import { Sparkles, X, Code2, GripHorizontal } from 'lucide-react';
+import { Sparkles, X, Code2, GripHorizontal, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
+import { useDiagramStore } from '@/lib/store/diagram-store';
+import { convertDslToWhiteboardElements } from '@/lib/whiteboard/convert-dsl-to-whiteboard';
+import { toast } from 'sonner';
 
 export function EraserWorkspace() {
   usePipelineWorker();
 
   const activeTab = useWorkspaceStore((s) => s.activeTab);
   const aiChatOpen = useWorkspaceStore((s) => s.aiChatOpen);
-  const setAiChatOpen = useWorkspaceStore((s) => s.setAiChatOpen);
   const diagramCodeOpen = useWorkspaceStore((s) => s.diagramCodeOpen);
   const toggleDiagramCode = useWorkspaceStore((s) => s.toggleDiagramCode);
   const hideUI = useWhiteboardStore((s) => s.hideUI);
 
-  // Draggable Code Drawer State
+  // Draggable & Resizable Code Drawer State (Width & Height)
   const [drawerPos, setDrawerPos] = useState({ x: 20, y: 12 });
+  const [drawerSize, setDrawerSize] = useState({ width: 480, height: 320 });
+
   const isDraggingRef = useRef(false);
+  const isResizingRef = useRef(false);
   const dragStartRef = useRef<{ startX: number; startY: number; initX: number; initY: number } | null>(null);
+  const resizeStartRef = useRef<{ startX: number; startY: number; initW: number; initH: number } | null>(null);
 
   const handleHeaderPointerDown = (e: React.PointerEvent) => {
     isDraggingRef.current = true;
@@ -57,6 +65,34 @@ export function EraserWorkspace() {
   const handleHeaderPointerUp = () => {
     isDraggingRef.current = false;
     dragStartRef.current = null;
+  };
+
+  const handleResizePointerDown = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    isResizingRef.current = true;
+    resizeStartRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      initW: drawerSize.width,
+      initH: drawerSize.height,
+    };
+    (e.target as Element).setPointerCapture(e.pointerId);
+  };
+
+  const handleResizePointerMove = (e: React.PointerEvent) => {
+    if (!isResizingRef.current || !resizeStartRef.current) return;
+    const dw = e.clientX - resizeStartRef.current.startX;
+    const dh = e.clientY - resizeStartRef.current.startY;
+    setDrawerSize({
+      width: Math.max(340, Math.min(950, resizeStartRef.current.initW - dw)),
+      height: Math.max(180, Math.min(750, resizeStartRef.current.initH + dh)),
+    });
+  };
+
+  const handleResizePointerUp = () => {
+    isResizingRef.current = false;
+    resizeStartRef.current = null;
   };
 
   const editor = useEditor({
@@ -119,13 +155,15 @@ export function EraserWorkspace() {
           >
             {!hideUI && <CanvasVerticalToolbar />}
 
-            {/* Draggable CodeMirror DSL Code Editor Drawer */}
+            {/* Draggable & Resizable CodeMirror DSL Code Editor Drawer */}
             {diagramCodeOpen && (
               <div
-                className="absolute z-30 flex h-72 w-96 flex-col rounded-xl border bg-background/95 shadow-2xl backdrop-blur overflow-hidden transition-shadow select-none"
+                className="absolute z-30 flex flex-col rounded-xl border bg-background/95 shadow-2xl backdrop-blur overflow-hidden transition-shadow select-none"
                 style={{
                   top: `${drawerPos.y}px`,
                   right: `${drawerPos.x}px`,
+                  width: `${drawerSize.width}px`,
+                  height: `${drawerSize.height}px`,
                 }}
               >
                 {/* Draggable Drag Header Handle */}
@@ -140,17 +178,50 @@ export function EraserWorkspace() {
                     <Code2 className="h-3.5 w-3.5 text-purple-600" />
                     <span>Diagram Code (DSL)</span>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5 pointer-events-auto"
-                    onClick={toggleDiagramCode}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
+                  <div className="flex items-center gap-1 pointer-events-auto">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-5 px-1.5 gap-1 text-[10px] font-medium"
+                      title="Convert diagram code into native whiteboard shapes"
+                      onClick={() => {
+                        const dsl = useDiagramStore.getState().source;
+                        const elements = convertDslToWhiteboardElements(dsl);
+                        if (elements.length > 0) {
+                          useWhiteboardStore.getState().addElements(elements);
+                          toast.success('Converted diagram to whiteboard shapes!');
+                        } else {
+                          toast.error('Failed to convert diagram code to shapes');
+                        }
+                      }}
+                    >
+                      <Layers className="h-3 w-3 text-blue-500" />
+                      <span>To Shapes</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5"
+                      onClick={toggleDiagramCode}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
+
                 <div className="flex-1 overflow-hidden pointer-events-auto">
                   <CodeEditor />
+                </div>
+
+                {/* Bottom-Left Resize Handle (Width + Height Drag Grip) */}
+                <div
+                  className="group absolute bottom-1 left-1 h-3.5 w-3.5 cursor-nesw-resize z-50 flex items-center justify-center rounded p-0.5 hover:bg-purple-500/30 active:bg-purple-600/50 transition-colors pointer-events-auto"
+                  onPointerDown={handleResizePointerDown}
+                  onPointerMove={handleResizePointerMove}
+                  onPointerUp={handleResizePointerUp}
+                  title="Drag to resize width and height of Diagram Code panel"
+                >
+                  <div className="h-1.5 w-1.5 rounded-full bg-purple-500/70 group-hover:bg-purple-500 group-hover:scale-125 transition-all" />
                 </div>
               </div>
             )}
@@ -168,41 +239,11 @@ export function EraserWorkspace() {
     <div className="relative flex flex-1 overflow-hidden">
       {renderActiveTab()}
 
-      {/* Collapsible AI Chat Sidebar (available in all tabs) */}
-      {aiChatOpen && (
-        <div className="z-40 flex h-full w-80 flex-col border-l bg-background shadow-xl animate-in slide-in-from-right">
-          <div className="flex h-11 items-center justify-between border-b px-3">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-              <Sparkles className="h-4 w-4 text-blue-600" />
-              <span>Architecta AI Assistant</span>
-            </div>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAiChatOpen(false)}>
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-          <div className="flex-1 overflow-auto p-4 text-xs text-muted-foreground">
-            <p className="mb-2 font-medium text-foreground">What would you like to build?</p>
-            <div className="flex flex-col gap-2">
-              <button className="rounded-lg border p-2 text-left hover:bg-accent">
-                Generate architecture diagram for a microservice setup
-              </button>
-              <button className="rounded-lg border p-2 text-left hover:bg-accent">
-                Create sequence diagram for user authentication
-              </button>
-              <button className="rounded-lg border p-2 text-left hover:bg-accent">
-                Write technical doc outline for a REST API
-              </button>
-            </div>
-          </div>
-          <div className="border-t p-3">
-            <input
-              type="text"
-              placeholder="Ask AI or type a prompt..."
-              className="h-8 w-full rounded-lg border bg-muted/30 px-3 text-xs outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-        </div>
-      )}
+      {/* Collapsible Architecta AI sidebar (available in all tabs) */}
+      {aiChatOpen && <AiChatPanel />}
+
+      {/* Interactive AI Diagram Edit Preview Popup Modal */}
+      <AiDiagramPreviewModal />
     </div>
   );
 }

@@ -27,7 +27,7 @@ describe('dagreLayout', () => {
     expect(typeof nodes[0].y).toBe('number');
   });
 
-  it('lays a chain out top-to-bottom with shared column x', () => {
+  it('lays a chain out left-to-right with shared row y', () => {
     const { nodes, edges } = dagreLayout(
       ast({
         nodes: [node('A'), node('B'), node('C')],
@@ -38,21 +38,21 @@ describe('dagreLayout', () => {
       })
     );
     const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
-    expect(byId['A'].y).toBeLessThan(byId['B'].y);
-    expect(byId['B'].y).toBeLessThan(byId['C'].y);
-    // Single-column rank -> all nodes share the same top-left x.
-    expect(byId['A'].x).toBeCloseTo(byId['B'].x, 5);
-    expect(byId['B'].x).toBeCloseTo(byId['C'].x, 5);
+    expect(byId['A'].x).toBeLessThan(byId['B'].x);
+    expect(byId['B'].x).toBeLessThan(byId['C'].x);
+    // Horizontal rank -> nodes share the same top-left y.
+    expect(byId['A'].y).toBeCloseTo(byId['B'].y, 5);
+    expect(byId['B'].y).toBeCloseTo(byId['C'].y, 5);
 
     expect(edges).toHaveLength(2);
     expect(edges[0].points.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('places unconnected nodes side by side in the same rank', () => {
+  it('places unconnected nodes stacked vertically in the same rank column', () => {
     const { nodes } = dagreLayout(ast({ nodes: [node('A'), node('B')] }));
     const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
-    expect(byId['A'].y).toBeCloseTo(byId['B'].y, 5);
-    expect(Math.abs(byId['A'].x - byId['B'].x)).toBeGreaterThan(10);
+    expect(byId['A'].x).toBeCloseTo(byId['B'].x, 5);
+    expect(Math.abs(byId['A'].y - byId['B'].y)).toBeGreaterThan(10);
   });
 
   it('reserves extra width when a node has an icon', () => {

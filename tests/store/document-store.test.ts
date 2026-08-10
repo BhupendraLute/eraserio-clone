@@ -504,24 +504,27 @@ describe('useDocumentStore', () => {
       })
     );
 
-    const { shareUrl } = await useDocumentStore.getState().togglePublicShare(true);
+    const { success, shareUrl } = await useDocumentStore.getState().togglePublicShare(true);
+    expect(success).toBe(true);
     expect(shareUrl).toBe('https://x/s/tok-9');
     const s = useDocumentStore.getState();
     expect(s.isPublic).toBe(true);
     expect(s.shareToken).toBe('tok-9');
   });
 
-  it('togglePublicShare returns null when the API fails', async () => {
+  it('togglePublicShare returns success false when the API fails', async () => {
     useDocumentStore.setState({ activeDocumentId: 'doc_1' });
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
-    const { shareUrl } = await useDocumentStore.getState().togglePublicShare(true);
+    const { success, shareUrl } = await useDocumentStore.getState().togglePublicShare(true);
+    expect(success).toBe(false);
     expect(shareUrl).toBeNull();
   });
 
   it('togglePublicShare is a no-op without an active document', async () => {
     vi.stubGlobal('fetch', vi.fn());
     useDocumentStore.setState({ activeDocumentId: null });
-    const { shareUrl } = await useDocumentStore.getState().togglePublicShare(true);
+    const { success, shareUrl } = await useDocumentStore.getState().togglePublicShare(true);
+    expect(success).toBe(false);
     expect(shareUrl).toBeNull();
     expect(fetch).not.toHaveBeenCalled();
   });

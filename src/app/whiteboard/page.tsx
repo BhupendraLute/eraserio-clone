@@ -7,9 +7,11 @@ import { EraserHeader } from '@/components/EraserHeader';
 import { EraserWorkspace } from '@/components/workspace/EraserWorkspace';
 import { ImportGuestDocsModal } from '@/components/auth/ImportGuestDocsModal';
 import { useAuthSync } from '@/hooks/useAuthSync';
+import { useAutoSave } from '@/hooks/useAutoSave';
 
 export default function WhiteboardPage() {
   useAuthSync();
+  useAutoSave();
   const setViewMode = useWorkspaceStore((s) => s.setViewMode);
   const hydrate = useWhiteboardStore((s) => s.hydrate);
 

@@ -32,17 +32,20 @@ export function EraserHeader() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
 
-  // Global Ctrl+K / Cmd+K handler
+  // Global Ctrl+K / Cmd+K (command palette) + Ctrl+J / Cmd+J (AI chat) handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setCommandPaletteOpen(true);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'j') {
+        e.preventDefault();
+        toggleAiChat();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [toggleAiChat]);
 
   const viewOptions: { mode: WorkspaceViewMode; label: string }[] = [
     { mode: 'document', label: 'Document' },

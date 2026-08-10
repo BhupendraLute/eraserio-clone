@@ -8,11 +8,22 @@
 ## 1. What It Provides
 
 ```ts
-export function usePanZoom(initial: PanZoomState = { scale: 1, x: 0, y: 0 }) {
+export interface UsePanZoomOptions {
+  initial?: PanZoomState;
+  minScale?: number;
+  maxScale?: number;
+  enableKeyboardShortcuts?: boolean;
+  onReset?: () => void;
+}
+
+export function usePanZoom(optionsOrInitial?: PanZoomState | UsePanZoomOptions) {
   // returns:
   {
     transform,      // { scale, x, y }
-    svgRef,         // attach to the <svg>
+    scale,          // transform.scale
+    pan,            // { x, y }
+    containerRef,   // polymorphic ref (attach to <svg> or <div>)
+    svgRef,         // alias of containerRef for backward compatibility
     setTransform,
     handlers: { onWheel, onPointerDown, onPointerMove, onPointerUp },
     zoomIn, zoomOut,

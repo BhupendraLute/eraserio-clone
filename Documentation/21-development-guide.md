@@ -17,6 +17,7 @@
 | 5 | Diagram icons use **static SVG paths** (`NodeIcon.tsx`) | Never mount React icon components inside the exported SVG |
 | 6 | Theme colors: `text-foreground/40-60` + `stroke="currentColor"`; **never** hardcode `#000`/`#fff` strokes | Keeps light/dark theme working |
 | 7 | Navigate with `next/link` `<Link>` or `useRouter()`; **never** `<a href>` / `window.location.href` | Raw navigation reloads the page and loses all Zustand state |
+| 8 | **NEVER read, view, or edit `.env` or `.env.local`** (read `.env.example` only) | Protects confidential database credentials, secrets, and environment configurations |
 
 ---
 

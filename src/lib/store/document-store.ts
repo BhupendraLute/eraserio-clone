@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { useWhiteboardStore } from './whiteboard-store';
 import { useDiagramRegistry } from './diagram-registry';
+import { useDiagramStore } from './diagram-store';
 import { generateId } from '@/lib/utils';
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
@@ -42,7 +43,7 @@ interface DocumentStoreState {
     diagramSource?: string;
     docContent?: string;
   }) => void;
-  togglePublicShare: (isPublic: boolean) => Promise<{ shareUrl: string | null }>;
+  togglePublicShare: (isPublic: boolean) => Promise<{ success: boolean; shareUrl: string | null }>;
   checkGuestDocuments: () => boolean;
   importGuestDocuments: () => Promise<boolean>;
   clearGuestDocuments: () => void;
@@ -247,6 +248,10 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
   },
 
   selectDocument: async (id: string) => {
+    if (_saveDebounceTimer) {
+      clearTimeout(_saveDebounceTimer);
+      _saveDebounceTimer = null;
+    }
     set({ activeDocumentId: id, syncStatus: 'saving' });
     try {
       const res = await fetch(`/api/documents/${id}`);
@@ -277,6 +282,7 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
           if (doc.diagramSource) {
             const reg = useDiagramRegistry.getState();
             reg.updateSource(reg.activeDiagramId || 'default', doc.diagramSource);
+            useDiagramStore.getState().setSource(doc.diagramSource);
           }
           return;
         }
@@ -312,34 +318,48 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
   },
 
   deleteDocument: async (id: string) => {
+    let nextActive: string | null = null;
     set((state) => {
       const updated = state.documents.filter((d) => d.id !== id);
-      const nextActive = state.activeDocumentId === id ? (updated[0]?.id ?? null) : state.activeDocumentId;
+      nextActive = state.activeDocumentId === id ? (updated[0]?.id ?? null) : state.activeDocumentId;
       return { documents: updated, activeDocumentId: nextActive };
     });
+
+    if (nextActive && nextActive !== id) {
+      await get().selectDocument(nextActive);
+    }
 
     try {
       await fetch(`/api/documents/${id}`, { method: 'DELETE' });
     } catch {
-      // ignore offline delete error
+      set({ syncStatus: 'error' });
     }
   },
 
   saveCurrentDocumentState: (data) => {
-    const activeId = get().activeDocumentId;
-    if (!activeId) return;
+    if (!get().activeDocumentId) return;
 
     set({ syncStatus: 'saving' });
 
     if (_saveDebounceTimer) clearTimeout(_saveDebounceTimer);
     _saveDebounceTimer = setTimeout(async () => {
+      const activeId = get().activeDocumentId;
+      if (!activeId) {
+        set({ syncStatus: 'synced' });
+        return;
+      }
       try {
-        await fetch(`/api/documents/${activeId}`, {
+        const res = await fetch(`/api/documents/${activeId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data),
         });
-        set({ syncStatus: 'synced' });
+        if (res.ok) {
+          const body = await res.json().catch(() => ({}));
+          set({ syncStatus: body.mode === 'offline' ? 'offline' : 'synced' });
+        } else {
+          set({ syncStatus: 'error' });
+        }
       } catch {
         set({ syncStatus: 'error' });
       }
@@ -348,7 +368,7 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
 
   togglePublicShare: async (isPublic: boolean) => {
     const activeId = get().activeDocumentId;
-    if (!activeId) return { shareUrl: null };
+    if (!activeId) return { success: false, shareUrl: null };
 
     try {
       const res = await fetch(`/api/documents/${activeId}/share`, {
@@ -356,11 +376,14 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isPublic }),
       });
+      if (!res.ok) {
+        return { success: false, shareUrl: null };
+      }
       const data = await res.json();
       set({ isPublic: data.isPublic, shareToken: data.shareToken });
-      return { shareUrl: data.shareUrl };
+      return { success: true, shareUrl: data.shareUrl };
     } catch {
-      return { shareUrl: null };
+      return { success: false, shareUrl: null };
     }
   },
 }));

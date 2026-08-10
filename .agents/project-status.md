@@ -32,7 +32,7 @@
 | `render` | 94.25% | 87.5% | orthogonal-routing, edge-geometry |
 | `export` | 97.33% | 93.75% | svg-export |
 | `store` | 78.33% | 87.37% | workspace-store, diagram-store, diagram-registry, diagram-library-store, whiteboard-store |
-| **All files** | ~86% | ~89% | **270 tests / 22 files** |
+| **All files** | ~92% | ~94% | **429 tests / 30 test files** |
 
 > Per-area rows above are from an earlier run (approximate) — `store` has since grown with
 > `document-store` tests. Run `npm run test:coverage` for live numbers (commands + conventions:

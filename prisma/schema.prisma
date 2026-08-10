@@ -107,4 +107,6 @@ model Document {
   updatedAt      DateTime   @updatedAt
   owner          User?      @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   workspace      Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+
+  @@index([ownerId, updatedAt])
 }

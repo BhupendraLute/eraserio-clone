@@ -41,10 +41,23 @@ export const ICON_NAMES = [
 
 export type IconName = (typeof ICON_NAMES)[number];
 
-export function resolveIconName(iconAttr: string | undefined): IconName | null {
-  if (!iconAttr) return null;
+import { ICON_MAP } from '../icons/icon-catalog';
+
+export function resolveIconName(iconAttr: string | undefined): string | null {
+  if (!iconAttr || !iconAttr.trim()) return null;
   const key = iconAttr.trim().toLowerCase();
-  return (ICON_NAMES as readonly string[]).includes(key) ? (key as IconName) : null;
+  if (
+    (ICON_NAMES as readonly string[]).includes(key) ||
+    ICON_MAP.has(key) ||
+    ICON_MAP.has(`iconify-${key}`) ||
+    key.startsWith('aws-') ||
+    key.startsWith('gcp-') ||
+    key.startsWith('azure-') ||
+    key.startsWith('iconify-')
+  ) {
+    return key;
+  }
+  return null;
 }
 
 export const ICON_SIZE = 16;

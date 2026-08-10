@@ -10,6 +10,7 @@ import type {
   PortDirection,
   FillStyleMode,
 } from '@/lib/whiteboard/whiteboard-types';
+import type { LaidOutNode } from '@/lib/layout/types';
 import { WHITEBOARD_COLORS, isConnectorElement, getShapePorts, getElementBounds, ArrowheadStyle, RoutingStyle } from '@/lib/whiteboard/whiteboard-types';
 import { getOptimalPortPair, getOptimalSinglePort, determineAutoRoutingStyle } from '@/lib/whiteboard/orthogonal-routing';
 import { generateId } from '@/lib/utils';
@@ -78,12 +79,15 @@ interface WhiteboardStore {
   activeFillStyle: FillStyleMode;
   elements: WhiteboardElement[];
   selectedIds: string[];
+  focusTargetNodes: LaidOutNode[] | null;
   history: HistoryState[];
   future: HistoryState[];
   clipboard: WhiteboardElement[];
   showGrid: boolean;
   hideUI: boolean;
   showComments: boolean;
+
+  setFocusTargetNodes: (nodes: LaidOutNode[] | null) => void;
 
   setActiveTool: (tool: WhiteboardTool) => void;
   setActiveColor: (color: WhiteboardColor) => void;
@@ -105,6 +109,7 @@ interface WhiteboardStore {
   toggleShowComments: () => void;
 
   addElement: (element: WhiteboardElement) => void;
+  addElements: (elements: WhiteboardElement[]) => void;
   updateElement: (id: string, patch: Partial<WhiteboardElement>) => void;
   deleteElements: (ids: string[]) => void;
   setSelectedIds: (ids: string[]) => void;
@@ -226,12 +231,15 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
   activeFillStyle: 'plain',
   elements: [],
   selectedIds: [],
+  focusTargetNodes: null,
   history: [],
   future: [],
   clipboard: [],
   showGrid: true,
   hideUI: false,
   showComments: true,
+
+  setFocusTargetNodes: (nodes) => set({ focusTargetNodes: nodes }),
 
   canUndo: false,
   canRedo: false,
@@ -282,6 +290,22 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
       const elements = [...state.elements, element];
       saveElements(elements);
       return { history, future: [], elements, canUndo: true, canRedo: false };
+    }),
+
+  addElements: (newElements) =>
+    set((state) => {
+      if (newElements.length === 0) return state;
+      const history = pushHistory(state);
+      const elements = [...state.elements, ...newElements];
+      saveElements(elements);
+      return {
+        history,
+        future: [],
+        elements,
+        selectedIds: newElements.map((el) => el.id),
+        canUndo: true,
+        canRedo: false,
+      };
     }),
 
   updateElement: (id, patch) =>

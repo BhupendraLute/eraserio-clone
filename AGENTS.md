@@ -39,6 +39,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## Quick Rules for Agents
 
+- ⛔ **STRICT ENV RESTRICTION**: AI agents and coding assistants are **STRICTLY PROHIBITED** from reading, viewing, editing, or modifying the main `.env` or `.env.local` files under any circumstances. Agents may read `.env.example` to check variable names/templates, but MUST NEVER touch `.env` which contains confidential credentials and secrets.
 - **Pure TS Core**: `src/lib/dsl/` and `src/lib/layout/` have zero React/DOM dependencies.
 - **Worker Reload**: Editing files imported by `pipeline.worker.ts` requires restarting `npm run dev`.
 - **Export Safety**: No SVG `<foreignObject>` — use static SVG paths (`NodeIcon.tsx`).
