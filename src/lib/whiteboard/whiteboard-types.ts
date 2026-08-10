@@ -458,6 +458,15 @@ export function getElementBounds(el: WhiteboardElement): { x: number; y: number;
     const computed = computeTextElementSize(el.text, fontSize, isCodeMode ? 'code' : 'text');
     return { x: el.x, y: el.y, width: computed.width, height: computed.height };
   }
+  if (el.type === 'cloud') {
+    const hasLabel = Boolean(el.label && el.label.trim());
+    return {
+      x: el.x,
+      y: el.y,
+      width: Math.max(10, el.width),
+      height: Math.max(10, el.height + (hasLabel ? 26 : 0)),
+    };
+  }
   return { x: el.x, y: el.y, width: Math.max(10, el.width), height: Math.max(10, el.height) };
 }
 

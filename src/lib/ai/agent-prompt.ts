@@ -13,7 +13,6 @@ import { tokenize } from '@/lib/dsl/lexer';
 import { parse } from '@/lib/dsl/parser';
 import { cstToAst } from '@/lib/dsl/ast';
 import { validate } from '@/lib/dsl/validator';
-import { ICON_NAMES } from '@/lib/render/node-style';
 
 export type DiagramKind = 'flowchart' | 'sequence';
 
@@ -46,19 +45,28 @@ From --> To          — asynchronous / event / queue / fallback message (dashed
 From --> To: label   — labeled async event (e.g. Publish user.created event)
 
 ### Attributes
-- icon: choice of ${ICON_NAMES.join(', ')}
-- color: choice of blue, green, red, amber, purple, gray
-- multiple attributes are comma-separated inside brackets.
+- icon: Full access to system architecture and technology icon catalog:
+  * AWS: aws-ec2, aws-s3, aws-rds, aws-lambda, aws-sqs, aws-sns, aws-dynamodb, aws-cloudfront, aws-route53, aws-api-gateway, aws-ecs, aws-eks, aws-elasticache, aws-iam, aws-vpc, aws-kinesis
+  * GCP & Azure: gcp, gcp-run, gcp-functions, gcp-pubsub, gcp-bigquery, firebase, azure, azure-devops
+  * Databases & Caches: redis, postgres, mysql, mongodb, elasticsearch, cassandra, sqlite, supabase, snowflake, neo4j, database
+  * DevOps & Cloud: docker, kubernetes, nginx, terraform, ansible, helm, jenkins, github, gitlab, cloudflare, vercel, netlify, digitalocean
+  * Streaming & Messaging: rabbitmq, kafka, graphql, grpc, swagger, socketio, queue
+  * Monitoring & Security: prometheus, grafana, datadog, sentry, auth0, okta, vault, shield, lock
+  * Tech Stacks: nodejs, python, go, rust, java, react, nextjs, typescript
+  * Generic Architecture Vectors: server, database, cloud, cpu, router, shield, box, lock, world, user, devices
+- color: choice of blue, green, red, amber, purple, rose, gray
+- shape: choice of rectangle (default), circle, diamond, triangle, parallelogram, trapezoid, cylinder, capsule, hexagon, star
+- multiple attributes are comma-separated inside brackets, e.g.: [icon: redis, color: amber] or [icon: postgres, color: rose]
 
 ### Professional Architecture Guidelines
 1. Structure flowcharts into clear horizontal Left-to-Right (LR) architectural columns:
-   - Far-Left Column (Client / Edge Tier, e.g. Web App, Mobile Client) → color: blue, icon: user / cloud
-   - Mid-Left Column (Gateway & Security Tier, e.g. API Gateway, Auth0) → color: purple, icon: server / shield / lock
-   - Center Column (Microservices & Logic Tier, e.g. Auth Service, Order API) → color: green, icon: server / box / cpu
-   - Mid-Right Column (Cache & Messaging Tier, e.g. Redis Cache, Kafka Queue) → color: amber, icon: database / box
-   - Far-Right Column (Data & Persistence Tier, e.g. PostgreSQL, DynamoDB) → color: rose, icon: database
-2. Flow relationships horizontally from left-to-right (Clients → Gateways → Microservices → Databases).
-3. Always attach relevant icons and tier colors to every node for maximum clarity.
+   - Far-Left Column (Client & Edge Tier, e.g. Web App, Mobile Client) → color: blue, icon: user / devices / cloudflare
+   - Mid-Left Column (Gateway & Security Tier, e.g. AWS API Gateway, Auth0) → color: purple, icon: aws-api-gateway / auth0 / shield
+   - Center Column (Microservices & Logic Tier, e.g. Auth Service, Order API) → color: green, icon: docker / kubernetes / nodejs / aws-lambda / server
+   - Mid-Right Column (Cache & Messaging Tier, e.g. Redis Cache, Kafka Queue) → color: amber, icon: redis / kafka / rabbitmq / aws-sqs
+   - Far-Right Column (Data & Persistence Tier, e.g. PostgreSQL, DynamoDB, S3) → color: rose, icon: postgres / aws-dynamodb / aws-s3 / database
+2. ALWAYS assign specific technology icons (e.g. 'icon: aws-api-gateway', 'icon: redis', 'icon: postgres', 'icon: kafka', 'icon: docker', 'icon: user') to every node. Never generate generic slop boxes without icons.
+3. Flow relationships horizontally from left-to-right (Clients → Gateways → Microservices → Caches/Queues → Databases).
 4. Add informative, technical labels to edges (protocols, RPCs, HTTP methods, event topics).
 5. For sequence diagrams, list actors in logical invocation order from left to right.`;
 

@@ -1,5 +1,5 @@
 import { runPipelineSync } from '@/lib/dsl/run-pipeline-sync';
-import type { WhiteboardElement, FrameElement } from '@/lib/whiteboard/whiteboard-types';
+import type { WhiteboardElement, FrameElement, PolygonShapeType } from '@/lib/whiteboard/whiteboard-types';
 import { generateId } from '@/lib/utils';
 import { searchIconsDynamic } from '@/lib/icons/icon-catalog';
 import { getOptimalPortPair } from '@/lib/whiteboard/orthogonal-routing';
@@ -229,7 +229,7 @@ export function convertDslToWhiteboardElements(
       ) {
         createdEl = {
           id: elId,
-          type: shapeAttr as any,
+          type: shapeAttr as PolygonShapeType,
           x: n.posX,
           y: n.posY,
           width: n.width,
@@ -283,7 +283,7 @@ export function convertDslToWhiteboardElements(
       let strokeColor = '#3b82f6';
       let lineStyle: 'solid' | 'dashed' = 'solid';
       let startArrowheadStyle: 'none' | 'arrow' = 'none';
-      let arrowheadStyle: 'arrow' | 'none' = 'arrow';
+      const arrowheadStyle = 'arrow';
       let isAnimated = false;
 
       if (isAsync) {

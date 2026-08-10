@@ -23,12 +23,64 @@ const LINE_WIDTH_OPTIONS: { size: LineWidthSize; label: string; width: number }[
   { size: 'XL', label: 'XL', width: 8 },
 ];
 
-const ARROWHEAD_STYLE_OPTIONS: { style: ArrowheadStyle; label: string; icon: React.ReactNode }[] = [
+const START_ARROWHEAD_STYLE_OPTIONS: { style: ArrowheadStyle; label: string; icon: React.ReactNode }[] = [
   {
     style: 'arrow',
     label: 'Open Arrow',
     icon: (
-      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M 7 4 L 3 8 L 7 12" />
+        <line x1="3" y1="8" x2="14" y2="8" />
+      </svg>
+    ),
+  },
+  {
+    style: 'triangle',
+    label: 'Triangle',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <polygon points="8,4 2,8 8,12" fill="currentColor" />
+        <line x1="8" y1="8" x2="14" y2="8" />
+      </svg>
+    ),
+  },
+  {
+    style: 'diamond',
+    label: 'Diamond',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <polygon points="9,8 6,4 2,8 6,12" fill="currentColor" />
+        <line x1="9" y1="8" x2="14" y2="8" />
+      </svg>
+    ),
+  },
+  {
+    style: 'circle',
+    label: 'Circle',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <circle cx="5" cy="8" r="3.5" fill="currentColor" />
+        <line x1="7" y1="8" x2="14" y2="8" />
+      </svg>
+    ),
+  },
+  {
+    style: 'none',
+    label: 'None',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <line x1="2" y1="8" x2="14" y2="8" />
+      </svg>
+    ),
+  },
+];
+
+const END_ARROWHEAD_STYLE_OPTIONS: { style: ArrowheadStyle; label: string; icon: React.ReactNode }[] = [
+  {
+    style: 'arrow',
+    label: 'Open Arrow',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <line x1="2" y1="8" x2="13" y2="8" />
         <path d="M 9 4 L 13 8 L 9 12" />
       </svg>
@@ -38,7 +90,7 @@ const ARROWHEAD_STYLE_OPTIONS: { style: ArrowheadStyle; label: string; icon: Rea
     style: 'triangle',
     label: 'Triangle',
     icon: (
-      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
         <line x1="2" y1="8" x2="8" y2="8" />
         <polygon points="8,4 14,8 8,12" fill="currentColor" />
       </svg>
@@ -48,7 +100,7 @@ const ARROWHEAD_STYLE_OPTIONS: { style: ArrowheadStyle; label: string; icon: Rea
     style: 'diamond',
     label: 'Diamond',
     icon: (
-      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
         <line x1="2" y1="8" x2="7" y2="8" />
         <polygon points="7,8 10,4 14,8 10,12" fill="currentColor" />
       </svg>
@@ -58,7 +110,7 @@ const ARROWHEAD_STYLE_OPTIONS: { style: ArrowheadStyle; label: string; icon: Rea
     style: 'circle',
     label: 'Circle',
     icon: (
-      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
         <line x1="2" y1="8" x2="9" y2="8" />
         <circle cx="11" cy="8" r="3.5" fill="currentColor" />
       </svg>
@@ -68,7 +120,7 @@ const ARROWHEAD_STYLE_OPTIONS: { style: ArrowheadStyle; label: string; icon: Rea
     style: 'none',
     label: 'None',
     icon: (
-      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
         <line x1="2" y1="8" x2="14" y2="8" />
       </svg>
     ),
@@ -436,10 +488,7 @@ export function ArrowToolbar() {
                 )}
                 title="Start Arrowhead Style"
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M 7 4 L 3 8 L 7 12" />
-                  <line x1="3" y1="8" x2="14" y2="8" />
-                </svg>
+                <span className="shrink-0">{START_ARROWHEAD_STYLE_OPTIONS.find((opt) => opt.style === currentStartArrowheadStyle)?.icon ?? START_ARROWHEAD_STYLE_OPTIONS[4].icon}</span>
                 <span className="text-xs font-medium capitalize">{currentStartArrowheadStyle === 'none' ? 'None' : currentStartArrowheadStyle}</span>
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
                   <path d="M2 3.5L5 7L8 3.5" />
@@ -449,7 +498,7 @@ export function ArrowToolbar() {
                 <div className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded-lg border bg-muted/95 p-1.5 shadow-xl backdrop-blur min-w-[150px]">
                   <div className="text-[10px] font-semibold text-muted-foreground px-2.5 py-1 uppercase tracking-wider">Start Arrowhead</div>
                   <div className="flex flex-col gap-0.5">
-                    {ARROWHEAD_STYLE_OPTIONS.map((opt) => (
+                    {START_ARROWHEAD_STYLE_OPTIONS.map((opt) => (
                       <button
                         key={opt.style}
                         onClick={() => handleSelectStartArrowheadStyle(opt.style)}
@@ -481,10 +530,7 @@ export function ArrowToolbar() {
                 )}
                 title="End Arrowhead Style"
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="2" y1="8" x2="13" y2="8" />
-                  <path d="M 9 4 L 13 8 L 9 12" />
-                </svg>
+                <span className="shrink-0">{END_ARROWHEAD_STYLE_OPTIONS.find((opt) => opt.style === currentArrowheadStyle)?.icon ?? END_ARROWHEAD_STYLE_OPTIONS[0].icon}</span>
                 <span className="text-xs font-medium capitalize">{currentArrowheadStyle === 'none' ? 'None' : currentArrowheadStyle}</span>
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
                   <path d="M2 3.5L5 7L8 3.5" />
@@ -494,7 +540,7 @@ export function ArrowToolbar() {
                 <div className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded-lg border bg-muted/95 p-1.5 shadow-xl backdrop-blur min-w-[150px]">
                   <div className="text-[10px] font-semibold text-muted-foreground px-2.5 py-1 uppercase tracking-wider">End Arrowhead</div>
                   <div className="flex flex-col gap-0.5">
-                    {ARROWHEAD_STYLE_OPTIONS.map((opt) => (
+                    {END_ARROWHEAD_STYLE_OPTIONS.map((opt) => (
                       <button
                         key={opt.style}
                         onClick={() => handleSelectEndArrowheadStyle(opt.style)}

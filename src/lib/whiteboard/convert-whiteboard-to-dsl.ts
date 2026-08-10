@@ -1,4 +1,4 @@
-import type { WhiteboardElement, ArrowElement } from '@/lib/whiteboard/whiteboard-types';
+import type { WhiteboardElement, CloudIconElement } from '@/lib/whiteboard/whiteboard-types';
 import { isConnectorElement } from '@/lib/whiteboard/whiteboard-types';
 
 function cleanIdentifier(str: string, fallback: string): string {
@@ -65,8 +65,8 @@ export function convertWhiteboardToDsl(elements: WhiteboardElement[]): string {
     const color = hexToDslColor(n.strokeColor || n.fillColor);
     const attrs: string[] = [];
 
-    if (n.type === 'cloud' && (n as any).iconKind) {
-      const iconName = extractIconName((n as any).iconKind);
+    if (n.type === 'cloud' && (n as CloudIconElement).iconKind) {
+      const iconName = extractIconName((n as CloudIconElement).iconKind);
       attrs.push(`icon: ${iconName}`);
     } else if (n.type !== 'rectangle') {
       attrs.push(`shape: ${n.type}`);

@@ -225,16 +225,51 @@ export function WhiteboardCanvas() {
               <circle cx="1" cy="1" r="1" className="fill-foreground/15" />
             </pattern>
           )}
-          {STROKE_COLOR_PALETTE.map((col) => {
+
+          {/* Default Fallback Markers using context-stroke for universal stroke color matching */}
+          <marker id="wb-arrowhead" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 1.5 1.5 L 8.5 5 L 1.5 8.5" fill="none" stroke="context-stroke" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </marker>
+          <marker id="wb-arrowhead-triangle" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1 L 9 5 L 0 9 z" fill="context-stroke" />
+          </marker>
+          <marker id="wb-arrowhead-diamond" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M 5 0 L 10 5 L 5 10 L 0 5 z" fill="context-stroke" stroke="context-stroke" strokeLinejoin="round" />
+          </marker>
+          <marker id="wb-arrowhead-circle" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <circle cx="5" cy="5" r="4" fill="context-stroke" stroke="context-stroke" />
+          </marker>
+          <marker id="wb-arrowhead-start" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M 8.5 1.5 L 1.5 5 L 8.5 8.5" fill="none" stroke="context-stroke" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </marker>
+          <marker id="wb-arrowhead-start-triangle" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M 10 1 L 1 5 L 10 9 z" fill="context-stroke" />
+          </marker>
+          <marker id="wb-arrowhead-start-diamond" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+            <path d="M 9 5 L 5 1.5 L 1 5 L 5 8.5 z" fill="context-stroke" stroke="context-stroke" strokeLinejoin="round" />
+          </marker>
+          <marker id="wb-arrowhead-start-circle" viewBox="0 0 10 10" refX="3" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <circle cx="5" cy="5" r="4" fill="context-stroke" stroke="context-stroke" />
+          </marker>
+
+          {/* Color-specific Markers for all Palette & Active Element Colors */}
+          {Array.from(
+            new Set([
+              ...STROKE_COLOR_PALETTE.map((col) => (typeof col === 'string' ? col : (col as { value: string }).value)),
+              ...elements.map((el) => el.strokeColor).filter(Boolean),
+              '#3b82f6', '#10b981', '#ef4444', '#f59e0b', '#a855f7', '#6b7280', '#f43f5e', '#22c55e', '#374151', '#ffffff', '#000000',
+            ])
+          ).map((col) => {
             const color = typeof col === 'string' ? col : (col as { value: string }).value;
             const cId = color.replace(/[^a-zA-Z0-9]/g, '');
+            if (!cId) return null;
             return (
               <React.Fragment key={cId}>
                 <marker id={`wb-arrowhead-${cId}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-                  <path d="M 0 0 L 10 5 L 0 10 z" fill={color} />
+                  <path d="M 1.5 1.5 L 8.5 5 L 1.5 8.5" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 </marker>
                 <marker id={`wb-arrowhead-triangle-${cId}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-                  <path d="M 0 0 L 10 5 L 0 10 z" fill={color} />
+                  <path d="M 0 1 L 9 5 L 0 9 z" fill={color} />
                 </marker>
                 <marker id={`wb-arrowhead-diamond-${cId}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
                   <path d="M 5 0 L 10 5 L 5 10 L 0 5 z" fill={color} stroke={color} strokeLinejoin="round" />
@@ -243,10 +278,10 @@ export function WhiteboardCanvas() {
                   <circle cx="5" cy="5" r="4" fill={color} stroke={color} />
                 </marker>
                 <marker id={`wb-arrowhead-start-${cId}`} viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-                  <path d="M 10 0 L 0 5 L 10 10 z" fill={color} />
+                  <path d="M 8.5 1.5 L 1.5 5 L 8.5 8.5" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 </marker>
                 <marker id={`wb-arrowhead-start-triangle-${cId}`} viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto">
-                  <path d="M 10 0 L 0 5 L 10 10 z" fill={color} />
+                  <path d="M 10 1 L 1 5 L 10 9 z" fill={color} />
                 </marker>
                 <marker id={`wb-arrowhead-start-diamond-${cId}`} viewBox="0 0 10 10" refX="1" refY="5" markerWidth="8" markerHeight="8" orient="auto">
                   <path d="M 9 5 L 5 1.5 L 1 5 L 5 8.5 z" fill={color} stroke={color} strokeLinejoin="round" />

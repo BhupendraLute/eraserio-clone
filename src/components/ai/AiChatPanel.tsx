@@ -389,6 +389,7 @@ export function AiChatPanel() {
   };
 
   const handleRefineWithAi = (dsl: string) => {
+    applyDslToCanvas(dsl);
     setInput('Refine this diagram architecture to add ');
     if (textareaRef.current) {
       textareaRef.current.focus();

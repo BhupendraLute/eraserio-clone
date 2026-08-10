@@ -130,8 +130,13 @@ describe('convertWhiteboardToDsl', () => {
         y: 0,
         width: 200,
         height: 100,
-        content: 'This is a comment thread',
-      } as any,
+        text: 'This is a comment thread',
+        author: 'User',
+        resolved: false,
+        color: 'blue',
+        strokeColor: '#3b82f6',
+        strokeWidth: 1,
+      },
       {
         id: 'pencil-1',
         type: 'pencil',
@@ -139,8 +144,10 @@ describe('convertWhiteboardToDsl', () => {
         y: 0,
         width: 50,
         height: 50,
+        strokeColor: '#3b82f6',
+        strokeWidth: 1,
         points: [{ x: 0, y: 0 }],
-      } as any,
+      },
     ];
 
     expect(convertWhiteboardToDsl(elements)).toBe('');

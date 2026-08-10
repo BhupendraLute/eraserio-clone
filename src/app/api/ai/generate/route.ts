@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { streamText, tool, zodSchema, isStepCount, type ToolSet } from 'ai';
 import { z } from 'zod';
 import { aiChatSchema } from '@/lib/api-validation';
-import { AI_BASE_URL, AI_MODEL, AI_PROVIDER_NAME, getAiModel, isAiConfigured } from '@/lib/ai/provider';
+import { AI_MODEL, AI_PROVIDER_NAME, getAiModel, isAiConfigured } from '@/lib/ai/provider';
 import { AI_RATE_LIMIT_MAX, aiRateLimiter } from '@/lib/ai/rate-limit';
 import { getUserId } from '@/lib/auth/session';
 import {
@@ -75,7 +75,6 @@ export async function GET() {
     configured: isAiConfigured(),
     model: AI_MODEL,
     provider: AI_PROVIDER_NAME,
-    baseUrl: AI_BASE_URL,
   });
 }
 

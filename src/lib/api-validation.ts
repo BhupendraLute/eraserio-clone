@@ -78,7 +78,8 @@ export const importDocumentsSchema = z.object({
       createdAt: z.string().optional(),
       updatedAt: z.string().optional(),
     })
-  ).min(1, 'At least one document is required for import'),
+  ).min(1, 'At least one document is required for import')
+   .max(100, 'Cannot import more than 100 documents at once'),
 });
 
 export const createWorkspaceSchema = z.object({

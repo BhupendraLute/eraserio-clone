@@ -46,8 +46,9 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
 
   const isText = element.type === 'text';
   const isFrame = element.type === 'frame';
-  const isShape = ['rectangle', 'circle', 'diamond', 'cylinder'].includes(element.type);
+  const isShape = ['rectangle', 'square', 'circle', 'diamond', 'triangle', 'parallelogram', 'trapezoid', 'cylinder', 'capsule', 'hexagon', 'star'].includes(element.type);
   const isConnector = element.type === 'arrow' || element.type === 'line';
+  const isCloud = element.type === 'cloud';
 
   // Determine the text value and style based on element type
   let textValue = '';
@@ -83,6 +84,15 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
     fontWeight = '500';
     placeholder = 'Type label...';
     isMultiline = true;
+  } else if (isCloud) {
+    textValue = extras.label ?? '';
+    fontSize = extras.labelFontSize ?? 12;
+    fontFamily = extras.labelFontFamily ?? 'inherit';
+    textAlign = 'center';
+    textColor = extras.labelColor ?? element.strokeColor ?? 'currentColor';
+    fontWeight = '500';
+    placeholder = 'Icon label...';
+    isMultiline = false;
   } else if (isConnector) {
     textValue = extras.label ?? '';
     fontSize = extras.labelFontSize ?? 12;
@@ -114,9 +124,10 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
       const newHeight = computeShapeAutoHeight(value, element.width, element.height, fontSize);
       updateElement(element.id, { label: value, height: newHeight });
     }
+    else if (isCloud) updateElement(element.id, { label: value });
     else if (isConnector) updateElement(element.id, { label: value });
     else if (isFrame) updateElement(element.id, { title: value });
-  }, [element.id, element.width, element.height, fontSize, updateElement, isText, isShape, isConnector, isFrame, extras]);
+  }, [element.id, element.width, element.height, fontSize, updateElement, isText, isShape, isCloud, isConnector, isFrame, extras]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!isMultiline && e.key === 'Enter') {
@@ -180,6 +191,13 @@ export function InlineTextEditor({ element, onFinish }: InlineTextEditorProps) {
     foY = element.y + 8;
     foW = Math.max(10, element.width - 24);
     foH = Math.max(10, element.height - 16);
+  } else if (isCloud) {
+    // For cloud icons, position label editing input below icon
+    const labelW = Math.max(120, element.width + 40);
+    foX = element.x + element.width / 2 - labelW / 2;
+    foY = element.y + element.height + 6;
+    foW = labelW;
+    foH = 26;
   } else if (isFrame) {
     foX = element.x + 8;
     foY = element.y + 4;

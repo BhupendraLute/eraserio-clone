@@ -1,7 +1,5 @@
-import type { IconName } from '@/lib/render/node-style';
-
 interface NodeIconProps {
-  name: IconName;
+  name: string;
   x: number;
   y: number;
   size: number;
@@ -14,7 +12,7 @@ interface NodeIconProps {
 // foreignObject (taints canvas exports) or an undocumented internal
 // data shape that varies across versions. Static path data has no
 // such dependency and is guaranteed export-safe.
-const ICON_PATHS: Record<IconName, string[]> = {
+const ICON_PATHS: Record<string, string[]> = {
   user: ['M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2', 'M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z'],
   users: [
     'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2',

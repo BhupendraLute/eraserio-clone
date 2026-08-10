@@ -52,7 +52,10 @@ export async function PATCH(
 
     // Guests cannot modify cloud documents — acknowledge locally instead
     if (!userId) {
-      return NextResponse.json({ message: 'Offline mode save acknowledged', mode: 'offline' });
+      return NextResponse.json(
+        { message: 'Offline mode — not saved to cloud', mode: 'offline', saved: false },
+        { status: 202 }
+      );
     }
 
     const body = await req.json().catch(() => ({}));
@@ -111,6 +114,6 @@ export async function DELETE(
     await prisma.document.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch {
-    return NextResponse.json({ success: true, mode: 'offline' });
+    return NextResponse.json({ error: 'Failed to delete document' }, { status: 500 });
   }
 }

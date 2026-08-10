@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { convertDslToWhiteboardElements } from '@/lib/whiteboard/convert-dsl-to-whiteboard';
+import type { ArrowElement } from '@/lib/whiteboard/whiteboard-types';
 
 describe('convertDslToWhiteboardElements', () => {
   it('returns empty array for empty string', () => {
@@ -24,15 +25,15 @@ API Gateway > Database: query
     const cloudNodes = elements.filter((el) => el.type === 'cloud');
     expect(cloudNodes.length).toBe(3);
 
-    const arrows = elements.filter((el) => el.type === 'arrow');
+    const arrows = elements.filter((el) => el.type === 'arrow') as ArrowElement[];
     expect(arrows.length).toBe(2);
 
     // Verify connectors link the generated shape IDs
-    const arrow1 = arrows.find((a) => (a as any).label === 'request');
+    const arrow1 = arrows.find((a) => a.label === 'request');
     expect(arrow1).toBeDefined();
-    if (arrow1 && (arrow1 as any).type === 'arrow') {
-      expect((arrow1 as any).fromElementId).toBeDefined();
-      expect((arrow1 as any).toElementId).toBeDefined();
+    if (arrow1 && arrow1.type === 'arrow') {
+      expect(arrow1.fromElementId).toBeDefined();
+      expect(arrow1.toElementId).toBeDefined();
     }
   });
 

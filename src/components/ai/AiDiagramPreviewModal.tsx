@@ -87,7 +87,9 @@ export function AiDiagramPreviewModal() {
     setTransform({ scale, x, y });
   }, [activePreviewElements, containerRef, setTransform]);
 
-  focusDiagramRef.current = focusDiagram;
+  React.useEffect(() => {
+    focusDiagramRef.current = focusDiagram;
+  }, [focusDiagram]);
 
   const diagramBounds = React.useMemo(() => {
     if (activePreviewElements.length === 0) {
