@@ -59,11 +59,14 @@ Open [http://localhost:3000](http://localhost:3000) — the app redirects to `/w
 
 ### Routes
 
-| Route         | Description                   |
-| ------------- | ----------------------------- |
-| `/`           | Redirects to `/whiteboard`    |
-| `/whiteboard` | Canvas-only whiteboard view   |
-| `/settings`   | Settings & keyboard shortcuts |
+| Route                 | Description                                                         |
+| --------------------- | ------------------------------------------------------------------- |
+| `/`                   | App root (redirects to `/dashboard/all`)                            |
+| `/dashboard/all`      | Eraser.io User Dashboard (`/dashboard/[tab]` for recents, archive…) |
+| `/workspace/[fileId]` | Dynamic document workspace canvas                                   |
+| `/whiteboard`         | Legacy standalone whiteboard canvas                                 |
+| `/settings`           | Settings & keyboard shortcuts                                       |
+
 
 ---
 
@@ -209,8 +212,17 @@ tests/                     # Vitest suites mirroring src/ (dsl, layout, store, r
 | 3     | Freeform Whiteboard + Eraser.io UI Clone       | ✅ **DONE** (v0.5.0) |
 | 4     | Auth, Database & Persistence                   | ✅ **DONE** (v0.6.0) |
 | 5     | AI Diagram Generation (Architecta AI)         | ✅ **DONE** (v0.6.0) |
-| 6     | Real-Time Multiplayer (Yjs CRDTs)              | ⏳ Planned           |
-| 7     | Integrations & Public API                      | ⏳ Planned           |
+| 6     | Eraser.io User Dashboard (`/dashboard/all`)    | 🚀 **IN PROGRESS**   |
+| 7     | Real-Time Multiplayer (Yjs CRDTs)              | ⏳ Planned           |
+| 8     | Integrations & Public API                      | ⏳ Planned           |
+
+### 📋 Upcoming Dashboard Feature TODOs
+
+- [ ] **Eraser MCP Connection Guide**: Setup guide & server integration modal for Cursor/Claude/Antigravity
+- [ ] **Architecture Templates Catalog**: Pre-built diagram starter gallery (AWS, microservices, ERD)
+- [ ] **Custom Styles Editor**: Canvas themes, grid pattern defaults & styling token editor
+- [ ] **Team Invites Modal**: Team member invitation flow with role permissions (Owner, Member, Viewer)
+
 
 ### Test Coverage
 

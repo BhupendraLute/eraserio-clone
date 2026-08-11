@@ -55,7 +55,7 @@ function SignupForm() {
 
   const handleGuest = () => {
     toast.info('Continuing as guest — workspace stays local in your browser.');
-    router.push('/whiteboard');
+    router.push('/dashboard/all');
   };
 
   const renderProviderButton = (provider: { id: string; name: string }) => {

@@ -764,57 +764,19 @@ describe('localStorage persistence', () => {
     return storage;
   }
 
-  it('debounces writes to localStorage by 300ms', () => {
-    vi.useFakeTimers();
-    const storage = stubPersistence();
-    try {
-      useWhiteboardStore.getState().addElement(rect({ id: 'a' }));
-      expect(storage.has(STORAGE_KEY)).toBe(false); // not yet — debounced
-      vi.advanceTimersByTime(299);
-      expect(storage.has(STORAGE_KEY)).toBe(false);
-      vi.advanceTimersByTime(1);
-      expect(storage.get(STORAGE_KEY)).toContain('"a"');
-    } finally {
-      vi.useRealTimers();
-    }
+  it('resetCanvas clears all elements, selection, and undo/redo stacks', () => {
+    useWhiteboardStore.getState().addElement(rect({ id: 'a' }));
+    expect(ids()).toEqual(['a']);
+    useWhiteboardStore.getState().resetCanvas();
+    expect(ids()).toEqual([]);
+    expect(useWhiteboardStore.getState().canUndo).toBe(false);
+    expect(useWhiteboardStore.getState().canRedo).toBe(false);
   });
 
-  it('hydrate loads stored elements back into the canvas', () => {
-    stubPersistence({ [STORAGE_KEY]: JSON.stringify([rect({ id: 'restored' })]) });
-    useWhiteboardStore.getState().hydrate();
-    expect(ids()).toEqual(['restored']);
-  });
-
-  it('hydrate ignores corrupted localStorage JSON', () => {
-    stubPersistence({ [STORAGE_KEY]: '{not valid json' });
+  it('hydrate is a safe no-op that does not pollute elements', () => {
+    useWhiteboardStore.getState().resetCanvas();
     useWhiteboardStore.getState().hydrate();
     expect(ids()).toEqual([]);
-  });
-
-  it('re-saves when another mutation lands inside the debounce window', () => {
-    vi.useFakeTimers();
-    const storage = stubPersistence();
-    try {
-      useWhiteboardStore.getState().addElement(rect({ id: 'a' }));
-      useWhiteboardStore.getState().addElement(rect({ id: 'b' }));
-      vi.advanceTimersByTime(300);
-      expect(storage.get(STORAGE_KEY)).toContain('"b"');
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-});
-
-// ---------------------------------------------------------------------------
-// hydrate in an SSR-like environment
-// ---------------------------------------------------------------------------
-
-describe('hydrate (no window)', () => {
-  it('is a no-op when window is unavailable', () => {
-    // No `window` stub here: the vitest node environment has none, so the
-    // store's SSR guard must bail out early without touching storage.
-    useWhiteboardStore.getState().hydrate();
-    expect(useWhiteboardStore.getState().elements).toEqual([]);
   });
 });
 

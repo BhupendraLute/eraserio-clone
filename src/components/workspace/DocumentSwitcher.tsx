@@ -16,6 +16,7 @@ import {
   LogIn,
   Search,
   Globe,
+  Layout,
 } from 'lucide-react';
 import { SyncStatusBadge } from '@/components/workspace/SyncStatusBadge';
 import { DocumentDuplicateButton } from '@/components/whiteboard/DocumentDuplicateButton';
@@ -27,6 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { DeleteConfirmModal } from '@/components/dashboard/modals/DeleteConfirmModal';
 
 interface DocumentSwitcherProps {
   onOpenShare?: () => void;
@@ -51,6 +53,7 @@ export function DocumentSwitcher({ onOpenShare }: DocumentSwitcherProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [titleInput, setTitleInput] = useState(activeDocumentTitle);
   const [searchQuery, setSearchQuery] = useState('');
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   const isSignedIn = authStatus === 'authenticated';
 
@@ -186,12 +189,21 @@ export function DocumentSwitcher({ onOpenShare }: DocumentSwitcherProps) {
           <DropdownMenuSeparator className="-mx-2 my-1" />
 
           <DropdownMenuItem
+            onClick={() => router.push('/dashboard/all')}
+            className="flex items-center gap-2 text-xs font-semibold text-zinc-100 dark:text-zinc-100 cursor-pointer hover:bg-zinc-800"
+          >
+            <Layout className="h-3.5 w-3.5 text-blue-400" />
+            <span>Go to User Dashboard</span>
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
             onClick={() => createDocument()}
             className="flex items-center gap-2 text-xs font-medium text-blue-600 dark:text-blue-400 cursor-pointer"
           >
             <Plus className="h-3.5 w-3.5" />
             <span>New Document</span>
           </DropdownMenuItem>
+
 
           {onOpenShare && (
             <DropdownMenuItem
@@ -205,7 +217,7 @@ export function DocumentSwitcher({ onOpenShare }: DocumentSwitcherProps) {
 
           {activeDocumentId && documents.length > 1 && (
             <DropdownMenuItem
-              onClick={() => deleteDocument(activeDocumentId)}
+              onClick={() => setDeleteModalOpen(true)}
               className="flex items-center gap-2 text-xs text-destructive cursor-pointer"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -214,6 +226,18 @@ export function DocumentSwitcher({ onOpenShare }: DocumentSwitcherProps) {
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Confirmation Modal before Deleting Current Document */}
+      <DeleteConfirmModal
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        documentTitle={activeDocumentTitle}
+        onConfirm={async () => {
+          if (activeDocumentId) {
+            await deleteDocument(activeDocumentId);
+          }
+        }}
+      />
     </div>
   );
 }

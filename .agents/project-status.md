@@ -40,6 +40,13 @@
 > Thresholds enforced: **70% stmts / 60% branches / 75% funcs / 75% lines** — the command fails on regression.
 > `diagram-store.ts` is at 100%; `store` has the lowest branch coverage (53.86% — undo/redo paths).
 
-## Next Up (Slices 5–7)
+## Next Up (Slices 5–7 & Dashboard Phase 2)
 
-LLM → DSL generation · Yjs/Automerge multiplayer · GitHub App, REST API, Notion/Confluence sync, PDF export
+- [ ] **Eraser MCP Connection Guide**: Setup guide & server integration modal for Cursor/Claude/Antigravity
+- [ ] **Architecture Templates Catalog**: Gallery of pre-built starter diagrams (AWS, microservices, sequence, ERD)
+- [ ] **Custom Styles Editor**: Canvas styling tokens, custom theme presets, and export defaults
+- [ ] **Team Invites Modal**: Team member invitation flow with role permissions (Owner, Member, Viewer)
+- [ ] **LLM → DSL Generation**: AI diagram prompt generator refinement
+- [ ] **Real-Time Multiplayer**: Yjs/Automerge CRDT multiplayer collaboration
+- [ ] **Integrations**: GitHub App, REST API, Notion/Confluence sync
+

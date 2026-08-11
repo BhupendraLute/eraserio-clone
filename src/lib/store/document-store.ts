@@ -6,6 +6,12 @@ import { generateId } from '@/lib/utils';
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
+export interface DashboardFolder {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
 export interface DocumentMetadata {
   id: string;
   title: string;
@@ -16,12 +22,17 @@ export interface DocumentMetadata {
   whiteboardData?: string;
   diagramSource?: string;
   docContent?: string;
+  folderId?: string | null;
+  isArchived?: boolean;
+  isPrivate?: boolean;
+  commentsCount?: number;
 }
 
 export type SyncStatus = 'synced' | 'saving' | 'offline' | 'error';
 
 interface DocumentStoreState {
   documents: DocumentMetadata[];
+  folders: DashboardFolder[];
   activeDocumentId: string | null;
   activeDocumentTitle: string;
   syncStatus: SyncStatus;
@@ -33,11 +44,15 @@ interface DocumentStoreState {
 
   setAuthStatus: (status: AuthStatus) => void;
   fetchDocuments: () => Promise<void>;
-  createDocument: (title?: string) => Promise<string>;
+  createDocument: (title?: string, initialDiagram?: string) => Promise<string>;
   duplicateDocument: (id: string) => Promise<string | null>;
   selectDocument: (id: string) => Promise<void>;
   renameDocument: (id: string, newTitle: string) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
+  archiveDocument: (id: string, archive?: boolean) => Promise<void>;
+  createFolder: (name: string) => string;
+  deleteFolder: (folderId: string) => void;
+  moveDocumentToFolder: (docId: string, folderId: string | null) => void;
   saveCurrentDocumentState: (data: {
     whiteboardData?: unknown;
     diagramSource?: string;
@@ -48,6 +63,7 @@ interface DocumentStoreState {
   importGuestDocuments: () => Promise<boolean>;
   clearGuestDocuments: () => void;
 }
+
 
 let _saveDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 const GUEST_DOCS_KEY = 'eraserio_guest_docs';
@@ -73,6 +89,10 @@ function setStoredGuestDocs(docs: DocumentMetadata[]) {
 
 export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
   documents: [],
+  folders: [
+    { id: 'f-architecture', name: 'Architecture System', createdAt: new Date().toISOString() },
+    { id: 'f-designs', name: 'UI / Wireframes', createdAt: new Date().toISOString() },
+  ],
   activeDocumentId: null,
   activeDocumentTitle: 'Untitled Document',
   syncStatus: 'synced',
@@ -160,13 +180,18 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
     }
   },
 
-  createDocument: async (title = 'Untitled Document') => {
+  createDocument: async (title = 'Untitled Document', initialDiagram?: string) => {
     set({ syncStatus: 'saving' });
+
+    // Clean slate canvas & diagram for new document
+    useWhiteboardStore.getState().resetCanvas();
+    const diagramContent = initialDiagram || 'flowchart\n\nNodeA > NodeB: connect\n';
+
     try {
       const res = await fetch('/api/documents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title }),
+        body: JSON.stringify({ title, diagramSource: diagramContent, whiteboardData: '[]' }),
       });
       const data = await res.json();
       const doc = data.document;
@@ -179,6 +204,10 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
         shareToken: null,
         createdAt: doc?.createdAt || new Date().toISOString(),
         updatedAt: doc?.updatedAt || new Date().toISOString(),
+        whiteboardData: '[]',
+        diagramSource: diagramContent,
+        isArchived: false,
+        commentsCount: 0,
       };
 
       set((state) => ({
@@ -196,16 +225,47 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
         setStoredGuestDocs([newMeta, ...currentGuestDocs]);
       }
 
-      // Initialize empty canvas and diagram for new doc
-      useWhiteboardStore.setState({ elements: [] });
+      // Initialize diagram registry & diagram store for new doc
       const reg = useDiagramRegistry.getState();
-      reg.createDiagram(newMeta.title, 'flowchart\n\nNodeA > NodeB: connect\n');
+      reg.createDiagram(newMeta.title, diagramContent);
+      useDiagramStore.getState().setSource(diagramContent);
 
       return newId;
     } catch {
       set({ syncStatus: 'error' });
       return generateId('doc');
     }
+  },
+
+  archiveDocument: async (id: string, archive = true) => {
+    set((state) => ({
+      documents: state.documents.map((d) => (d.id === id ? { ...d, isArchived: archive } : d)),
+    }));
+  },
+
+  createFolder: (name: string) => {
+    const newFolder: DashboardFolder = {
+      id: generateId('folder'),
+      name,
+      createdAt: new Date().toISOString(),
+    };
+    set((state) => ({
+      folders: [...state.folders, newFolder],
+    }));
+    return newFolder.id;
+  },
+
+  deleteFolder: (folderId: string) => {
+    set((state) => ({
+      folders: state.folders.filter((f) => f.id !== folderId),
+      documents: state.documents.map((d) => (d.folderId === folderId ? { ...d, folderId: null } : d)),
+    }));
+  },
+
+  moveDocumentToFolder: (docId: string, folderId: string | null) => {
+    set((state) => ({
+      documents: state.documents.map((d) => (d.id === docId ? { ...d, folderId } : d)),
+    }));
   },
 
   duplicateDocument: async (id: string) => {
@@ -252,7 +312,11 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
       clearTimeout(_saveDebounceTimer);
       _saveDebounceTimer = null;
     }
+
+    // Always reset canvas elements, selection, and undo/redo stacks when switching documents
+    useWhiteboardStore.getState().resetCanvas();
     set({ activeDocumentId: id, syncStatus: 'saving' });
+
     try {
       const res = await fetch(`/api/documents/${id}`);
       if (res.ok) {
@@ -265,25 +329,17 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
             syncStatus: 'synced',
           });
 
-          // Hydrate Whiteboard Elements
-          if (doc.whiteboardData) {
-            try {
-              const elements =
-                typeof doc.whiteboardData === 'string'
-                  ? JSON.parse(doc.whiteboardData)
-                  : doc.whiteboardData;
-              useWhiteboardStore.setState({ elements });
-            } catch {
-              // ignore parse errors
-            }
-          }
+          // Hydrate Whiteboard Elements for this specific document
+          const elements = doc.whiteboardData
+            ? (typeof doc.whiteboardData === 'string' ? JSON.parse(doc.whiteboardData) : doc.whiteboardData)
+            : [];
+          useWhiteboardStore.setState({ elements, selectedIds: [], history: [], future: [] });
 
-          // Hydrate Diagram Source
-          if (doc.diagramSource) {
-            const reg = useDiagramRegistry.getState();
-            reg.updateSource(reg.activeDiagramId || 'default', doc.diagramSource);
-            useDiagramStore.getState().setSource(doc.diagramSource);
-          }
+          // Hydrate Diagram Source for this specific document
+          const diagramSource = doc.diagramSource || '';
+          const reg = useDiagramRegistry.getState();
+          reg.updateSource(reg.activeDiagramId || 'default', diagramSource);
+          useDiagramStore.getState().setSource(diagramSource);
           return;
         }
       }
@@ -291,10 +347,21 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
       // offline fallback
     }
 
-    // Fallback if offline or missing
-    const existing = get().documents.find((d) => d.id === id);
+    // Offline / Guest fallback
+    const guestDocs = getStoredGuestDocs();
+    const existing = guestDocs.find((d) => d.id === id) || get().documents.find((d) => d.id === id);
     if (existing) {
       set({ activeDocumentTitle: existing.title, syncStatus: 'synced' });
+
+      const elements = existing.whiteboardData
+        ? (typeof existing.whiteboardData === 'string' ? JSON.parse(existing.whiteboardData) : existing.whiteboardData)
+        : [];
+      useWhiteboardStore.setState({ elements, selectedIds: [], history: [], future: [] });
+
+      const diagramSource = existing.diagramSource || '';
+      const reg = useDiagramRegistry.getState();
+      reg.updateSource(reg.activeDiagramId || 'default', diagramSource);
+      useDiagramStore.getState().setSource(diagramSource);
     }
   },
 
@@ -337,19 +404,54 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
   },
 
   saveCurrentDocumentState: (data) => {
-    if (!get().activeDocumentId) return;
+    const activeId = get().activeDocumentId;
+    if (!activeId) return;
 
     set({ syncStatus: 'saving' });
 
     if (_saveDebounceTimer) clearTimeout(_saveDebounceTimer);
     _saveDebounceTimer = setTimeout(async () => {
-      const activeId = get().activeDocumentId;
-      if (!activeId) {
+      const currentActiveId = get().activeDocumentId;
+      if (!currentActiveId || currentActiveId !== activeId) {
         set({ syncStatus: 'synced' });
         return;
       }
+
+      // Offline Guest Mode persistence (per document ID in localStorage)
+      if (get().mode === 'offline' && get().authStatus === 'unauthenticated') {
+        const guestDocs = getStoredGuestDocs();
+        const whiteboardStr = data.whiteboardData !== undefined
+          ? (typeof data.whiteboardData === 'string' ? data.whiteboardData : JSON.stringify(data.whiteboardData))
+          : undefined;
+
+        const updated = guestDocs.map((doc) => {
+          if (doc.id !== currentActiveId) return doc;
+          return {
+            ...doc,
+            ...(whiteboardStr !== undefined ? { whiteboardData: whiteboardStr } : {}),
+            ...(data.diagramSource !== undefined ? { diagramSource: data.diagramSource } : {}),
+            updatedAt: new Date().toISOString(),
+          };
+        });
+        setStoredGuestDocs(updated);
+        set((state) => ({
+          documents: state.documents.map((doc) => {
+            if (doc.id !== currentActiveId) return doc;
+            return {
+              ...doc,
+              ...(whiteboardStr !== undefined ? { whiteboardData: whiteboardStr } : {}),
+              ...(data.diagramSource !== undefined ? { diagramSource: data.diagramSource } : {}),
+              updatedAt: new Date().toISOString(),
+            };
+          }),
+          syncStatus: 'synced',
+        }));
+        return;
+      }
+
+      // Cloud Mode persistence (PATCH /api/documents/[id])
       try {
-        const res = await fetch(`/api/documents/${activeId}`, {
+        const res = await fetch(`/api/documents/${currentActiveId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data),
