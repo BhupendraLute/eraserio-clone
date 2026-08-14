@@ -55,7 +55,7 @@ function LoginForm() {
 
   const handleGuest = () => {
     toast.info('Continuing as guest — documents stay local in your browser.');
-    router.push('/whiteboard');
+    router.push('/dashboard/all');
   };
 
   const renderProviderButton = (provider: { id: string; name: string }) => {

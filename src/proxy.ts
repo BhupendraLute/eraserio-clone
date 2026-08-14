@@ -22,7 +22,7 @@ export async function proxy(request: NextRequest) {
 
   // Signed-in users don't need the login/signup pages
   if (token && isAuthPage) {
-    const url = new URL('/whiteboard', request.url);
+    const url = new URL('/dashboard/all', request.url);
     return NextResponse.redirect(url);
   }
 

@@ -14,7 +14,7 @@ export function generateId(prefix = 'el'): string {
  * Only same-origin relative paths (starting with a single `/`, not `//`) are
  * allowed; everything else falls back to the given default.
  */
-export function safeCallbackUrl(raw: string | null, fallback = '/whiteboard'): string {
+export function safeCallbackUrl(raw: string | null, fallback = '/dashboard/all'): string {
   if (raw && raw.startsWith('/') && !raw.startsWith('//')) {
     return raw;
   }

@@ -21,36 +21,9 @@ interface HistoryState {
 
 export const GRID_SIZE = 24;
 
-const STORAGE_KEY = 'eraser-whiteboard-elements';
-
-function loadElements(): WhiteboardElement[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Debounced localStorage persistence.
- * The Zustand store state updates instantly on every frame (powering live
- * preview during drag/resize). Only the expensive JSON.stringify +
- * localStorage.setItem call is debounced so it runs at most once per 300ms.
- */
-let _saveTimer: ReturnType<typeof setTimeout> | null = null;
-
-function saveElements(elements: WhiteboardElement[]) {
-  if (typeof window === 'undefined') return;
-  if (_saveTimer) clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(elements));
-    } catch {
-      // quota exceeded or SSR — ignore
-    }
-  }, 300);
+function saveElements(_elements: WhiteboardElement[]): void {
+  // Document persistence is scoped per document ID inside document-store
+  void _elements;
 }
 
 export type LineWidthSize = 'S' | 'M' | 'L' | 'XL';
@@ -133,6 +106,7 @@ interface WhiteboardStore {
   groupSelected: () => void;
   ungroupSelected: () => void;
 
+  resetCanvas: () => void;
   hydrate: () => void;
   toggleResolvedComment: (id: string) => void;
   addCommentReply: (commentId: string, text: string, author?: string) => void;
@@ -276,13 +250,17 @@ export const useWhiteboardStore = create<WhiteboardStore>((set, get) => ({
   setShowComments: (show) => set({ showComments: show }),
   toggleShowComments: () => set((state) => ({ showComments: !state.showComments })),
 
-  hydrate: () => {
-    if (typeof window === 'undefined') return;
-    const stored = loadElements();
-    if (stored.length > 0) {
-      set({ elements: stored });
-    }
-  },
+  resetCanvas: () =>
+    set({
+      elements: [],
+      selectedIds: [],
+      history: [],
+      future: [],
+      canUndo: false,
+      canRedo: false,
+    }),
+
+  hydrate: () => {},
 
   addElement: (element) =>
     set((state) => {

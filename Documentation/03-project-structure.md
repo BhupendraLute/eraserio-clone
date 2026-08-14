@@ -66,6 +66,7 @@ flowchart TD
 |---|---|
 | `layout.tsx` | Root layout: fonts, `ThemeProvider`, `AuthProvider`, `QueryProvider` |
 | `page.tsx` | Landing page: hero, features, demo, auth modal CTAs |
+| `dashboard/[tab]/page.tsx` | Document dashboard: folder browsing (`/dashboard/folder-[id]`), archive tab (`/dashboard/archive`), private files (`/dashboard/private`), view mode toggle, batch actions |
 | `whiteboard/page.tsx` | The canvas page: `useAuthSync`, sets view mode to `canvas`, hydrates whiteboard, renders header + workspace |
 | `login/page.tsx` | Full-page OAuth sign-in (also NextAuth's `pages.signIn` target) |
 | `signup/page.tsx` | Full-page OAuth sign-up |
@@ -74,16 +75,18 @@ flowchart TD
 | `settings/profile/page.tsx` | Profile settings: edit display name + avatar URL, view provider/member-since, sign out (see [24-authentication-and-database.md](24-authentication-and-database.md) §6) |
 | `globals.css` | Tailwind import + global styles |
 | `api/auth/[...nextauth]/route.ts` | NextAuth route handler (GET/POST) |
-| `api/documents/route.ts` + `api/documents/[...]` | Document CRUD + share API (auth-scoped, see [24-authentication-and-database.md](24-authentication-and-database.md)) |
+| `api/documents/route.ts` + `api/documents/[...]` | Document CRUD + duplicate + share API (auth-scoped, see [24-authentication-and-database.md](24-authentication-and-database.md)) |
+| `api/workspaces/route.ts` + `api/workspaces/[...]` | Workspace team CRUD + role invites + team member management |
 | `api/user/profile/route.ts` | The signed-in user's own profile: GET + PATCH (display name / avatar), scoped by `getUserId()` |
 
 ### 2.2 `src/components/` — React UI
 
 | Folder | Purpose |
 |---|---|
-| `ui/` | shadcn/ui primitives (`button`, `dialog`, `dropdown-menu`, ...) + shared primitives (`AppButton`, `StatusDot`, `SyncStatusBadge`) |
-| `auth/` | `AuthModal.tsx`, `UserNav.tsx`, `OAuthIcons.tsx` — sign-in modal, avatar menu, OAuth brand icons |
-| `providers/` | `AuthProvider.tsx` (next-auth SessionProvider), `QueryProvider.tsx` |
+| `ui/` | shadcn/ui primitives (`button`, `dialog`, `dropdown-menu`, `skeleton`, ...) + shared primitives (`AppButton`, `StatusDot`, `SyncStatusBadge`) |
+| `dashboard/` | `DashboardSidebar.tsx`, `DashboardHeader.tsx`, `DocumentTable.tsx`, `ActionCardsGrid.tsx`, `skeletons/` (folder/table/grid loading states), `modals/` (`CreateFolderModal.tsx`, `DeleteFolderModal.tsx`, `ManageTeamModal.tsx`, `CreateWorkspaceModal.tsx`, `AIDiagramModal.tsx`) |
+| `auth/` | `AuthModal.tsx`, `UserNav.tsx`, `OAuthIcons.tsx`, `ImportGuestDocsModal.tsx` — sign-in modal, avatar menu, OAuth brand icons |
+| `providers/` | `AuthProvider.tsx` (next-auth SessionProvider), `ThemeProvider.tsx` (client theme wrapper), `QueryProvider.tsx` |
 | `workspace/` | `EraserWorkspace.tsx` — the shared tabbed shell + AI sidebar; `DocumentSwitcher.tsx`, `ShareModal.tsx`, `SyncStatusBadge.tsx` |
 | `canvas/` | `CanvasVerticalToolbar.tsx` (left tool palette) + `InsertItemPopup.tsx` (insert catalog) |
 | `editor/` | Diagram-as-Code: `CodeEditor.tsx`, `FlowchartCanvas.tsx`, `SequenceDiagramCanvas.tsx`, `NodeIcon.tsx`, `DiagramEditorView.tsx` |

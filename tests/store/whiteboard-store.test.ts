@@ -13,9 +13,6 @@ import type {
   WhiteboardElement,
 } from '@/lib/whiteboard/whiteboard-types';
 
-// Mirrors STORAGE_KEY in src/lib/store/whiteboard-store.ts.
-const STORAGE_KEY = 'eraser-whiteboard-elements';
-
 // ---------------------------------------------------------------------------
 // Element factories — the store operates on the WhiteboardElement union, so
 // tests build minimal-but-valid elements and override only what they need.
@@ -746,75 +743,20 @@ describe('active style setters', () => {
 // localStorage persistence (debounced)
 // ---------------------------------------------------------------------------
 
-describe('localStorage persistence', () => {
-  // The store guards every storage call behind `typeof window === 'undefined'`,
-  // so tests stub a minimal window + localStorage to exercise the real path.
-  function stubPersistence(initial: Record<string, string> = {}) {
-    const storage = new Map<string, string>(Object.entries(initial));
-    vi.stubGlobal('window', {});
-    vi.stubGlobal('localStorage', {
-      getItem: (key: string) => storage.get(key) ?? null,
-      setItem: (key: string, value: string) => {
-        storage.set(key, value);
-      },
-      removeItem: (key: string) => {
-        storage.delete(key);
-      },
-    });
-    return storage;
-  }
-
-  it('debounces writes to localStorage by 300ms', () => {
-    vi.useFakeTimers();
-    const storage = stubPersistence();
-    try {
-      useWhiteboardStore.getState().addElement(rect({ id: 'a' }));
-      expect(storage.has(STORAGE_KEY)).toBe(false); // not yet — debounced
-      vi.advanceTimersByTime(299);
-      expect(storage.has(STORAGE_KEY)).toBe(false);
-      vi.advanceTimersByTime(1);
-      expect(storage.get(STORAGE_KEY)).toContain('"a"');
-    } finally {
-      vi.useRealTimers();
-    }
+describe('canvas clearing & hydration', () => {
+  it('resetCanvas clears all elements, selection, and undo/redo stacks', () => {
+    useWhiteboardStore.getState().addElement(rect({ id: 'a' }));
+    expect(ids()).toEqual(['a']);
+    useWhiteboardStore.getState().resetCanvas();
+    expect(ids()).toEqual([]);
+    expect(useWhiteboardStore.getState().canUndo).toBe(false);
+    expect(useWhiteboardStore.getState().canRedo).toBe(false);
   });
 
-  it('hydrate loads stored elements back into the canvas', () => {
-    stubPersistence({ [STORAGE_KEY]: JSON.stringify([rect({ id: 'restored' })]) });
-    useWhiteboardStore.getState().hydrate();
-    expect(ids()).toEqual(['restored']);
-  });
-
-  it('hydrate ignores corrupted localStorage JSON', () => {
-    stubPersistence({ [STORAGE_KEY]: '{not valid json' });
+  it('hydrate is a safe no-op that does not pollute elements', () => {
+    useWhiteboardStore.getState().resetCanvas();
     useWhiteboardStore.getState().hydrate();
     expect(ids()).toEqual([]);
-  });
-
-  it('re-saves when another mutation lands inside the debounce window', () => {
-    vi.useFakeTimers();
-    const storage = stubPersistence();
-    try {
-      useWhiteboardStore.getState().addElement(rect({ id: 'a' }));
-      useWhiteboardStore.getState().addElement(rect({ id: 'b' }));
-      vi.advanceTimersByTime(300);
-      expect(storage.get(STORAGE_KEY)).toContain('"b"');
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-});
-
-// ---------------------------------------------------------------------------
-// hydrate in an SSR-like environment
-// ---------------------------------------------------------------------------
-
-describe('hydrate (no window)', () => {
-  it('is a no-op when window is unavailable', () => {
-    // No `window` stub here: the vitest node environment has none, so the
-    // store's SSR guard must bail out early without touching storage.
-    useWhiteboardStore.getState().hydrate();
-    expect(useWhiteboardStore.getState().elements).toEqual([]);
   });
 });
 

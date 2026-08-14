@@ -35,5 +35,7 @@
 | **Share** | `ShareModal` → POST `/api/documents/[id]/share` → `isPublic` + `shareToken` → `/share/[token]` page reads via public GET `/api/documents/share/[token]` |
 | **Sign-out** | `UserNav` `signOut()` → session null → `setAuthStatus` refetch → cloud list replaced by empty guest list; `activeDocumentId` reset when missing |
 | **Profile edit** | `/settings/profile` → GET/PATCH `/api/user/profile` (getUserId-scoped) → `update()` re-runs jwt callback (trigger='update') → fresh name/avatar in header |
+| **Folder CRUD & Batch** | `createFolder`/`renameFolder`/`deleteFolder` → `localStorage.eraserio_folders` + doc cascade update; `batchMoveDocumentsToFolder` / `batchArchiveDocuments` / `batchDeleteDocuments` update state + `eraserio_doc_meta` + API DELETE |
+| **Archive Persistence** | `archiveDocument` → updates state + saves to `eraserio_doc_meta` map; `fetchDocuments` merges local metadata cache into cloud/guest document lists across all page navigations |
 
 > 📚 **Full detail:** [`Documentation/24-authentication-and-database.md`](../Documentation/24-authentication-and-database.md)

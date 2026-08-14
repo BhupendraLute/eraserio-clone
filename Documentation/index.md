@@ -16,7 +16,8 @@ code snippets, and plain-English explanations.
 | 01 | [Getting Started](01-getting-started.md) | Prerequisites, install, run the dev server, first steps |
 | 02 | [Architecture Overview](02-architecture-overview.md) | High-level system design, tech stack, module boundaries |
 | 03 | [Project Structure](03-project-structure.md) | The complete `src/` folder tree, explained folder by folder |
-| 04 | [Routing & Pages](04-routing-and-pages.md) | Next.js App Router pages (`/`, `/whiteboard`, `/settings`) |
+| 04 | [Routing & Pages](04-routing-and-pages.md) | Next.js App Router pages (`/`, `/dashboard/all`, `/workspace/[id]`, `/whiteboard`, `/settings`) |
+
 | 05 | [App Shell & Navigation](05-app-shell-navigation.md) | `AppNav`, `EraserHeader`, `EraserWorkspace` layout |
 | 06 | [State Management (Zustand Stores)](06-state-management.md) | All 5 Zustand stores — what they hold and why |
 | 07 | [Diagram DSL Engine](07-dsl-engine.md) | Lexer → Parser → AST → Validator (the "Diagram-as-Code" core) |

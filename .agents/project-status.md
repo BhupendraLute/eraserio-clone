@@ -27,19 +27,26 @@
 
 | Area | Statements | Functions | Suites (`tests/`) |
 |---|---|---|---|
-| `dsl` | 95.98% | 96% | lexer, parser, AST, validator, error-messages, run-pipeline-sync, codemirror-language, codemirror-lint |
-| `layout` | 97.41% | 93.75% | dagre-adapter, sequence-layout, text-measure, wrap-text |
-| `render` | 94.25% | 87.5% | orthogonal-routing, edge-geometry |
+| `dsl` | 95.96% | 96% | lexer, parser, AST, validator, error-messages, run-pipeline-sync, codemirror-language, codemirror-lint |
+| `layout` | 97.54% | 94.44% | dagre-adapter, sequence-layout, text-measure, wrap-text |
+| `render` | 98.87% | 100% | orthogonal-routing, edge-geometry, node-style, text-style |
 | `export` | 97.33% | 93.75% | svg-export |
-| `store` | 78.33% | 87.37% | workspace-store, diagram-store, diagram-registry, diagram-library-store, whiteboard-store |
-| **All files** | ~92% | ~94% | **429 tests / 30 test files** |
+| `store` | 88.68% | 88.95% | workspace-store, diagram-store, diagram-registry, diagram-library-store, whiteboard-store, document-store, preferences-store, ai-chat-store |
+| **All files** | **91.31%** | **90.46%** | **437 tests / 30 test files (100% passing)** |
 
-> Per-area rows above are from an earlier run (approximate) — `store` has since grown with
-> `document-store` tests. Run `npm run test:coverage` for live numbers (commands + conventions:
-> `.agents/dev-rules.md` → Testing).
 > Thresholds enforced: **70% stmts / 60% branches / 75% funcs / 75% lines** — the command fails on regression.
-> `diagram-store.ts` is at 100%; `store` has the lowest branch coverage (53.86% — undo/redo paths).
 
-## Next Up (Slices 5–7)
+## Next Up (Slices 5–7 & Dashboard Phase 2)
 
-LLM → DSL generation · Yjs/Automerge multiplayer · GitHub App, REST API, Notion/Confluence sync, PDF export
+- [x] **Dashboard Team Folder CRUD**: Create, rename, color-code, and delete folders with document re-association
+- [x] **Document Batch Actions**: Multi-select bulk archive, move-to-folder, and cascade deletion
+- [x] **Workspace Team Switcher & Invites Modal**: Team member invitation flow with role permissions (Owner, Admin, Member, Viewer)
+- [x] **Skeleton UI Suite**: Shimmer loading states for folders, table view, and grid view
+- [x] **ACID Compliance & Metadata Cache**: Persistent local document metadata (`eraserio_doc_meta`) for reliable archive tab retention
+- [ ] **Eraser MCP Connection Guide**: Setup guide & server integration modal for Cursor/Claude/Antigravity
+- [ ] **Architecture Templates Catalog**: Gallery of pre-built starter diagrams (AWS, microservices, sequence, ERD)
+- [ ] **Custom Styles Editor**: Canvas styling tokens, custom theme presets, and export defaults
+- [ ] **LLM → DSL Generation**: AI diagram prompt generator refinement
+- [ ] **Real-Time Multiplayer**: Yjs/Automerge CRDT multiplayer collaboration
+- [ ] **Integrations**: GitHub App, REST API, Notion/Confluence sync
+

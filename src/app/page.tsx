@@ -4,10 +4,13 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { AppButton } from '@/components/ui/app-button';
+import { useSession, signOut } from 'next-auth/react';
 import {
   Sparkles,
   UserPlus,
   LogIn,
+  LogOut,
+  LayoutGrid,
   Code2,
   Layout,
   FileText,
@@ -20,6 +23,8 @@ import {
 import { AuthModal } from '@/components/auth/AuthModal';
 
 export default function LandingPage() {
+  const { status } = useSession();
+  const isSignedIn = status === 'authenticated';
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authDefaultTab, setAuthDefaultTab] = useState<'login' | 'signup'>('signup');
   const [activeDemoTab, setActiveDemoTab] = useState<'flowchart' | 'sequence' | 'whiteboard'>('flowchart');
@@ -68,21 +73,45 @@ export default function LandingPage() {
               </svg>
               <span>GitHub</span>
             </a>
-            <AppButton
-              variant="ghost"
-              size="sm"
-              className="text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800"
-              icon={<LogIn className="h-3.5 w-3.5" />}
-              label="Sign In"
-              onClick={() => openAuth('login')}
-            />
-            <AppButton
-              appearance="brand"
-              size="sm"
-              label="Get Started"
-              icon={<UserPlus className="h-3.5 w-3.5" />}
-              onClick={() => openAuth('signup')}
-            />
+
+            {isSignedIn ? (
+              <>
+                <Link href="/dashboard/all">
+                  <AppButton
+                    appearance="brand"
+                    size="sm"
+                    label="Dashboard"
+                    icon={<LayoutGrid className="h-3.5 w-3.5" />}
+                  />
+                </Link>
+                <AppButton
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800"
+                  icon={<LogOut className="h-3.5 w-3.5" />}
+                  label="Sign Out"
+                  onClick={() => signOut({ callbackUrl: '/' })}
+                />
+              </>
+            ) : (
+              <>
+                <AppButton
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800"
+                  icon={<LogIn className="h-3.5 w-3.5" />}
+                  label="Sign In"
+                  onClick={() => openAuth('login')}
+                />
+                <AppButton
+                  appearance="brand"
+                  size="sm"
+                  label="Get Started"
+                  icon={<UserPlus className="h-3.5 w-3.5" />}
+                  onClick={() => openAuth('signup')}
+                />
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -111,10 +140,10 @@ export default function LandingPage() {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Link href="/whiteboard">
+            <Link href="/dashboard/all">
               <Button size="lg" className="w-full sm:w-auto h-12 px-8 text-sm font-bold gap-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl shadow-xl shadow-blue-600/30 border border-blue-400/30">
                 <Zap className="h-4 w-4 text-amber-300" />
-                <span>Launch Interactive Workspace</span>
+                <span>Launch User Dashboard</span>
               </Button>
             </Link>
             <AppButton
@@ -163,25 +192,22 @@ export default function LandingPage() {
             <div className="flex items-center gap-2 bg-slate-900 rounded-lg p-0.5 border border-white/5">
               <button
                 onClick={() => setActiveDemoTab('flowchart')}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                  activeDemoTab === 'flowchart' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
-                }`}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${activeDemoTab === 'flowchart' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
               >
                 Flowchart DSL
               </button>
               <button
                 onClick={() => setActiveDemoTab('sequence')}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                  activeDemoTab === 'sequence' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
-                }`}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${activeDemoTab === 'sequence' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
               >
                 Sequence Diagram
               </button>
               <button
                 onClick={() => setActiveDemoTab('whiteboard')}
-                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
-                  activeDemoTab === 'whiteboard' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
-                }`}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${activeDemoTab === 'whiteboard' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
               >
                 Freeform Whiteboard
               </button>

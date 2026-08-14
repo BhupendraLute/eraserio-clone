@@ -57,7 +57,7 @@ export function AuthModal({ open, onOpenChange, defaultTab = 'login' }: AuthModa
     setLoadingProvider(provider);
     try {
       const result = await signIn(provider, {
-        callbackUrl: '/whiteboard',
+        callbackUrl: '/dashboard/all',
         redirect: false,
       });
       if (result?.error) {
@@ -65,7 +65,7 @@ export function AuthModal({ open, onOpenChange, defaultTab = 'login' }: AuthModa
       } else if (result?.ok) {
         toast.success(`Signed in with ${provider}!`);
         onOpenChange(false);
-        router.push('/whiteboard');
+        router.push('/dashboard/all');
       }
     } catch {
       toast.error(`Could not reach the ${provider} provider. Please try again.`);
@@ -77,7 +77,7 @@ export function AuthModal({ open, onOpenChange, defaultTab = 'login' }: AuthModa
   const handleGuest = () => {
     onOpenChange(false);
     toast.info('Continuing as guest — documents stay local in your browser.');
-    router.push('/whiteboard');
+    router.push('/dashboard/all');
   };
 
   // Keep the active tab + provider loading state in sync with the requested

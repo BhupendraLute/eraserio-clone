@@ -41,7 +41,7 @@
 | `useDiagramRegistry` | `diagram-registry.ts` | saved diagrams CRUD, active diagram id |
 | `useDiagramLibraryStore` | `diagram-library-store.ts` | derived list view over registry |
 | `useWhiteboardStore` | `whiteboard-store.ts` | elements, tool/color, undo/redo history |
-| `useDocumentStore` | `document-store.ts` | documents, active doc, syncStatus, mode (cloud/offline), authStatus, share, guest import & cleanup |
+| `useDocumentStore` | `document-store.ts` | documents, folders CRUD, workspaces, active doc, syncStatus, mode (cloud/offline), metadata cache (`eraserio_doc_meta`), batch actions, guest import |
 | `usePreferencesStore` | `preferences-store.ts` | gridStyle (dots/grid/plain), defaultExportFormat, exportScale (1x/2x/3x), codeKeymap |
 
 ## Where Things Render
@@ -52,6 +52,8 @@
 | Sequence diagram | `components/editor/SequenceDiagramCanvas.tsx` |
 | Whiteboard | `components/whiteboard/WhiteboardCanvas.tsx` |
 | Docs embeds | `components/docs/DiagramPreview.tsx` |
+| Dashboard & Folders | `app/dashboard/[tab]/page.tsx`, `components/dashboard/DashboardSidebar.tsx`, `components/dashboard/DocumentTable.tsx`, `components/dashboard/skeletons/` |
+| Modals (Folders & Teams) | `components/dashboard/modals/CreateFolderModal.tsx`, `components/dashboard/modals/DeleteFolderModal.tsx`, `components/dashboard/modals/ManageTeamModal.tsx`, `components/dashboard/modals/CreateWorkspaceModal.tsx` |
 | Auth modal / avatar | `components/auth/AuthModal.tsx`, `components/auth/UserNav.tsx` |
 | Sync status | `components/workspace/SyncStatusBadge.tsx` (header badge + avatar menu) |
 | Guest doc import modal | `components/auth/ImportGuestDocsModal.tsx` (prompt & localStorage purge) |

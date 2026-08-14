@@ -43,6 +43,8 @@ describe('useDocumentStore', () => {
       mode: 'offline',
       authStatus: 'loading',
       hasPendingGuestDocs: false,
+      folders: [],
+      isLoading: false,
     });
     vi.unstubAllGlobals();
     vi.clearAllMocks();
@@ -527,5 +529,170 @@ describe('useDocumentStore', () => {
     expect(success).toBe(false);
     expect(shareUrl).toBeNull();
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  // ---------------------------------------------------------------------
+  // Folders & Batch Operations
+  // ---------------------------------------------------------------------
+
+  it('createFolder adds a folder and saves to state', () => {
+    const id = useDocumentStore.getState().createFolder('New Folder', 'text-blue-400');
+    expect(id).toMatch(/^folder-/);
+    const folders = useDocumentStore.getState().folders;
+    const found = folders.find((f) => f.id === id);
+    expect(found).toBeDefined();
+    expect(found?.name).toBe('New Folder');
+  });
+
+  it('renameFolder updates folder name', () => {
+    const id = useDocumentStore.getState().createFolder('Initial Name');
+    useDocumentStore.getState().renameFolder(id, 'Renamed Folder');
+    const folders = useDocumentStore.getState().folders;
+    const found = folders.find((f) => f.id === id);
+    expect(found?.name).toBe('Renamed Folder');
+  });
+
+  it('deleteFolder removes folder and resets doc folderId when deleteContents is false', () => {
+    const fId = useDocumentStore.getState().createFolder('To Delete');
+    useDocumentStore.setState({
+      documents: [
+        meta('d1', { folderId: fId }),
+        meta('d2', { folderId: 'other' }),
+      ],
+    });
+
+    useDocumentStore.getState().deleteFolder(fId, false);
+    const s = useDocumentStore.getState();
+    expect(s.folders.some((f) => f.id === fId)).toBe(false);
+    expect(s.documents.find((d) => d.id === 'd1')?.folderId).toBeNull();
+    expect(s.documents.find((d) => d.id === 'd2')?.folderId).toBe('other');
+  });
+
+  it('deleteFolder removes folder and deletes contained documents when deleteContents is true', () => {
+    const fId = useDocumentStore.getState().createFolder('To Delete All');
+    useDocumentStore.setState({
+      documents: [
+        meta('d1', { folderId: fId }),
+        meta('d2', { folderId: 'other' }),
+      ],
+    });
+
+    useDocumentStore.getState().deleteFolder(fId, true);
+    const s = useDocumentStore.getState();
+    expect(s.folders.some((f) => f.id === fId)).toBe(false);
+    expect(s.documents.some((d) => d.id === 'd1')).toBe(false);
+    expect(s.documents.some((d) => d.id === 'd2')).toBe(true);
+  });
+
+  it('batchMoveDocumentsToFolder moves multiple documents into a folder', () => {
+    useDocumentStore.setState({
+      documents: [meta('d1'), meta('d2'), meta('d3')],
+    });
+
+    useDocumentStore.getState().batchMoveDocumentsToFolder(['d1', 'd2'], 'f-designs');
+    const s = useDocumentStore.getState();
+    expect(s.documents.find((d) => d.id === 'd1')?.folderId).toBe('f-designs');
+    expect(s.documents.find((d) => d.id === 'd2')?.folderId).toBe('f-designs');
+    expect(s.documents.find((d) => d.id === 'd3')?.folderId).toBeUndefined();
+  });
+
+  it('batchArchiveDocuments archives multiple documents', async () => {
+    useDocumentStore.setState({
+      documents: [meta('d1', { isArchived: false }), meta('d2', { isArchived: false })],
+    });
+
+    await useDocumentStore.getState().batchArchiveDocuments(['d1', 'd2'], true);
+    const s = useDocumentStore.getState();
+    expect(s.documents.find((d) => d.id === 'd1')?.isArchived).toBe(true);
+    expect(s.documents.find((d) => d.id === 'd2')?.isArchived).toBe(true);
+  });
+
+  it('batchDeleteDocuments removes multiple documents', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+    useDocumentStore.setState({
+      documents: [meta('d1'), meta('d2'), meta('d3')],
+      activeDocumentId: 'd1',
+    });
+
+    await useDocumentStore.getState().batchDeleteDocuments(['d1', 'd2']);
+    const s = useDocumentStore.getState();
+    expect(s.documents.map((d) => d.id)).toEqual(['d3']);
+    expect(s.activeDocumentId).toBeNull();
+  });
+
+  it('duplicateDocument creates offline copy when API fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+    useDocumentStore.setState({
+      documents: [meta('d1', { title: 'Architecture Diagram', whiteboardData: '[]' })],
+    });
+
+    const newId = await useDocumentStore.getState().duplicateDocument('d1');
+    expect(newId).toMatch(/^doc-/);
+    const s = useDocumentStore.getState();
+    const duplicated = s.documents.find((d) => d.id === newId);
+    expect(duplicated?.title).toBe('Architecture Diagram (Copy)');
+    expect(s.activeDocumentId).toBe(newId);
+  });
+
+  it('workspace operations manage workspace list and active selection', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          workspaces: [{ id: 'ws-1', name: 'Core Team', ownerId: 'u1', createdAt: new Date().toISOString() }],
+        }),
+      })
+    );
+
+    await useDocumentStore.getState().fetchWorkspaces();
+    expect(useDocumentStore.getState().workspaces).toHaveLength(1);
+    expect(useDocumentStore.getState().activeWorkspaceId).toBe('ws-1');
+
+    useDocumentStore.getState().setActiveWorkspace('ws-custom');
+    expect(useDocumentStore.getState().activeWorkspaceId).toBe('ws-custom');
+  });
+
+  it('createWorkspace creates and activates a new workspace', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          workspace: { id: 'ws-new', name: 'Platform Engineering', ownerId: 'u1', createdAt: new Date().toISOString() },
+        }),
+      })
+    );
+
+    const ws = await useDocumentStore.getState().createWorkspace('Platform Engineering');
+    expect(ws?.id).toBe('ws-new');
+    const s = useDocumentStore.getState();
+    expect(s.workspaces.some((w) => w.id === 'ws-new')).toBe(true);
+    expect(s.activeWorkspaceId).toBe('ws-new');
+  });
+
+  it('fetchDocuments seamlessly merges persistent document metadata map', async () => {
+    stubLocalStorage({
+      eraserio_doc_meta: JSON.stringify({
+        'cloud-doc-1': { isArchived: true, folderId: 'f-designs' },
+      }),
+    });
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          mode: 'cloud',
+          documents: [meta('cloud-doc-1', { isArchived: false, folderId: null })],
+        }),
+      })
+    );
+
+    await useDocumentStore.getState().fetchDocuments();
+    const s = useDocumentStore.getState();
+    const doc = s.documents.find((d) => d.id === 'cloud-doc-1');
+    expect(doc?.isArchived).toBe(true);
+    expect(doc?.folderId).toBe('f-designs');
   });
 });
