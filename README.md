@@ -9,9 +9,9 @@
 ![React](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)
 ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-v4-38bdf8?logo=tailwindcss&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-429%20passed-22c55e)
-![Coverage](https://img.shields.io/badge/coverage-92%25%20statements-22c55e)
-![Status](https://img.shields.io/badge/status-v0.6.0-3b82f6)
+![Tests](https://img.shields.io/badge/tests-437%20passed-22c55e)
+![Coverage](https://img.shields.io/badge/coverage-91.31%25%20statements-22c55e)
+![Status](https://img.shields.io/badge/status-v0.7.0-3b82f6)
 
 </div>
 
@@ -19,13 +19,14 @@
 
 ## ✨ What It Is
 
-A full-featured clone of [Eraser.io](https://eraser.io) — **three products in one codebase**:
+A full-featured clone of [Eraser.io](https://eraser.io) — **all-in-one technical documentation & diagramming workbench**:
 
 |     | Product                 | Highlights                                                                                                                       |
 | --- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | 🧩  | **Diagram-as-Code**     | Write flowchart & sequence diagrams in a custom DSL → syntax-highlighted CodeMirror editor → auto-layout via Dagre → live canvas |
 | 📝  | **Markdown Docs**       | Tiptap rich-text editor with interactive diagram embeds, slash commands, and a diagram library                                   |
 | 🎨  | **Freeform Whiteboard** | Shapes, arrows, pencil, text, cloud icons & comments on an infinite SVG canvas with orthogonal routing                           |
+| 🗂️  | **Team Dashboard**      | Team folder CRUD, bulk multi-select operations (move/archive/delete), workspace switcher & team invites, Table/Grid views        |
 
 ---
 
@@ -35,12 +36,13 @@ A full-featured clone of [Eraser.io](https://eraser.io) — **three products in 
 | ------------------ | -------------------------------------------------------------------------- |
 | **Framework**      | Next.js 16 (App Router) + React 19 + React Compiler                        |
 | **Styling**        | TailwindCSS v4 + shadcn/ui                                                 |
+| **Auth & Database**| NextAuth.js v4 (GitHub/Google OAuth) + Prisma 7 + Neon Postgres            |
 | **Diagram Engine** | Chevrotain (lexer/parser) + Dagre (auto-layout)                            |
 | **Code Editor**    | CodeMirror 6 with custom DSL syntax highlighting & linting                 |
 | **Rich Text**      | Tiptap (ProseMirror) with diagram embeds + slash commands                  |
-| **State**          | Zustand v5 (5 stores) + TanStack React Query                               |
+| **State**          | Zustand v5 (7 stores) + TanStack React Query                               |
 | **Whiteboard**     | Custom SVG canvas, `perfect-freehand` pencil, orthogonal connector routing |
-| **Export**         | `html-to-image` (PNG) + `jsPDF`                                            |
+| **Export**         | `html-to-image` (PNG) + SVG export + `jsPDF`                               |
 | **Testing**        | Vitest 4 + V8 coverage (thresholds enforced in CI)                         |
 
 ---
@@ -143,20 +145,7 @@ sequenceDiagram
     end
 ```
 
-### 2. Whiteboard Draw & Undo/Redo
-
-```mermaid
-flowchart LR
-    T["Select Tool<br/>(rectangle, arrow, pencil…)"] --> P["Pointer down / up"]
-    P --> B["Bounding box"]
-    B --> A["addElement()"]
-    A --> H["pushHistory (cap 100)"]
-    H --> D["debounced saveElements (300 ms)"]
-    D --> LS[("localStorage")]
-    H --> U["undo() / redo()<br/>swap history & future stacks"]
-```
-
-### 3. SVG / PNG Export
+### 2. SVG / PNG Export
 
 ```mermaid
 flowchart LR
@@ -212,29 +201,35 @@ tests/                     # Vitest suites mirroring src/ (dsl, layout, store, r
 | 3     | Freeform Whiteboard + Eraser.io UI Clone       | ✅ **DONE** (v0.5.0) |
 | 4     | Auth, Database & Persistence                   | ✅ **DONE** (v0.6.0) |
 | 5     | AI Diagram Generation (Architecta AI)         | ✅ **DONE** (v0.6.0) |
-| 6     | Eraser.io User Dashboard (`/dashboard/all`)    | 🚀 **IN PROGRESS**   |
+| 6     | Eraser.io User Dashboard (`/dashboard/[tab]`)  | ✅ **DONE** (v0.7.0) |
 | 7     | Real-Time Multiplayer (Yjs CRDTs)              | ⏳ Planned           |
 | 8     | Integrations & Public API                      | ⏳ Planned           |
 
-### 📋 Upcoming Dashboard Feature TODOs
+### 📋 Next Phase Roadmap
 
+- [x] **Dashboard Team Folder CRUD**: Create, rename, color-code, and delete folders with document re-association
+- [x] **Document Batch Actions**: Multi-select bulk archive, move-to-folder, and cascade deletion
+- [x] **Workspace Team Switcher & Invites Modal**: Team member invitation flow with role permissions (Owner, Admin, Member, Viewer)
+- [x] **Skeleton UI Suite**: Shimmer loading states for folders, table view, and grid view
+- [x] **ACID Compliance & Metadata Cache**: Persistent local document metadata (`eraserio_doc_meta`) for reliable archive tab retention
 - [ ] **Eraser MCP Connection Guide**: Setup guide & server integration modal for Cursor/Claude/Antigravity
-- [ ] **Architecture Templates Catalog**: Pre-built diagram starter gallery (AWS, microservices, ERD)
-- [ ] **Custom Styles Editor**: Canvas themes, grid pattern defaults & styling token editor
-- [ ] **Team Invites Modal**: Team member invitation flow with role permissions (Owner, Member, Viewer)
-
+- [ ] **Architecture Templates Catalog**: Gallery of pre-built starter diagrams (AWS, microservices, sequence, ERD)
+- [ ] **Custom Styles Editor**: Canvas styling tokens, custom theme presets, and export defaults
+- [ ] **LLM → DSL Generation**: AI diagram prompt generator refinement
+- [ ] **Real-Time Multiplayer**: Yjs/Automerge CRDT multiplayer collaboration
+- [ ] **Integrations**: GitHub App, REST API, Notion/Confluence sync
 
 ### Test Coverage
 
 | Area          | Statements | Functions  | Suites (`tests/`)                                                            |
 | ------------- | ---------- | ---------- | ---------------------------------------------------------------------------- |
-| `dsl`         | 95.98%     | 96%        | lexer, parser, AST, validator, error-messages, run-pipeline-sync, codemirror |
-| `layout`      | 97.41%     | 93.75%     | dagre-adapter, sequence-layout, text-measure, wrap-text                      |
-| `render`      | 94.25%     | 87.5%      | orthogonal-routing, edge-geometry                                            |
+| `dsl`         | 95.96%     | 96.00%     | lexer, parser, AST, validator, error-messages, run-pipeline-sync, codemirror |
+| `layout`      | 97.54%     | 94.44%     | dagre-adapter, sequence-layout, text-measure, wrap-text                      |
+| `render`      | 98.87%     | 100.0%     | orthogonal-routing, edge-geometry, node-style, text-style                    |
 | `export`      | 97.33%     | 93.75%     | svg-export                                                                   |
-| `store`       | 82.50%     | 88.50%     | all 6 stores (undo/redo, CRUD, auto-save persistence)                        |
+| `store`       | 88.68%     | 88.95%     | all 7 stores (undo/redo, CRUD, folders, auto-save persistence, cache)        |
 | `icons`       | 98.00%     | 95.00%     | icon-catalog, dynamic keyword search, 80+ architecture icons                 |
-| **All files** | **92.15%** | **94.20%** | **429 tests / 30 test files**                                                |
+| **All files** | **91.31%** | **90.46%** | **437 tests / 30 test files (100% passing)**                                 |
 
 > Thresholds enforced in CI: **70% statements / 60% branches / 75% functions / 75% lines** — `npm run test:coverage` fails on regression.
 
@@ -244,7 +239,7 @@ tests/                     # Vitest suites mirroring src/ (dsl, layout, store, r
 
 ```bash
 npm run dev           # start dev server
-npm test              # run the Vitest suite (429 tests)
+npm test              # run the Vitest suite (437 tests)
 npm run test:watch    # watch mode
 npm run test:coverage # suite + coverage report (thresholds enforced)
 npx tsc --noEmit      # type check (also covers tests/)
@@ -258,12 +253,15 @@ npm run build         # production build
 
 ## 📚 Documentation
 
-Full developer documentation lives in the [`Documentation/`](Documentation/index.md) folder — **21 modular guides** covering every feature with diagrams and code snippets, written for beginners:
+Full developer documentation lives in the [`Documentation/`](Documentation/index.md) folder — **25 modular guides** covering every feature with diagrams and code snippets, written for beginners:
 
 - 🧭 Start with [Getting Started](Documentation/01-getting-started.md) and [Architecture Overview](Documentation/02-architecture-overview.md)
 - 🧩 Diagram features: [DSL Engine](Documentation/07-dsl-engine.md) · [Worker Pipeline](Documentation/08-worker-pipeline.md) · [Layout Engine](Documentation/10-layout-engine.md)
 - 🎨 Whiteboard: [Whiteboard Core](Documentation/14-whiteboard-core.md) · [Canvas & Rendering](Documentation/15-whiteboard-canvas.md) · [Interactions](Documentation/16-whiteboard-interactions.md)
+- 🗂️ State & DB: [State Management](Documentation/06-state-management.md) · [Authentication & Database](Documentation/24-authentication-and-database.md)
 - 🔀 End-to-end flows: [Data Flows](Documentation/20-data-flows.md)
 - 🛠️ Contributing: [Development Guide](Documentation/21-development-guide.md)
+
+AI agents read the quick-reference context in [`.agents/`](.agents/architecture.md) before touching code.
 
 AI agents read the quick-reference context in [`.agents/`](.agents/architecture.md) before touching code.
