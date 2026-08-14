@@ -43,7 +43,7 @@ export function DeleteFolderModal({
             </DialogTitle>
           </div>
           <DialogDescription className="text-xs text-zinc-400">
-            Are you sure you want to delete <span className="font-semibold text-zinc-200">"{folder.name}"</span>?
+            Are you sure you want to delete <span className="font-semibold text-zinc-200">&quot;{folder.name}&quot;</span>?
           </DialogDescription>
         </DialogHeader>
 

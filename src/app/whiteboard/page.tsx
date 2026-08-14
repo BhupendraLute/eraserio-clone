@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react';
 import { useWorkspaceStore } from '@/lib/store/workspace-store';
-import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { EraserHeader } from '@/components/EraserHeader';
 import { EraserWorkspace } from '@/components/workspace/EraserWorkspace';
 import { ImportGuestDocsModal } from '@/components/auth/ImportGuestDocsModal';
@@ -13,7 +12,6 @@ export default function WhiteboardPage() {
   useAuthSync();
   useAutoSave();
   const setViewMode = useWorkspaceStore((s) => s.setViewMode);
-  const hydrate = useWhiteboardStore((s) => s.hydrate);
 
   useEffect(() => {
     setViewMode('canvas');

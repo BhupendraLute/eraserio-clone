@@ -3,7 +3,6 @@
 import React, { useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useWorkspaceStore } from '@/lib/store/workspace-store';
-import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { useDocumentStore } from '@/lib/store/document-store';
 import { EraserHeader } from '@/components/EraserHeader';
 import { EraserWorkspace } from '@/components/workspace/EraserWorkspace';
@@ -18,7 +17,6 @@ export default function WorkspaceDocumentPage() {
   const docId = params?.id as string | undefined;
 
   const setViewMode = useWorkspaceStore((s) => s.setViewMode);
-  const hydrate = useWhiteboardStore((s) => s.hydrate);
   const selectDocument = useDocumentStore((s) => s.selectDocument);
   const activeDocumentId = useDocumentStore((s) => s.activeDocumentId);
 

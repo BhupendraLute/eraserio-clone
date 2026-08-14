@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { FolderPlus, Edit3 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -22,20 +22,17 @@ const COLOR_OPTIONS = [
 ];
 
 export function CreateFolderModal({ open, onOpenChange, folderToEdit }: CreateFolderModalProps) {
-  const [folderName, setFolderName] = useState('');
-  const [selectedColor, setSelectedColor] = useState(COLOR_OPTIONS[0].value);
+  const [folderName, setFolderName] = useState(folderToEdit?.name || '');
+  const [selectedColor, setSelectedColor] = useState(folderToEdit?.color || COLOR_OPTIONS[0].value);
+  const [prevFolder, setPrevFolder] = useState<DashboardFolder | null | undefined>(folderToEdit);
   const createFolder = useDocumentStore((s) => s.createFolder);
   const renameFolder = useDocumentStore((s) => s.renameFolder);
 
-  useEffect(() => {
-    if (folderToEdit) {
-      setFolderName(folderToEdit.name);
-      setSelectedColor(folderToEdit.color || COLOR_OPTIONS[0].value);
-    } else {
-      setFolderName('');
-      setSelectedColor(COLOR_OPTIONS[0].value);
-    }
-  }, [folderToEdit, open]);
+  if (folderToEdit !== prevFolder) {
+    setPrevFolder(folderToEdit);
+    setFolderName(folderToEdit?.name || '');
+    setSelectedColor(folderToEdit?.color || COLOR_OPTIONS[0].value);
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

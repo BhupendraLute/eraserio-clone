@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Folder, Edit3, Trash2, Plus, Sparkles, Layers } from 'lucide-react';
+import { Folder, Edit3, Trash2, Plus } from 'lucide-react';
 import { useDocumentStore, DashboardFolder } from '@/lib/store/document-store';
 import { useAuthSync } from '@/hooks/useAuthSync';
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
@@ -51,28 +51,33 @@ export default function DashboardTabPage() {
   const currentFolder = currentFolderId ? folders.find((f) => f.id === currentFolderId) : null;
 
   // Filter documents based on sidebar tabParam + header subTab
-  let displayedDocs = documents;
+  const displayedDocs = React.useMemo(() => {
+    let list = documents;
 
-  if (tabParam === 'archive') {
-    displayedDocs = documents.filter((d) => d.isArchived);
-  } else if (tabParam === 'private') {
-    displayedDocs = documents.filter((d) => d.isPrivate);
-  } else if (currentFolderId) {
-    displayedDocs = documents.filter((d) => d.folderId === currentFolderId && !d.isArchived);
-  } else {
-    // Normal active files (not archived)
-    displayedDocs = documents.filter((d) => !d.isArchived);
-  }
+    if (tabParam === 'archive') {
+      list = list.filter((d) => d.isArchived);
+    } else if (tabParam === 'private') {
+      list = list.filter((d) => d.isPrivate);
+    } else if (currentFolderId) {
+      list = list.filter((d) => d.folderId === currentFolderId && !d.isArchived);
+    } else {
+      // Normal active files (not archived)
+      list = list.filter((d) => !d.isArchived);
+    }
 
-  // Apply Subtab filters
-  if (subTab === 'recents') {
-    const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    displayedDocs = displayedDocs.filter((d) => new Date(d.updatedAt).getTime() > oneWeekAgo);
-  } else if (subTab === 'folders') {
-    displayedDocs = displayedDocs.filter((d) => !!d.folderId);
-  } else if (subTab === 'unsorted') {
-    displayedDocs = displayedDocs.filter((d) => !d.folderId);
-  }
+    // Apply Subtab filters
+    if (subTab === 'recents') {
+      list = [...list].sort(
+        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      );
+    } else if (subTab === 'folders') {
+      list = list.filter((d) => !!d.folderId);
+    } else if (subTab === 'unsorted') {
+      list = list.filter((d) => !d.folderId);
+    }
+
+    return list;
+  }, [documents, tabParam, currentFolderId, subTab]);
 
   const handleOpenCreateFolder = () => {
     setFolderToEdit(null);

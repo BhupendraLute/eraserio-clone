@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import {
   FileText,
   MoreHorizontal,
@@ -11,7 +12,6 @@ import {
   Copy,
   Trash2,
   Edit2,
-  Share2,
   Sparkles,
   CheckSquare,
   Square,
@@ -173,9 +173,7 @@ export function DocumentTable({
 
   const userAvatar = session?.user?.image;
   const userName = session?.user?.name || 'User';
-
   const allSelected = sorted.length > 0 && selectedIds.size === sorted.length;
-  const someSelected = selectedIds.size > 0 && selectedIds.size < sorted.length;
 
   if (isLoading) {
     return viewMode === 'grid' ? <DocumentGridSkeleton /> : <DocumentTableSkeleton />;
@@ -381,9 +379,12 @@ export function DocumentTable({
                     <span>{formatRelativeTime(doc.updatedAt)}</span>
                     <div className="flex items-center gap-1.5">
                       {userAvatar ? (
-                        <img
+                        <Image
                           src={userAvatar}
                           alt={userName}
+                          width={16}
+                          height={16}
+                          unoptimized
                           className="h-4 w-4 rounded-full object-cover ring-1 ring-zinc-700"
                         />
                       ) : (
@@ -533,9 +534,12 @@ export function DocumentTable({
                       <td className="py-3 px-4 text-center">
                         <div className="inline-flex items-center justify-center">
                           {userAvatar ? (
-                            <img
+                            <Image
                               src={userAvatar}
                               alt={userName}
+                              width={20}
+                              height={20}
+                              unoptimized
                               className="h-5 w-5 rounded-full object-cover ring-1 ring-zinc-700"
                             />
                           ) : (

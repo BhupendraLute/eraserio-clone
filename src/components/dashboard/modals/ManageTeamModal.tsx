@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { Users, UserPlus, Mail, Copy, Check, Shield, Trash2, Send, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -29,7 +30,8 @@ export function ManageTeamModal({
   workspaceId,
 }: ManageTeamModalProps) {
   const { data: session } = useSession();
-  const currentWorkspaceId = workspaceId || useDocumentStore((s) => s.activeWorkspaceId);
+  const storeWorkspaceId = useDocumentStore((s) => s.activeWorkspaceId);
+  const currentWorkspaceId = workspaceId || storeWorkspaceId;
   const [activeTab, setActiveTab] = useState<'members' | 'invite'>('members');
 
   // Invite state
@@ -179,9 +181,12 @@ export function ManageTeamModal({
               >
                 <div className="flex items-center gap-3 min-w-0">
                   {member.avatar ? (
-                    <img
+                    <Image
                       src={member.avatar}
                       alt={member.name}
+                      width={32}
+                      height={32}
+                      unoptimized
                       className="h-8 w-8 rounded-full object-cover ring-1 ring-zinc-700"
                     />
                   ) : (
@@ -212,7 +217,7 @@ export function ManageTeamModal({
                     <>
                       <select
                         value={member.role}
-                        onChange={(e) => handleRoleChange(member.id, e.target.value as any)}
+                        onChange={(e) => handleRoleChange(member.id, e.target.value as 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER')}
                         className="h-7 px-2 rounded-lg bg-zinc-800 border border-zinc-700 text-[11px] text-zinc-200 focus:outline-none focus:border-blue-500"
                       >
                         <option value="ADMIN">Admin</option>
@@ -261,7 +266,7 @@ export function ManageTeamModal({
                 </label>
                 <select
                   value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value as any)}
+                  onChange={(e) => setInviteRole(e.target.value as 'ADMIN' | 'MEMBER' | 'VIEWER')}
                   className="w-full h-10 px-3 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-200 focus:outline-none focus:border-blue-500 transition-colors"
                 >
                   <option value="MEMBER">Member (Can create, edit, and export diagrams)</option>

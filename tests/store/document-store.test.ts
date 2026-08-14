@@ -652,4 +652,47 @@ describe('useDocumentStore', () => {
     useDocumentStore.getState().setActiveWorkspace('ws-custom');
     expect(useDocumentStore.getState().activeWorkspaceId).toBe('ws-custom');
   });
+
+  it('createWorkspace creates and activates a new workspace', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          workspace: { id: 'ws-new', name: 'Platform Engineering', ownerId: 'u1', createdAt: new Date().toISOString() },
+        }),
+      })
+    );
+
+    const ws = await useDocumentStore.getState().createWorkspace('Platform Engineering');
+    expect(ws?.id).toBe('ws-new');
+    const s = useDocumentStore.getState();
+    expect(s.workspaces.some((w) => w.id === 'ws-new')).toBe(true);
+    expect(s.activeWorkspaceId).toBe('ws-new');
+  });
+
+  it('fetchDocuments seamlessly merges persistent document metadata map', async () => {
+    stubLocalStorage({
+      eraserio_doc_meta: JSON.stringify({
+        'cloud-doc-1': { isArchived: true, folderId: 'f-designs' },
+      }),
+    });
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          mode: 'cloud',
+          documents: [meta('cloud-doc-1', { isArchived: false, folderId: null })],
+        }),
+      })
+    );
+
+    await useDocumentStore.getState().fetchDocuments();
+    const s = useDocumentStore.getState();
+    const doc = s.documents.find((d) => d.id === 'cloud-doc-1');
+    expect(doc?.isArchived).toBe(true);
+    expect(doc?.folderId).toBe('f-designs');
+  });
 });

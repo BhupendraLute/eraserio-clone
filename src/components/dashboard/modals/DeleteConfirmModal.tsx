@@ -48,7 +48,7 @@ export function DeleteConfirmModal({
             Delete Document?
           </DialogTitle>
           <DialogDescription className="text-xs text-zinc-400 leading-relaxed">
-            Are you sure you want to delete <span className="font-semibold text-zinc-200">"{documentTitle}"</span>? This action cannot be undone.
+            Are you sure you want to delete <span className="font-semibold text-zinc-200">&quot;{documentTitle}&quot;</span>? This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
 

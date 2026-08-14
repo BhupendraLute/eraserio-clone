@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -20,7 +20,6 @@ import {
 import { useDocumentStore, DashboardFolder } from '@/lib/store/document-store';
 import { SidebarFoldersSkeleton } from '@/components/dashboard/skeletons';
 import { useSession } from 'next-auth/react';
-import { UserNav } from '@/components/auth/UserNav';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -40,6 +39,8 @@ interface DashboardSidebarProps {
   onOpenCreateWorkspaceModal: () => void;
   onOpenManageTeamModal: () => void;
 }
+
+const emptySubscribe = () => () => {};
 
 export function DashboardSidebar({
   currentTab,
@@ -61,11 +62,11 @@ export function DashboardSidebar({
   const isLoading = useDocumentStore((s) => s.isLoading);
 
   const [isCreating, setIsCreating] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = React.useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
   const userName = session?.user?.name || "Bhupendra's";
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);

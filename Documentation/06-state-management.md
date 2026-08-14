@@ -191,7 +191,11 @@ session state and the document API, and drives the header's sync badge and avata
 
 | Field | Type | Meaning |
 |---|---|---|
-| `documents` | `DocumentMetadata[]` | Current document list (owned docs) |
+| `documents` | `DocumentMetadata[]` | Current document list (with merged `isArchived`, `folderId`, and `isPrivate`) |
+| `folders` | `DashboardFolder[]` | Team folders list (`id`, `name`, `color`, `createdAt`) |
+| `workspaces` | `DashboardWorkspace[]` | User's owned and joined workspaces |
+| `activeWorkspaceId` | `string \| null` | Active workspace id |
+| `isLoading` | `boolean` | Initial data loading indicator for skeleton states |
 | `activeDocumentId` / `activeDocumentTitle` | `string \| null` / `string` | Active selection |
 | `syncStatus` | `'synced' \| 'saving' \| 'offline' \| 'error'` | Save lifecycle |
 | `isPublic` / `shareToken` | `boolean` / `string \| null` | Share state |
@@ -201,16 +205,22 @@ session state and the document API, and drives the header's sync badge and avata
 **Key actions:**
 
 - `setAuthStatus(status)` — called by `useAuthSync` on session changes; refetches documents when
-  auth state actually changes (this is how sign-in/sign-out swaps the doc list).
-- `fetchDocuments()` — GET `/api/documents`; guests get `mode: 'offline'`. Resets
-  `activeDocumentId` when the active doc disappears (e.g. after sign-out).
-- `createDocument(title?)` — POST; guests get a local-only stub (no DB write).
+  auth state actually changes (swapping cloud/guest documents).
+- `fetchDocuments()` — GET `/api/documents`; merges local metadata map (`eraserio_doc_meta`) with
+  cloud/guest records so `isArchived`, `folderId`, and `isPrivate` remain persistent across tab switches.
+- `createFolder(name, color?)` / `renameFolder(id, name)` / `deleteFolder(id, deleteContents?)` — full folder CRUD with document re-association.
+- `moveDocumentToFolder(docId, folderId)` / `batchMoveDocumentsToFolder(docIds, folderId)` — organize files into folders.
+- `archiveDocument(id, archive)` / `batchArchiveDocuments(ids, archive)` — archive/unarchive documents persistently.
+- `batchDeleteDocuments(ids)` — batch delete documents locally and via DELETE `/api/documents/[id]`.
+- `createWorkspace(name)` / `fetchWorkspaces()` / `setActiveWorkspace(id)` — team workspace management.
+- `createDocument(title?, initialDiagram?, folderId?)` — POST; guests get a local-only stub (no DB write).
 - `selectDocument(id)` / `renameDocument` / `deleteDocument` — CRUD against `/api/documents/[id]`.
-- `saveCurrentDocumentState(data)` — debounced (500ms) PATCH of whiteboard/diagram/docs content.
+- `duplicateDocument(id)` — duplicates document and opens it as active copy.
+- `saveCurrentDocumentState(data)` — debounced (500ms) PATCH of whiteboard/diagram/docs content with activeId race guard.
 - `togglePublicShare(isPublic)` — POST `/api/documents/[id]/share`; stores `isPublic` + `shareToken`.
 
-Consumers: `DocumentSwitcher` (list + sync badge), `ShareModal` (share toggle), `UserNav`
-(mode/syncStatus), `EraserHeader` (via `DocumentSwitcher`).
+Consumers: `DashboardSidebar`, `DocumentTable`, `DashboardHeader`, `DocumentSwitcher` (list + sync badge),
+`ShareModal` (share toggle), `UserNav` (mode/syncStatus), `EraserHeader`.
 
 > 💡 **Mode vs syncStatus**: `mode` is *where* data lives (cloud vs offline); `syncStatus` is the
 > *lifecycle* of the last save. The `SyncStatusBadge` renders both together — see

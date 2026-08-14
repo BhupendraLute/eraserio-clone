@@ -21,12 +21,9 @@ interface HistoryState {
 
 export const GRID_SIZE = 24;
 
-function loadElements(): WhiteboardElement[] {
-  return [];
-}
-
-function saveElements(_elements: WhiteboardElement[]) {
+function saveElements(_elements: WhiteboardElement[]): void {
   // Document persistence is scoped per document ID inside document-store
+  void _elements;
 }
 
 export type LineWidthSize = 'S' | 'M' | 'L' | 'XL';

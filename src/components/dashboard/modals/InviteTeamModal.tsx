@@ -13,7 +13,8 @@ interface InviteTeamModalProps {
 }
 
 export function InviteTeamModal({ open, onOpenChange, workspaceId }: InviteTeamModalProps) {
-  const activeWorkspaceId = workspaceId || useDocumentStore((s) => s.activeWorkspaceId);
+  const storeWorkspaceId = useDocumentStore((s) => s.activeWorkspaceId);
+  const activeWorkspaceId = workspaceId || storeWorkspaceId;
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'MEMBER' | 'VIEWER' | 'ADMIN'>('MEMBER');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -153,7 +154,7 @@ export function InviteTeamModal({ open, onOpenChange, workspaceId }: InviteTeamM
               </label>
               <select
                 value={role}
-                onChange={(e) => setRole(e.target.value as any)}
+                onChange={(e) => setRole(e.target.value as 'MEMBER' | 'VIEWER' | 'ADMIN')}
                 className="w-full h-10 px-3 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-200 focus:outline-none focus:border-blue-500 transition-colors"
               >
                 <option value="MEMBER">Member (Can edit and create diagrams)</option>

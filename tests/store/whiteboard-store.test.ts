@@ -13,9 +13,6 @@ import type {
   WhiteboardElement,
 } from '@/lib/whiteboard/whiteboard-types';
 
-// Mirrors STORAGE_KEY in src/lib/store/whiteboard-store.ts.
-const STORAGE_KEY = 'eraser-whiteboard-elements';
-
 // ---------------------------------------------------------------------------
 // Element factories — the store operates on the WhiteboardElement union, so
 // tests build minimal-but-valid elements and override only what they need.
@@ -746,24 +743,7 @@ describe('active style setters', () => {
 // localStorage persistence (debounced)
 // ---------------------------------------------------------------------------
 
-describe('localStorage persistence', () => {
-  // The store guards every storage call behind `typeof window === 'undefined'`,
-  // so tests stub a minimal window + localStorage to exercise the real path.
-  function stubPersistence(initial: Record<string, string> = {}) {
-    const storage = new Map<string, string>(Object.entries(initial));
-    vi.stubGlobal('window', {});
-    vi.stubGlobal('localStorage', {
-      getItem: (key: string) => storage.get(key) ?? null,
-      setItem: (key: string, value: string) => {
-        storage.set(key, value);
-      },
-      removeItem: (key: string) => {
-        storage.delete(key);
-      },
-    });
-    return storage;
-  }
-
+describe('canvas clearing & hydration', () => {
   it('resetCanvas clears all elements, selection, and undo/redo stacks', () => {
     useWhiteboardStore.getState().addElement(rect({ id: 'a' }));
     expect(ids()).toEqual(['a']);
