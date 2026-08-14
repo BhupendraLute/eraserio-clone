@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import { Search, Send } from 'lucide-react';
+import { Search, Send, LayoutGrid, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UserNav } from '@/components/auth/UserNav';
 
@@ -11,6 +11,8 @@ interface DashboardHeaderProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onOpenInviteModal: () => void;
+  viewMode?: 'table' | 'grid';
+  onViewModeChange?: (mode: 'table' | 'grid') => void;
 }
 
 export function DashboardHeader({
@@ -19,6 +21,8 @@ export function DashboardHeader({
   searchQuery,
   onSearchChange,
   onOpenInviteModal,
+  viewMode = 'table',
+  onViewModeChange,
 }: DashboardHeaderProps) {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -90,15 +94,15 @@ export function DashboardHeader({
         </button>
       </div>
 
-      {/* Search & Team Presence & Invite Button */}
-      <div className="flex items-center gap-4">
+      {/* Search & View Mode & Team Presence & Invite Button */}
+      <div className="flex items-center gap-3">
         {/* Search Bar */}
-        <div className="relative w-64">
+        <div className="relative w-56">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
           <input
             ref={searchInputRef}
             type="text"
-            placeholder="Search..."
+            placeholder="Search documents..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             className="w-full h-8 pl-8 pr-12 rounded-lg bg-zinc-900/90 border border-zinc-800 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-zinc-700 transition-colors"
@@ -109,6 +113,30 @@ export function DashboardHeader({
             </kbd>
           </div>
         </div>
+
+        {/* View Mode Toggle (Table / Grid) */}
+        {onViewModeChange && (
+          <div className="flex items-center rounded-lg border border-zinc-800 bg-zinc-900/80 p-0.5">
+            <button
+              onClick={() => onViewModeChange('table')}
+              className={`p-1.5 rounded-md transition-colors ${
+                viewMode === 'table' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'
+              }`}
+              title="Table View"
+            >
+              <List className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => onViewModeChange('grid')}
+              className={`p-1.5 rounded-md transition-colors ${
+                viewMode === 'grid' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'
+              }`}
+              title="Grid View"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Invite Button */}
         <Button

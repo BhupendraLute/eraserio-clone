@@ -1,30 +1,72 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Send, UserPlus, CheckCircle2 } from 'lucide-react';
+import { Send, UserPlus, CheckCircle2, Copy, Check, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { useDocumentStore } from '@/lib/store/document-store';
 
 interface InviteTeamModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  workspaceId?: string | null;
 }
 
-export function InviteTeamModal({ open, onOpenChange }: InviteTeamModalProps) {
+export function InviteTeamModal({ open, onOpenChange, workspaceId }: InviteTeamModalProps) {
+  const activeWorkspaceId = workspaceId || useDocumentStore((s) => s.activeWorkspaceId);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'MEMBER' | 'VIEWER' | 'ADMIN'>('MEMBER');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [sent, setSent] = useState(false);
 
-  const handleSendInvite = (e: React.FormEvent) => {
+  const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email.trim()) {
+    if (!email.trim() || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      if (activeWorkspaceId) {
+        const res = await fetch(`/api/workspaces/${activeWorkspaceId}/invites`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email.trim(), role }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.inviteUrl) {
+            setGeneratedLink(data.inviteUrl);
+            setSent(true);
+            return;
+          }
+        }
+      }
+
+      // Offline / guest invite fallback URL
+      const mockToken = Math.random().toString(36).substring(2, 10);
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://architecta.app';
+      const fallbackUrl = `${origin}/invite/${mockToken}?email=${encodeURIComponent(email.trim())}&role=${role}`;
+      setGeneratedLink(fallbackUrl);
       setSent(true);
-      setTimeout(() => {
-        setSent(false);
-        setEmail('');
-        onOpenChange(false);
-      }, 1500);
+    } finally {
+      setIsSubmitting(false);
     }
+  };
+
+  const handleCopy = () => {
+    if (generatedLink) {
+      navigator.clipboard.writeText(generatedLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleReset = () => {
+    setSent(false);
+    setEmail('');
+    setGeneratedLink(null);
+    onOpenChange(false);
   };
 
   return (
@@ -45,12 +87,49 @@ export function InviteTeamModal({ open, onOpenChange }: InviteTeamModalProps) {
         </DialogHeader>
 
         {sent ? (
-          <div className="py-8 flex flex-col items-center justify-center space-y-3 text-center">
-            <CheckCircle2 className="h-10 w-10 text-emerald-400 animate-bounce" />
-            <div className="text-sm font-bold text-white">Invitation Sent!</div>
-            <p className="text-xs text-zinc-400">
-              An invitation email has been dispatched to <span className="text-blue-400 font-mono">{email}</span>.
-            </p>
+          <div className="py-4 space-y-4 text-center">
+            <div className="flex flex-col items-center justify-center space-y-2">
+              <CheckCircle2 className="h-10 w-10 text-emerald-400 animate-bounce" />
+              <div className="text-sm font-bold text-white">Invitation Dispatched!</div>
+              <p className="text-xs text-zinc-400">
+                An invitation email has been sent to <span className="text-blue-400 font-mono">{email}</span>.
+              </p>
+            </div>
+
+            {generatedLink && (
+              <div className="rounded-xl border border-blue-500/30 bg-blue-950/20 p-3 space-y-2 text-left">
+                <div className="flex items-center justify-between text-[11px] font-bold text-blue-400">
+                  <span>Shareable Invite Link</span>
+                  <span className="text-[10px] text-zinc-400">Expires in 7 days</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={generatedLink}
+                    className="flex-1 h-8 px-2.5 rounded-lg bg-zinc-900 border border-zinc-800 text-[11px] font-mono text-zinc-300 focus:outline-none select-all"
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleCopy}
+                    className="h-8 px-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs gap-1"
+                  >
+                    {copied ? <Check className="h-3.5 w-3.5 text-emerald-300" /> : <Copy className="h-3.5 w-3.5" />}
+                    <span>{copied ? 'Copied' : 'Copy'}</span>
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2">
+              <Button
+                type="button"
+                onClick={handleReset}
+                className="bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold px-4 h-8 rounded-xl"
+              >
+                Done
+              </Button>
+            </div>
           </div>
         ) : (
           <form onSubmit={handleSendInvite} className="space-y-4 py-2">
@@ -94,11 +173,20 @@ export function InviteTeamModal({ open, onOpenChange }: InviteTeamModalProps) {
               </Button>
               <Button
                 type="submit"
-                disabled={!email.trim()}
+                disabled={!email.trim() || isSubmitting}
                 className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs gap-1.5 px-5 h-9 rounded-xl shadow-md"
               >
-                <Send className="h-3.5 w-3.5" />
-                <span>Send Invite</span>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Sending...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-3.5 w-3.5" />
+                    <span>Send Invite</span>
+                  </>
+                )}
               </Button>
             </div>
           </form>

@@ -4,7 +4,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { AuthProvider } from "@/components/providers/AuthProvider";
-import { ThemeProvider } from "next-themes";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
 
 const publicSans = Public_Sans({ subsets: ["latin"], variable: "--font-sans" });
 

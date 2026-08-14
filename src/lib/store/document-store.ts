@@ -10,6 +10,19 @@ export interface DashboardFolder {
   id: string;
   name: string;
   createdAt: string;
+  color?: string;
+}
+
+export interface WorkspaceItem {
+  id: string;
+  name: string;
+  ownerId: string;
+  createdAt: string;
+  updatedAt?: string;
+  _count?: {
+    documents: number;
+    members: number;
+  };
 }
 
 export interface DocumentMetadata {
@@ -33,6 +46,8 @@ export type SyncStatus = 'synced' | 'saving' | 'offline' | 'error';
 interface DocumentStoreState {
   documents: DocumentMetadata[];
   folders: DashboardFolder[];
+  workspaces: WorkspaceItem[];
+  activeWorkspaceId: string | null;
   activeDocumentId: string | null;
   activeDocumentTitle: string;
   syncStatus: SyncStatus;
@@ -41,18 +56,26 @@ interface DocumentStoreState {
   mode: 'cloud' | 'offline';
   authStatus: AuthStatus;
   hasPendingGuestDocs: boolean;
+  isLoading: boolean;
 
   setAuthStatus: (status: AuthStatus) => void;
   fetchDocuments: () => Promise<void>;
-  createDocument: (title?: string, initialDiagram?: string) => Promise<string>;
+  createDocument: (title?: string, initialDiagram?: string, folderId?: string | null) => Promise<string>;
   duplicateDocument: (id: string) => Promise<string | null>;
   selectDocument: (id: string) => Promise<void>;
   renameDocument: (id: string, newTitle: string) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
   archiveDocument: (id: string, archive?: boolean) => Promise<void>;
-  createFolder: (name: string) => string;
-  deleteFolder: (folderId: string) => void;
+  batchDeleteDocuments: (ids: string[]) => Promise<void>;
+  batchArchiveDocuments: (ids: string[], archive: boolean) => Promise<void>;
+  batchMoveDocumentsToFolder: (docIds: string[], folderId: string | null) => void;
+  createFolder: (name: string, color?: string) => string;
+  renameFolder: (folderId: string, newName: string) => void;
+  deleteFolder: (folderId: string, deleteContents?: boolean) => void;
   moveDocumentToFolder: (docId: string, folderId: string | null) => void;
+  fetchWorkspaces: () => Promise<void>;
+  createWorkspace: (name: string) => Promise<WorkspaceItem | null>;
+  setActiveWorkspace: (id: string) => void;
   saveCurrentDocumentState: (data: {
     whiteboardData?: unknown;
     diagramSource?: string;
@@ -67,6 +90,84 @@ interface DocumentStoreState {
 
 let _saveDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 const GUEST_DOCS_KEY = 'eraserio_guest_docs';
+const FOLDERS_KEY = 'eraserio_folders';
+const DOC_META_KEY = 'eraserio_doc_meta';
+
+interface StoredDocMeta {
+  isArchived?: boolean;
+  folderId?: string | null;
+  isPrivate?: boolean;
+}
+
+function getStoredDocMeta(): Record<string, StoredDocMeta> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(DOC_META_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function setStoredDocMeta(map: Record<string, StoredDocMeta>) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(DOC_META_KEY, JSON.stringify(map));
+  } catch {
+    // quota exceeded or SSR
+  }
+}
+
+function updateDocMeta(docId: string, partial: StoredDocMeta) {
+  const current = getStoredDocMeta();
+  current[docId] = { ...current[docId], ...partial };
+  setStoredDocMeta(current);
+}
+
+function batchUpdateDocMeta(docIds: string[], partial: StoredDocMeta) {
+  const current = getStoredDocMeta();
+  for (const id of docIds) {
+    current[id] = { ...current[id], ...partial };
+  }
+  setStoredDocMeta(current);
+}
+
+function removeDocMeta(docIds: string[]) {
+  const current = getStoredDocMeta();
+  for (const id of docIds) {
+    delete current[id];
+  }
+  setStoredDocMeta(current);
+}
+
+const DEFAULT_FOLDERS: DashboardFolder[] = [
+  { id: 'f-architecture', name: 'Architecture System', createdAt: new Date().toISOString() },
+  { id: 'f-designs', name: 'UI / Wireframes', createdAt: new Date().toISOString() },
+];
+
+function getStoredFolders(): DashboardFolder[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(FOLDERS_KEY);
+    if (raw !== null) {
+      return JSON.parse(raw);
+    }
+    // Initialize default folders on first run only
+    localStorage.setItem(FOLDERS_KEY, JSON.stringify(DEFAULT_FOLDERS));
+    return DEFAULT_FOLDERS;
+  } catch {
+    return [];
+  }
+}
+
+function setStoredFolders(folders: DashboardFolder[]) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(FOLDERS_KEY, JSON.stringify(folders));
+  } catch {
+    // quota exceeded or SSR
+  }
+}
 
 function getStoredGuestDocs(): DocumentMetadata[] {
   if (typeof window === 'undefined') return [];
@@ -89,10 +190,9 @@ function setStoredGuestDocs(docs: DocumentMetadata[]) {
 
 export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
   documents: [],
-  folders: [
-    { id: 'f-architecture', name: 'Architecture System', createdAt: new Date().toISOString() },
-    { id: 'f-designs', name: 'UI / Wireframes', createdAt: new Date().toISOString() },
-  ],
+  folders: [],
+  workspaces: [],
+  activeWorkspaceId: null,
   activeDocumentId: null,
   activeDocumentTitle: 'Untitled Document',
   syncStatus: 'synced',
@@ -101,13 +201,15 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
   mode: 'offline',
   authStatus: 'loading',
   hasPendingGuestDocs: false,
+  isLoading: true,
 
   setAuthStatus: (authStatus) => {
     const prev = get().authStatus;
-    set({ authStatus });
+    set({ authStatus, folders: getStoredFolders() });
 
     if (prev !== authStatus) {
       void get().fetchDocuments();
+      void get().fetchWorkspaces();
       if (authStatus === 'authenticated') {
         get().checkGuestDocuments();
       }
@@ -155,6 +257,48 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
     set({ hasPendingGuestDocs: false });
   },
 
+  fetchWorkspaces: async () => {
+    try {
+      const res = await fetch('/api/workspaces');
+      if (res.ok) {
+        const data = await res.json();
+        const wsList: WorkspaceItem[] = data.workspaces || [];
+        set({
+          workspaces: wsList,
+          activeWorkspaceId: wsList.length > 0 ? wsList[0].id : null,
+        });
+      }
+    } catch {
+      // offline / unauthenticated
+    }
+  },
+
+  createWorkspace: async (name: string) => {
+    try {
+      const res = await fetch('/api/workspaces', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (data.workspace) {
+        set((state) => ({
+          workspaces: [data.workspace, ...state.workspaces],
+          activeWorkspaceId: data.workspace.id,
+        }));
+        return data.workspace;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  },
+
+  setActiveWorkspace: (id: string) => {
+    set({ activeWorkspaceId: id });
+  },
+
   fetchDocuments: async () => {
     try {
       const res = await fetch('/api/documents');
@@ -163,24 +307,55 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
       const docs: DocumentMetadata[] = data.documents || [];
       const mode = data.mode || 'offline';
 
+      let resolvedDocs = docs;
+      if (mode === 'offline') {
+        const guestDocs = getStoredGuestDocs();
+        if (guestDocs.length > 0) {
+          resolvedDocs = guestDocs;
+        } else if (get().documents.length > 0) {
+          resolvedDocs = get().documents;
+          setStoredGuestDocs(resolvedDocs);
+        }
+      }
+
+      // Merge local metadata (isArchived, folderId, isPrivate) into all documents
+      const metaMap = getStoredDocMeta();
+      resolvedDocs = resolvedDocs.map((d) => ({
+        ...d,
+        isArchived: metaMap[d.id]?.isArchived !== undefined ? metaMap[d.id].isArchived : (d.isArchived ?? false),
+        folderId: metaMap[d.id]?.folderId !== undefined ? metaMap[d.id].folderId : (d.folderId ?? null),
+        isPrivate: metaMap[d.id]?.isPrivate !== undefined ? metaMap[d.id].isPrivate : (d.isPrivate ?? false),
+      }));
+
       const currentId = get().activeDocumentId;
-      const stillExists = currentId ? docs.some((d) => d.id === currentId) : false;
+      const stillExists = currentId ? resolvedDocs.some((d) => d.id === currentId) : false;
 
       set({
-        documents: docs,
+        documents: resolvedDocs,
+        folders: getStoredFolders(),
         mode,
+        isLoading: false,
         ...(currentId && !stillExists ? { activeDocumentId: null } : {}),
       });
 
-      if (docs.length > 0 && !get().activeDocumentId) {
-        await get().selectDocument(docs[0].id);
+      if (resolvedDocs.length > 0 && !get().activeDocumentId) {
+        await get().selectDocument(resolvedDocs[0].id);
       }
     } catch {
-      set({ mode: 'offline' });
+      const guestDocs = getStoredGuestDocs();
+      let resolvedDocs = guestDocs.length > 0 ? guestDocs : get().documents;
+      const metaMap = getStoredDocMeta();
+      resolvedDocs = resolvedDocs.map((d) => ({
+        ...d,
+        isArchived: metaMap[d.id]?.isArchived !== undefined ? metaMap[d.id].isArchived : (d.isArchived ?? false),
+        folderId: metaMap[d.id]?.folderId !== undefined ? metaMap[d.id].folderId : (d.folderId ?? null),
+        isPrivate: metaMap[d.id]?.isPrivate !== undefined ? metaMap[d.id].isPrivate : (d.isPrivate ?? false),
+      }));
+      set({ mode: 'offline', documents: resolvedDocs, folders: getStoredFolders(), isLoading: false });
     }
   },
 
-  createDocument: async (title = 'Untitled Document', initialDiagram?: string) => {
+  createDocument: async (title = 'Untitled Document', initialDiagram?: string, folderId?: string | null) => {
     set({ syncStatus: 'saving' });
 
     // Clean slate canvas & diagram for new document
@@ -206,6 +381,7 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
         updatedAt: doc?.updatedAt || new Date().toISOString(),
         whiteboardData: '[]',
         diagramSource: diagramContent,
+        folderId: folderId || null,
         isArchived: false,
         commentsCount: 0,
       };
@@ -218,6 +394,10 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
         isPublic: false,
         shareToken: null,
       }));
+
+      if (folderId) {
+        updateDocMeta(newId, { folderId });
+      }
 
       // If in offline guest mode, save to localStorage
       if (get().mode === 'offline') {
@@ -238,34 +418,133 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
   },
 
   archiveDocument: async (id: string, archive = true) => {
-    set((state) => ({
-      documents: state.documents.map((d) => (d.id === id ? { ...d, isArchived: archive } : d)),
-    }));
+    updateDocMeta(id, { isArchived: archive });
+    const updated = get().documents.map((d) => (d.id === id ? { ...d, isArchived: archive } : d));
+    set({ documents: updated });
+
+    if (get().mode === 'offline') {
+      const guestDocs = getStoredGuestDocs();
+      const targetDocs = guestDocs.length > 0 ? guestDocs : updated;
+      const updatedGuest = targetDocs.map((d) => (d.id === id ? { ...d, isArchived: archive } : d));
+      setStoredGuestDocs(updatedGuest);
+    }
   },
 
-  createFolder: (name: string) => {
+  batchDeleteDocuments: async (ids: string[]) => {
+    if (ids.length === 0) return;
+    removeDocMeta(ids);
+    const idSet = new Set(ids);
+    set((state) => ({
+      documents: state.documents.filter((d) => !idSet.has(d.id)),
+      activeDocumentId: state.activeDocumentId && idSet.has(state.activeDocumentId) ? null : state.activeDocumentId,
+    }));
+
+    if (get().mode === 'offline') {
+      const guestDocs = getStoredGuestDocs();
+      setStoredGuestDocs(guestDocs.filter((d) => !idSet.has(d.id)));
+    }
+
+    try {
+      await Promise.all(
+        ids.map((id) => fetch(`/api/documents/${id}`, { method: 'DELETE' }).catch(() => {}))
+      );
+    } catch {
+      // offline error handled
+    }
+  },
+
+  batchArchiveDocuments: async (ids: string[], archive: boolean) => {
+    if (ids.length === 0) return;
+    batchUpdateDocMeta(ids, { isArchived: archive });
+    const idSet = new Set(ids);
+    const updated = get().documents.map((d) => (idSet.has(d.id) ? { ...d, isArchived: archive } : d));
+    set({ documents: updated });
+
+    if (get().mode === 'offline') {
+      const guestDocs = getStoredGuestDocs();
+      const targetDocs = guestDocs.length > 0 ? guestDocs : updated;
+      const updatedGuest = targetDocs.map((d) => (idSet.has(d.id) ? { ...d, isArchived: archive } : d));
+      setStoredGuestDocs(updatedGuest);
+    }
+  },
+
+  batchMoveDocumentsToFolder: (docIds: string[], folderId: string | null) => {
+    if (docIds.length === 0) return;
+    batchUpdateDocMeta(docIds, { folderId });
+    const idSet = new Set(docIds);
+    const updated = get().documents.map((d) => (idSet.has(d.id) ? { ...d, folderId } : d));
+    set({ documents: updated });
+
+    if (get().mode === 'offline') {
+      const guestDocs = getStoredGuestDocs();
+      const targetDocs = guestDocs.length > 0 ? guestDocs : updated;
+      const updatedGuest = targetDocs.map((d) => (idSet.has(d.id) ? { ...d, folderId } : d));
+      setStoredGuestDocs(updatedGuest);
+    }
+  },
+
+  createFolder: (name: string, color?: string) => {
     const newFolder: DashboardFolder = {
       id: generateId('folder'),
       name,
       createdAt: new Date().toISOString(),
+      ...(color ? { color } : {}),
     };
-    set((state) => ({
-      folders: [...state.folders, newFolder],
-    }));
+    const updatedFolders = [...get().folders, newFolder];
+    set({ folders: updatedFolders });
+    setStoredFolders(updatedFolders);
     return newFolder.id;
   },
 
-  deleteFolder: (folderId: string) => {
-    set((state) => ({
-      folders: state.folders.filter((f) => f.id !== folderId),
-      documents: state.documents.map((d) => (d.folderId === folderId ? { ...d, folderId: null } : d)),
-    }));
+  renameFolder: (folderId: string, newName: string) => {
+    const updatedFolders = get().folders.map((f) =>
+      f.id === folderId ? { ...f, name: newName } : f
+    );
+    set({ folders: updatedFolders });
+    setStoredFolders(updatedFolders);
+  },
+
+  deleteFolder: (folderId: string, deleteContents = false) => {
+    const updatedFolders = get().folders.filter((f) => f.id !== folderId);
+    setStoredFolders(updatedFolders);
+
+    const updatedDocs = deleteContents
+      ? get().documents.filter((d) => d.folderId !== folderId)
+      : get().documents.map((d) => (d.folderId === folderId ? { ...d, folderId: null } : d));
+
+    if (deleteContents) {
+      const deletedIds = get().documents.filter((d) => d.folderId === folderId).map((d) => d.id);
+      removeDocMeta(deletedIds);
+    } else {
+      const resetIds = get().documents.filter((d) => d.folderId === folderId).map((d) => d.id);
+      batchUpdateDocMeta(resetIds, { folderId: null });
+    }
+
+    set({
+      folders: updatedFolders,
+      documents: updatedDocs,
+    });
+
+    if (get().mode === 'offline') {
+      const guestDocs = getStoredGuestDocs();
+      const updatedGuest = deleteContents
+        ? guestDocs.filter((d) => d.folderId !== folderId)
+        : guestDocs.map((d) => (d.folderId === folderId ? { ...d, folderId: null } : d));
+      setStoredGuestDocs(updatedGuest);
+    }
   },
 
   moveDocumentToFolder: (docId: string, folderId: string | null) => {
-    set((state) => ({
-      documents: state.documents.map((d) => (d.id === docId ? { ...d, folderId } : d)),
-    }));
+    updateDocMeta(docId, { folderId });
+    const updated = get().documents.map((d) => (d.id === docId ? { ...d, folderId } : d));
+    set({ documents: updated });
+
+    if (get().mode === 'offline') {
+      const guestDocs = getStoredGuestDocs();
+      const targetDocs = guestDocs.length > 0 ? guestDocs : updated;
+      const updatedGuest = targetDocs.map((d) => (d.id === docId ? { ...d, folderId } : d));
+      setStoredGuestDocs(updatedGuest);
+    }
   },
 
   duplicateDocument: async (id: string) => {
@@ -274,37 +553,79 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
       const res = await fetch(`/api/documents/${id}/duplicate`, {
         method: 'POST',
       });
-      if (!res.ok) throw new Error('Failed to duplicate');
-      const data = await res.json();
-      const duplicated = data.document;
+      if (res.ok) {
+        const data = await res.json();
+        const duplicated = data.document;
 
-      if (duplicated) {
-        const newMeta: DocumentMetadata = {
-          id: duplicated.id,
-          title: duplicated.title,
-          isPublic: false,
-          shareToken: null,
-          createdAt: duplicated.createdAt,
-          updatedAt: duplicated.updatedAt,
-        };
+        if (duplicated) {
+          const newMeta: DocumentMetadata = {
+            id: duplicated.id,
+            title: duplicated.title,
+            isPublic: false,
+            shareToken: null,
+            createdAt: duplicated.createdAt,
+            updatedAt: duplicated.updatedAt,
+            folderId: duplicated.folderId || null,
+          };
 
-        set((state) => ({
-          documents: [newMeta, ...state.documents],
-          syncStatus: 'synced',
-        }));
+          set((state) => ({
+            documents: [newMeta, ...state.documents],
+            syncStatus: 'synced',
+          }));
 
-        await get().selectDocument(duplicated.id);
-        return duplicated.id;
+          await get().selectDocument(duplicated.id);
+          return duplicated.id;
+        }
+
+        // Nothing was duplicated — return to idle instead of leaving the UI stuck on saving
+        set({ syncStatus: 'synced' });
+        return null;
       }
-
-      // Nothing was duplicated — return to idle instead of leaving the UI
-      // stuck on 'saving'.
-      set({ syncStatus: 'synced' });
-      return null;
     } catch {
+      // offline fallback
+    }
+
+    // Offline / Guest mode fallback duplication
+    const sourceDoc = get().documents.find((d) => d.id === id);
+    if (!sourceDoc) {
       set({ syncStatus: 'error' });
       return null;
     }
+
+    const newId = generateId('doc');
+    const now = new Date().toISOString();
+    const copyTitle = sourceDoc.title.endsWith('(Copy)')
+      ? sourceDoc.title
+      : `${sourceDoc.title} (Copy)`;
+
+    const guestDocs = getStoredGuestDocs();
+    const storedSource = guestDocs.find((d) => d.id === id);
+
+    const newMeta: DocumentMetadata = {
+      id: newId,
+      title: copyTitle,
+      isPublic: false,
+      shareToken: null,
+      createdAt: now,
+      updatedAt: now,
+      whiteboardData: storedSource?.whiteboardData || sourceDoc.whiteboardData || '[]',
+      diagramSource: storedSource?.diagramSource || sourceDoc.diagramSource || '',
+      docContent: storedSource?.docContent || sourceDoc.docContent || '',
+      folderId: sourceDoc.folderId || null,
+      isArchived: false,
+    };
+
+    set((state) => ({
+      documents: [newMeta, ...state.documents],
+      syncStatus: 'synced',
+    }));
+
+    if (get().mode === 'offline') {
+      setStoredGuestDocs([newMeta, ...guestDocs]);
+    }
+
+    await get().selectDocument(newId);
+    return newId;
   },
 
   selectDocument: async (id: string) => {
@@ -366,31 +687,49 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
   },
 
   renameDocument: async (id: string, newTitle: string) => {
+    const updated = get().documents.map((d) => (d.id === id ? { ...d, title: newTitle } : d));
     set((state) => ({
       activeDocumentTitle: state.activeDocumentId === id ? newTitle : state.activeDocumentTitle,
-      documents: state.documents.map((d) => (d.id === id ? { ...d, title: newTitle } : d)),
+      documents: updated,
       syncStatus: 'saving',
     }));
 
+    if (get().mode === 'offline') {
+      const guestDocs = getStoredGuestDocs();
+      const targetDocs = guestDocs.length > 0 ? guestDocs : updated;
+      const updatedGuest = targetDocs.map((d) => (d.id === id ? { ...d, title: newTitle } : d));
+      setStoredGuestDocs(updatedGuest);
+    }
+
     try {
-      await fetch(`/api/documents/${id}`, {
+      const res = await fetch(`/api/documents/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: newTitle }),
       });
-      set({ syncStatus: 'synced' });
+      if (res.ok) {
+        set({ syncStatus: 'synced' });
+      } else {
+        set({ syncStatus: 'error' });
+      }
     } catch {
       set({ syncStatus: 'error' });
     }
   },
 
   deleteDocument: async (id: string) => {
+    removeDocMeta([id]);
     let nextActive: string | null = null;
     set((state) => {
       const updated = state.documents.filter((d) => d.id !== id);
       nextActive = state.activeDocumentId === id ? (updated[0]?.id ?? null) : state.activeDocumentId;
       return { documents: updated, activeDocumentId: nextActive };
     });
+
+    if (get().mode === 'offline') {
+      const guestDocs = getStoredGuestDocs();
+      setStoredGuestDocs(guestDocs.filter((d) => d.id !== id));
+    }
 
     if (nextActive && nextActive !== id) {
       await get().selectDocument(nextActive);
