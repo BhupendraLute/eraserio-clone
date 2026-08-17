@@ -9,6 +9,7 @@ interface CollaborationStoreState {
   documentId: string | null;
   status: ConnectionStatus;
   localUser: CollaboratorPresence | null;
+  collaborators: Map<string, CollaboratorPresence>;
   followingUserId: string | null;
   setFollowingUserId: (id: string | null) => void;
   

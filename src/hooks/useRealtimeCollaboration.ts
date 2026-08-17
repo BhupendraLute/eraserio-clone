@@ -233,13 +233,21 @@ export function useRealtimeCollaboration() {
     };
   }, [activeDocumentId, setDocumentId, setStatus, resetCollaboration, handleIncomingMessage]);
 
+  const collaboratorsCount = useCollaborationStore((s) => s.collaborators.size);
+  const hasOtherCollaborators = collaboratorsCount > 0;
+
   const lastHttpCursorTimeRef = useRef<number>(0);
 
-  // Low-Latency rAF-Batched Pointer Cursor Publisher (Throttled HTTP Stream)
+  // Low-Latency rAF-Batched Pointer Cursor Publisher (Throttled HTTP Stream, active only when 2+ users connected)
   const publishCursor = useCallback(
     (cursor: CursorPosition | null) => {
       updateLocalCursor(cursor);
       pendingCursorRef.current = cursor;
+
+      // Skip streaming cursor over network if user is alone in the room
+      if (!hasOtherCollaborators) {
+        return;
+      }
 
       if (cursorRafIdRef.current !== null) {
         return;
@@ -303,7 +311,7 @@ export function useRealtimeCollaboration() {
         }
       });
     },
-    [activeDocumentId, updateLocalCursor]
+    [activeDocumentId, hasOtherCollaborators, updateLocalCursor]
   );
 
   // Reset baseline refs when switching documents to avoid stale diff broadcasts
@@ -313,9 +321,9 @@ export function useRealtimeCollaboration() {
     prevSelectedIdsRef.current = selectedIds;
   }, [activeDocumentId]);
 
-  // Micro-batched Local Whiteboard Elements Publisher (Delta Patch Optimized)
+  // Micro-batched Local Whiteboard Elements Publisher (Active only when 2+ users connected)
   useEffect(() => {
-    if (isRemoteWhiteboardUpdateRef.current || isDocumentLoading) {
+    if (isRemoteWhiteboardUpdateRef.current || isDocumentLoading || !hasOtherCollaborators) {
       prevElementsRef.current = elements;
       return;
     }
@@ -380,11 +388,11 @@ export function useRealtimeCollaboration() {
 
       broadcastMessage(msg);
     }
-  }, [elements, activeDocumentId, isDocumentLoading, broadcastMessage]);
+  }, [elements, activeDocumentId, isDocumentLoading, hasOtherCollaborators, broadcastMessage]);
 
-  // Diagram Source Code Publisher
+  // Diagram Source Code Publisher (Active only when 2+ users connected)
   useEffect(() => {
-    if (isRemoteDiagramUpdateRef.current || isDocumentLoading) {
+    if (isRemoteDiagramUpdateRef.current || isDocumentLoading || !hasOtherCollaborators) {
       prevDiagramSourceRef.current = diagramSource;
       return;
     }
@@ -405,11 +413,11 @@ export function useRealtimeCollaboration() {
 
       broadcastMessage(msg);
     }
-  }, [diagramSource, activeDocumentId, isDocumentLoading, broadcastMessage]);
+  }, [diagramSource, activeDocumentId, isDocumentLoading, hasOtherCollaborators, broadcastMessage]);
 
-  // Selected Element Publisher
+  // Selected Element Publisher (Active only when 2+ users connected)
   useEffect(() => {
-    if (isDocumentLoading) {
+    if (isDocumentLoading || !hasOtherCollaborators) {
       prevSelectedIdsRef.current = selectedIds;
       return;
     }
@@ -431,7 +439,7 @@ export function useRealtimeCollaboration() {
 
       broadcastMessage(msg);
     }
-  }, [selectedIds, activeDocumentId, isDocumentLoading, updateLocalSelection, broadcastMessage]);
+  }, [selectedIds, activeDocumentId, isDocumentLoading, hasOtherCollaborators, updateLocalSelection, broadcastMessage]);
 
   return {
     publishCursor,
