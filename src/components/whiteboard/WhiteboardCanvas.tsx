@@ -21,6 +21,9 @@ import { TextFormattingToolbar } from './toolbars/TextFormattingToolbar';
 import { FigureToolbar } from './toolbars/FigureToolbar';
 import { ZoomPanMenu } from './ZoomPanMenu';
 import { useTheme } from 'next-themes';
+import { CollaboratorCursors } from '@/components/collaboration/CollaboratorCursors';
+import { useRealtimeCollaboration } from '@/hooks/useRealtimeCollaboration';
+import { useCollaborationStore } from '@/lib/collaboration/collaboration-store';
 
 const SELECT_CURSOR_LIGHT = `url("data:image/svg+xml,%3Csvg width='24px' height='24px' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 21L4 4L21 11L14.7353 13.6849C14.2633 13.8872 13.8872 14.2633 13.6849 14.7353L11 21Z' stroke='%23292929' stroke-linecap='round' stroke-linejoin='round' stroke-width='2'/%3E%3C/svg%3E") 4 4, url('/cursor/select-cursor.svg') 4 4, default`;
 
@@ -89,10 +92,46 @@ export function WhiteboardCanvas() {
     panZoomHandlers: handlers,
   });
 
+  const { publishCursor } = useRealtimeCollaboration();
+
+  const handleCanvasPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    handlePointerMove(e);
+    if (svgRef.current) {
+      const rect = svgRef.current.getBoundingClientRect();
+      const screenX = e.clientX - rect.left;
+      const screenY = e.clientY - rect.top;
+      const canvasX = (screenX - transform.x) / transform.scale;
+      const canvasY = (screenY - transform.y) / transform.scale;
+      publishCursor({ x: canvasX, y: canvasY });
+    }
+  };
+
+  const handleCanvasPointerLeave = () => {
+    publishCursor(null);
+  };
+
   const [showExport, setShowExport] = useState(false);
   const hideUI = useWhiteboardStore((s) => s.hideUI);
   const setHideUI = useWhiteboardStore((s) => s.setHideUI);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; context: 'canvas' | 'element' | 'multi' } | null>(null);
+
+  const followingUserId = useCollaborationStore((s) => s.followingUserId);
+  const setFollowingUserId = useCollaborationStore((s) => s.setFollowingUserId);
+  const collaboratorsMap = useCollaborationStore((s) => s.collaborators);
+  const followedCollaborator = followingUserId ? collaboratorsMap.get(followingUserId) : null;
+
+  // Auto-recenter camera viewport to follow presenter in real time
+  useEffect(() => {
+    if (followedCollaborator?.cursor && svgRef.current) {
+      const { x, y } = followedCollaborator.cursor;
+      const rect = svgRef.current.getBoundingClientRect();
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+      const targetX = centerX - x * transform.scale;
+      const targetY = centerY - y * transform.scale;
+      setTransform({ x: targetX, y: targetY, scale: transform.scale });
+    }
+  }, [followedCollaborator, transform.scale, setTransform, svgRef]);
 
   const focusTargetNodes = useWhiteboardStore((s) => s.focusTargetNodes);
   const setFocusTargetNodes = useWhiteboardStore((s) => s.setFocusTargetNodes);
@@ -173,7 +212,8 @@ export function WhiteboardCanvas() {
         }}
         onWheel={handlers.onWheel}
         onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
+        onPointerMove={handleCanvasPointerMove}
+        onPointerLeave={handleCanvasPointerLeave}
         onPointerUp={handlePointerUp}
         onDoubleClick={handleCanvasDoubleClick}
         onContextMenu={(e) => {
@@ -322,8 +362,31 @@ export function WhiteboardCanvas() {
             }}
             onPortHover={setHoveredPort}
           />
+
+          {/* Real-time Multiplayer Cursors & Peer Selections Overlay */}
+          <CollaboratorCursors elements={elements} />
         </g>
       </svg>
+
+      {/* Active Presenter Follow Mode Banner */}
+      {followedCollaborator && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 rounded-full border border-amber-500/40 bg-background/95 px-4 py-1.5 shadow-xl backdrop-blur-md animate-in slide-in-from-top-4 duration-200 select-none">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+          </span>
+          <span className="text-xs font-semibold text-foreground">
+            Following <span className="font-bold text-amber-500">{followedCollaborator.name}</span>
+          </span>
+          <button
+            onClick={() => setFollowingUserId(null)}
+            className="ml-1 rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors text-xs"
+            title="Stop following presentation"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {contextMenu && (
         <ContextMenu

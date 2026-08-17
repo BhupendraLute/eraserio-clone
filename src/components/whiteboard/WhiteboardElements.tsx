@@ -7,7 +7,7 @@ import { ICON_MAP } from '@/lib/icons/icon-catalog';
 import { DiagramPreview } from '@/components/docs/DiagramPreview';
 import { useDiagramRegistry } from '@/lib/store/diagram-registry';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
-import { Server, Frame } from 'lucide-react';
+import { Server, Frame, Lock } from 'lucide-react';
 import { CommentThread } from './CommentThread';
 import { cn } from '@/lib/utils';
 import {
@@ -571,6 +571,26 @@ export function WhiteboardElements({
         }
 
         return null;
+      })}
+
+      {/* Locked Element Lock Badge Overlay */}
+      {elements.map((el) => {
+        if (!el.isLocked) return null;
+        const bounds = getElementBounds(el);
+        return (
+          <foreignObject
+            key={`lock-badge-${el.id}`}
+            x={bounds.x + bounds.width - 18}
+            y={bounds.y - 10}
+            width={24}
+            height={24}
+            className="overflow-visible pointer-events-none select-none"
+          >
+            <div className="flex h-5 w-5 items-center justify-center rounded-full border border-amber-500/40 bg-background/95 text-amber-500 shadow-sm backdrop-blur">
+              <Lock className="h-2.8 w-2.8 stroke-[2.5]" />
+            </div>
+          </foreignObject>
+        );
       })}
     </>
   );

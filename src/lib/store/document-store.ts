@@ -636,20 +636,13 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
 
     // Always reset canvas elements, selection, and undo/redo stacks when switching documents
     useWhiteboardStore.getState().resetCanvas();
-    set({ activeDocumentId: id, syncStatus: 'saving' });
+    set({ activeDocumentId: id, syncStatus: 'saving', isLoading: true });
 
     try {
       const res = await fetch(`/api/documents/${id}`);
       if (res.ok) {
         const { document: doc } = await res.json();
         if (doc) {
-          set({
-            activeDocumentTitle: doc.title,
-            isPublic: doc.isPublic,
-            shareToken: doc.shareToken,
-            syncStatus: 'synced',
-          });
-
           // Hydrate Whiteboard Elements for this specific document
           const elements = doc.whiteboardData
             ? (typeof doc.whiteboardData === 'string' ? JSON.parse(doc.whiteboardData) : doc.whiteboardData)
@@ -661,6 +654,14 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
           const reg = useDiagramRegistry.getState();
           reg.updateSource(reg.activeDiagramId || 'default', diagramSource);
           useDiagramStore.getState().setSource(diagramSource);
+
+          set({
+            activeDocumentTitle: doc.title,
+            isPublic: doc.isPublic,
+            shareToken: doc.shareToken,
+            syncStatus: 'synced',
+            isLoading: false,
+          });
           return;
         }
       }
@@ -672,8 +673,6 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
     const guestDocs = getStoredGuestDocs();
     const existing = guestDocs.find((d) => d.id === id) || get().documents.find((d) => d.id === id);
     if (existing) {
-      set({ activeDocumentTitle: existing.title, syncStatus: 'synced' });
-
       const elements = existing.whiteboardData
         ? (typeof existing.whiteboardData === 'string' ? JSON.parse(existing.whiteboardData) : existing.whiteboardData)
         : [];
@@ -683,6 +682,10 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
       const reg = useDiagramRegistry.getState();
       reg.updateSource(reg.activeDiagramId || 'default', diagramSource);
       useDiagramStore.getState().setSource(diagramSource);
+
+      set({ activeDocumentTitle: existing.title, syncStatus: 'synced', isLoading: false });
+    } else {
+      set({ isLoading: false });
     }
   },
 

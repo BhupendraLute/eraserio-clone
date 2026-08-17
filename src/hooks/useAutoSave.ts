@@ -15,6 +15,7 @@ export function useAutoSave() {
   const diagramSource = useDiagramStore((s) => s.source);
   const activeDocumentId = useDocumentStore((s) => s.activeDocumentId);
   const mode = useDocumentStore((s) => s.mode);
+  const isLoading = useDocumentStore((s) => s.isLoading);
   const saveCurrentDocumentState = useDocumentStore((s) => s.saveCurrentDocumentState);
 
   // Skip initial mount render to avoid saving default state before hydration
@@ -26,7 +27,7 @@ export function useAutoSave() {
       return;
     }
 
-    if (!activeDocumentId || mode === 'offline') return;
+    if (!activeDocumentId || mode === 'offline' || isLoading) return;
 
     saveCurrentDocumentState({
       whiteboardData: JSON.stringify(elements),
