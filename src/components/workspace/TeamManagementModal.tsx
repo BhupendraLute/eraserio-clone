@@ -3,9 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { useDocumentStore } from '@/lib/store/document-store';
 import { Button } from '@/components/ui/button';
-import { Users, Mail, UserPlus, ShieldCheck, Check, Copy, Trash2, Crown, Eye, Edit3 } from 'lucide-react';
+import { Users, Mail, ShieldCheck, Check, Copy, Trash2, Crown, Eye, Edit3, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { RemoveMemberConfirmModal } from '@/components/dashboard/modals/RemoveMemberConfirmModal';
+import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 
 interface TeamMember {
   id: string;
@@ -33,6 +35,8 @@ interface TeamManagementModalProps {
 
 export function TeamManagementModal({ open, onOpenChange }: TeamManagementModalProps) {
   const activeWorkspaceId = useDocumentStore((s) => s.activeWorkspaceId);
+  const workspaces = useDocumentStore((s) => s.workspaces);
+  const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
   const [activeTab, setActiveTab] = useState<'members' | 'invite'>('members');
 
   const [members, setMembers] = useState<TeamMember[]>([]);
@@ -45,22 +49,48 @@ export function TeamManagementModal({ open, onOpenChange }: TeamManagementModalP
   const [generatedInviteUrl, setGeneratedInviteUrl] = useState<string | null>(null);
   const [isInviting, setIsInviting] = useState<boolean>(false);
   const [copiedToken, setCopiedToken] = useState<boolean>(false);
+  const [memberToRemove, setMemberToRemove] = useState<TeamMember | null>(null);
+  const [leaveModalOpen, setLeaveModalOpen] = useState<boolean>(false);
+
+  const handleLeaveWorkspace = async () => {
+    if (!activeWorkspaceId) return;
+    try {
+      await useDocumentStore.getState().leaveWorkspace(activeWorkspaceId);
+      toast.success(`You have left ${activeWorkspace?.name || 'the workspace'}`);
+      onOpenChange(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to leave workspace';
+      toast.error(msg);
+    }
+  };
 
   useEffect(() => {
     if (!open || !activeWorkspaceId) return;
 
-    setIsLoading(true);
-    fetch(`/api/workspaces/${activeWorkspaceId}/members`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.members) setMembers(data.members);
-        if (data.invites) setInvites(data.invites);
-        if (data.currentUserRole) setCurrentUserRole(data.currentUserRole);
-      })
-      .catch((err) => {
+    let ignore = false;
+    async function loadMembers() {
+      try {
+        const res = await fetch(`/api/workspaces/${activeWorkspaceId}/members`);
+        if (res.ok) {
+          const data = await res.json();
+          if (!ignore) {
+            if (data.members) setMembers(data.members);
+            if (data.invites) setInvites(data.invites);
+            if (data.currentUserRole) setCurrentUserRole(data.currentUserRole);
+          }
+        }
+      } catch (err) {
         console.error('Failed to load team members:', err);
-      })
-      .finally(() => setIsLoading(false));
+      } finally {
+        if (!ignore) setIsLoading(false);
+      }
+    }
+
+    void loadMembers();
+
+    return () => {
+      ignore = true;
+    };
   }, [open, activeWorkspaceId]);
 
   const handleSendInvite = async (e: React.FormEvent) => {
@@ -124,11 +154,11 @@ export function TeamManagementModal({ open, onOpenChange }: TeamManagementModalP
     }
   };
 
-  const handleRemoveMember = async (targetUserId: string) => {
-    if (!activeWorkspaceId) return;
+  const handleConfirmRemoveMember = async () => {
+    if (!activeWorkspaceId || !memberToRemove) return;
 
     try {
-      const res = await fetch(`/api/workspaces/${activeWorkspaceId}/members?userId=${targetUserId}`, {
+      const res = await fetch(`/api/workspaces/${activeWorkspaceId}/members?memberId=${memberToRemove.id}`, {
         method: 'DELETE',
       });
 
@@ -137,7 +167,8 @@ export function TeamManagementModal({ open, onOpenChange }: TeamManagementModalP
         return;
       }
 
-      setMembers((prev) => prev.filter((m) => m.user.id !== targetUserId));
+      setMembers((prev) => prev.filter((m) => m.id !== memberToRemove.id));
+      setMemberToRemove(null);
       toast.success('Member removed from team');
     } catch {
       toast.error('Failed to remove member');
@@ -188,17 +219,19 @@ export function TeamManagementModal({ open, onOpenChange }: TeamManagementModalP
           >
             Team Members ({members.length})
           </button>
-          <button
-            onClick={() => setActiveTab('invite')}
-            className={cn(
-              'flex-1 rounded-md py-1.5 text-xs font-semibold transition-all',
-              activeTab === 'invite'
-                ? 'bg-background text-foreground shadow-xs'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            Invite Members
-          </button>
+          {(currentUserRole === 'OWNER' || currentUserRole === 'ADMIN') && (
+            <button
+              onClick={() => setActiveTab('invite')}
+              className={cn(
+                'flex-1 rounded-md py-1.5 text-xs font-semibold transition-all',
+                activeTab === 'invite'
+                  ? 'bg-background text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              Invite Members
+            </button>
+          )}
         </div>
 
         {/* Tab 1: Members List */}
@@ -257,8 +290,8 @@ export function TeamManagementModal({ open, onOpenChange }: TeamManagementModalP
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 text-destructive hover:bg-destructive/10"
-                        onClick={() => handleRemoveMember(m.user.id)}
+                        className="h-7 w-7 text-destructive hover:bg-destructive/10 cursor-pointer"
+                        onClick={() => setMemberToRemove(m)}
                         title="Remove member"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -386,6 +419,54 @@ export function TeamManagementModal({ open, onOpenChange }: TeamManagementModalP
             )}
           </form>
         )}
+
+        {/* Footer Actions */}
+        {currentUserRole !== 'OWNER' && (
+          <div className="mt-4 pt-3 border-t flex items-center justify-between">
+            <div className="text-[11px] text-muted-foreground">
+              You are currently a <span className="font-semibold text-foreground">{currentUserRole}</span> in this team.
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setLeaveModalOpen(true)}
+              className="h-8 text-xs border-amber-500/30 bg-amber-500/5 text-amber-500 hover:bg-amber-500/15 hover:text-amber-400 gap-1.5 cursor-pointer"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              <span>Leave Workspace</span>
+            </Button>
+          </div>
+        )}
+
+        {/* Custom Shadcn UI Remove Member Confirmation Modal */}
+        <RemoveMemberConfirmModal
+          open={!!memberToRemove}
+          onOpenChange={(open) => !open && setMemberToRemove(null)}
+          memberName={memberToRemove?.user.name || memberToRemove?.user.email || 'Team Member'}
+          memberEmail={memberToRemove?.user.email}
+          memberRole={memberToRemove?.role}
+          memberImage={memberToRemove?.user.image}
+          workspaceName={activeWorkspace?.name}
+          onConfirm={handleConfirmRemoveMember}
+        />
+
+        {/* Leave Workspace Confirmation Modal */}
+        <ConfirmationModal
+          open={leaveModalOpen}
+          onOpenChange={setLeaveModalOpen}
+          title="Leave Workspace Team?"
+          description={
+            <>
+              Are you sure you want to leave <strong className="text-zinc-200">&quot;{activeWorkspace?.name || 'this workspace'}&quot;</strong>? You will lose access to all documents and whiteboards in this workspace until an admin invites you back.
+            </>
+          }
+          icon={<LogOut className="h-5 w-5 text-amber-400" />}
+          variant="warning"
+          confirmLabel="Leave Workspace"
+          confirmIcon={<LogOut className="h-3.5 w-3.5" />}
+          onConfirm={handleLeaveWorkspace}
+        />
       </div>
     </div>
   );

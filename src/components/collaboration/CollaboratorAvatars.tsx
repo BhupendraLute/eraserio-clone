@@ -1,8 +1,7 @@
 'use client';
 
-import React from 'react';
 import { useCollaborationStore } from '@/lib/collaboration/collaboration-store';
-import { Users, Wifi, WifiOff } from 'lucide-react';
+import { Wifi, WifiOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function CollaboratorAvatars() {

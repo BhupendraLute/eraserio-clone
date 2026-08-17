@@ -75,6 +75,7 @@ interface DocumentStoreState {
   moveDocumentToFolder: (docId: string, folderId: string | null) => void;
   fetchWorkspaces: () => Promise<void>;
   createWorkspace: (name: string) => Promise<WorkspaceItem | null>;
+  leaveWorkspace: (workspaceId: string) => Promise<boolean>;
   setActiveWorkspace: (id: string) => void;
   saveCurrentDocumentState: (data: {
     whiteboardData?: unknown;
@@ -263,13 +264,37 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
       if (res.ok) {
         const data = await res.json();
         const wsList: WorkspaceItem[] = data.workspaces || [];
-        set({
-          workspaces: wsList,
-          activeWorkspaceId: wsList.length > 0 ? wsList[0].id : null,
+        set((state) => {
+          const currentActive = state.activeWorkspaceId;
+          const stillValid = wsList.some((w) => w.id === currentActive);
+          return {
+            workspaces: wsList,
+            activeWorkspaceId: stillValid
+              ? currentActive
+              : wsList.length > 0
+              ? wsList[0].id
+              : null,
+          };
         });
       }
     } catch {
-      // offline / unauthenticated
+      // offline / unauthenticated fallback
+      set((state) => {
+        if (state.workspaces.length === 0) {
+          const fallbackWs: WorkspaceItem = {
+            id: 'ws-personal',
+            name: 'Personal Workspace',
+            ownerId: 'local-user',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          return {
+            workspaces: [fallbackWs],
+            activeWorkspaceId: state.activeWorkspaceId || fallbackWs.id,
+          };
+        }
+        return state;
+      });
     }
   },
 
@@ -284,7 +309,10 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
       const data = await res.json();
       if (data.workspace) {
         set((state) => ({
-          workspaces: [data.workspace, ...state.workspaces],
+          workspaces: [
+            data.workspace,
+            ...state.workspaces.filter((w) => w.id !== data.workspace.id),
+          ],
           activeWorkspaceId: data.workspace.id,
         }));
         return data.workspace;
@@ -292,6 +320,23 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
       return null;
     } catch {
       return null;
+    }
+  },
+
+  leaveWorkspace: async (workspaceId: string) => {
+    try {
+      const res = await fetch(`/api/workspaces/${workspaceId}/leave`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to leave workspace');
+      }
+      await get().fetchWorkspaces();
+      await get().fetchDocuments();
+      return true;
+    } catch (err) {
+      throw err;
     }
   },
 

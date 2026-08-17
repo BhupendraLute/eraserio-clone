@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { getUserId } from '@/lib/auth/session';
 import { createWorkspaceSchema } from '@/lib/api-validation';
+import { ensurePersonalWorkspace } from '@/lib/workspace/service';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +13,7 @@ export async function GET() {
   }
 
   try {
-    const workspaces = await prisma.workspace.findMany({
+    let workspaces = await prisma.workspace.findMany({
       where: {
         OR: [
           { ownerId: userId },
@@ -35,8 +36,18 @@ export async function GET() {
       },
     });
 
+    // If the user has no owned workspace, automatically create and persist their default Personal Workspace
+    const hasOwnedWorkspace = workspaces.some((w) => w.ownerId === userId);
+    if (!hasOwnedWorkspace) {
+      const defaultWs = await ensurePersonalWorkspace(userId);
+      if (defaultWs) {
+        workspaces = [defaultWs, ...workspaces.filter((w) => w.id !== defaultWs.id)];
+      }
+    }
+
     return NextResponse.json({ workspaces });
-  } catch {
+  } catch (error) {
+    console.error('[WorkspacesAPI] GET Error:', error);
     return NextResponse.json({ error: 'Failed to fetch workspaces' }, { status: 500 });
   }
 }
@@ -58,6 +69,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // Ensure the default Personal Workspace exists before creating an additional workspace
+    await ensurePersonalWorkspace(userId);
+
     const workspace = await prisma.workspace.create({
       data: {
         name: parsed.data.name,
@@ -79,7 +93,8 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ workspace }, { status: 201 });
-  } catch {
+  } catch (error) {
+    console.error('[WorkspacesAPI] POST Error:', error);
     return NextResponse.json({ error: 'Failed to create workspace' }, { status: 500 });
   }
 }

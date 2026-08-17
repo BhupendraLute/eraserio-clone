@@ -42,7 +42,7 @@ export const useCollaborationStore = create<CollaborationStoreState>((set, get) 
       return existing;
     }
 
-    const id = userId || `guest_${generateId(6)}`;
+    const id = userId || generateId('guest');
     const userName = name || (userId ? 'User' : `Guest ${id.slice(-4)}`);
     const color: UserColor = getCollaboratorColor(id);
 

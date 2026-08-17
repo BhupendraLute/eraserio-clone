@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from 'react';
 import { Search, Send, LayoutGrid, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UserNav } from '@/components/auth/UserNav';
+import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 
 interface DashboardHeaderProps {
   activeSubTab: 'all' | 'recents' | 'created-by-me' | 'folders' | 'unsorted';
@@ -148,8 +149,9 @@ export function DashboardHeader({
           <span>Invite</span>
         </Button>
 
-        {/* User Profile & Account Dropdown Tab */}
-        <div className="border-l border-zinc-800 pl-3">
+        {/* Notification Center & User Profile */}
+        <div className="flex items-center gap-2 border-l border-zinc-800 pl-3">
+          <NotificationCenter />
           <UserNav />
         </div>
       </div>
