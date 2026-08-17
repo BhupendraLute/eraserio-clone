@@ -48,6 +48,9 @@ export function useRealtimeCollaboration() {
   const prevDiagramSourceRef = useRef<string>(diagramSource);
   const prevSelectedIdsRef = useRef<string[]>(selectedIds);
 
+  const isDocumentLoading = useDocumentStore((s) => s.isLoading);
+  const knownSenderIdsRef = useRef<Set<string>>(new Set());
+
   // Initialize Local User Identity
   useEffect(() => {
     const userId = session?.user?.id;
@@ -55,7 +58,10 @@ export function useRealtimeCollaboration() {
     const userEmail = session?.user?.email ?? undefined;
     const userImage = session?.user?.image ?? undefined;
 
-    initializeLocalUser(userId, userName, userEmail, userImage);
+    const user = initializeLocalUser(userId, userName, userEmail, userImage);
+    if (user?.id) {
+      knownSenderIdsRef.current.add(user.id);
+    }
   }, [session, initializeLocalUser]);
 
   // High-Performance Low-Latency Message Dispatcher
@@ -99,8 +105,8 @@ export function useRealtimeCollaboration() {
   const handleIncomingMessage = useCallback(
     (message: CollaborationMessage) => {
       const localUser = useCollaborationStore.getState().localUser;
-      if (!localUser || message.senderId === localUser.id) {
-        return; // Ignore own reflected events
+      if (!localUser || message.senderId === localUser.id || knownSenderIdsRef.current.has(message.senderId)) {
+        return; // Ignore own reflected events from any local session ID variation
       }
 
       switch (message.type) {
@@ -227,7 +233,9 @@ export function useRealtimeCollaboration() {
     };
   }, [activeDocumentId, setDocumentId, setStatus, resetCollaboration, handleIncomingMessage]);
 
-  // Low-Latency rAF-Batched Pointer Cursor Publisher
+  const lastHttpCursorTimeRef = useRef<number>(0);
+
+  // Low-Latency rAF-Batched Pointer Cursor Publisher (Throttled HTTP Stream)
   const publishCursor = useCallback(
     (cursor: CursorPosition | null) => {
       updateLocalCursor(cursor);
@@ -265,15 +273,49 @@ export function useRealtimeCollaboration() {
           cursor: targetCursor,
         };
 
-        broadcastMessage(msg);
+        // 1. Instant 0ms local tab-to-tab BroadcastChannel
+        if (broadcastChannelRef.current) {
+          try {
+            broadcastChannelRef.current.postMessage(msg);
+          } catch (e) {
+            console.warn('[RealtimeCollab] BroadcastChannel error:', e);
+          }
+        }
+
+        // 2. Throttle HTTP POST cursor stream to server to max 10 packets/sec (100ms interval)
+        const now = Date.now();
+        if (cursor === null || now - lastHttpCursorTimeRef.current >= 100) {
+          lastHttpCursorTimeRef.current = now;
+          const payload = JSON.stringify(msg);
+          const url = `/api/documents/${activeDocumentId}/collaboration/publish`;
+
+          if (typeof navigator !== 'undefined' && navigator.sendBeacon && cursor !== null) {
+            const blob = new Blob([payload], { type: 'application/json' });
+            navigator.sendBeacon(url, blob);
+          } else {
+            fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: payload,
+              keepalive: true,
+            }).catch(() => {});
+          }
+        }
       });
     },
-    [activeDocumentId, updateLocalCursor, broadcastMessage]
+    [activeDocumentId, updateLocalCursor]
   );
+
+  // Reset baseline refs when switching documents to avoid stale diff broadcasts
+  useEffect(() => {
+    prevElementsRef.current = elements;
+    prevDiagramSourceRef.current = diagramSource;
+    prevSelectedIdsRef.current = selectedIds;
+  }, [activeDocumentId]);
 
   // Micro-batched Local Whiteboard Elements Publisher (Delta Patch Optimized)
   useEffect(() => {
-    if (isRemoteWhiteboardUpdateRef.current) {
+    if (isRemoteWhiteboardUpdateRef.current || isDocumentLoading) {
       prevElementsRef.current = elements;
       return;
     }
@@ -338,11 +380,11 @@ export function useRealtimeCollaboration() {
 
       broadcastMessage(msg);
     }
-  }, [elements, activeDocumentId, broadcastMessage]);
+  }, [elements, activeDocumentId, isDocumentLoading, broadcastMessage]);
 
   // Diagram Source Code Publisher
   useEffect(() => {
-    if (isRemoteDiagramUpdateRef.current) {
+    if (isRemoteDiagramUpdateRef.current || isDocumentLoading) {
       prevDiagramSourceRef.current = diagramSource;
       return;
     }
@@ -363,10 +405,15 @@ export function useRealtimeCollaboration() {
 
       broadcastMessage(msg);
     }
-  }, [diagramSource, activeDocumentId, broadcastMessage]);
+  }, [diagramSource, activeDocumentId, isDocumentLoading, broadcastMessage]);
 
   // Selected Element Publisher
   useEffect(() => {
+    if (isDocumentLoading) {
+      prevSelectedIdsRef.current = selectedIds;
+      return;
+    }
+
     if (selectedIds !== prevSelectedIdsRef.current) {
       prevSelectedIdsRef.current = selectedIds;
       updateLocalSelection(selectedIds);
@@ -384,7 +431,7 @@ export function useRealtimeCollaboration() {
 
       broadcastMessage(msg);
     }
-  }, [selectedIds, activeDocumentId, updateLocalSelection, broadcastMessage]);
+  }, [selectedIds, activeDocumentId, isDocumentLoading, updateLocalSelection, broadcastMessage]);
 
   return {
     publishCursor,
