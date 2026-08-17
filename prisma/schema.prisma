@@ -20,6 +20,9 @@ model User {
   workspaces       Workspace[]
   documents        Document[]
   workspaceMembers WorkspaceMember[]
+  notifications    Notification[]
+  sentInvites      WorkspaceInvite[] @relation("InviterUser")
+  receivedInvites  WorkspaceInvite[] @relation("RecipientUser")
 }
 
 model Account {
@@ -86,11 +89,37 @@ model WorkspaceInvite {
   id          String    @id @default(cuid())
   workspaceId String
   email       String
-  role        String    @default("MEMBER")
+  role        String    @default("MEMBER") // ADMIN | MEMBER | VIEWER
+  status      String    @default("PENDING") // PENDING | ACCEPTED | REJECTED | EXPIRED
   token       String    @unique
+  inviterId   String?
+  recipientId String?
   expiresAt   DateTime
   createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  inviter     User?     @relation("InviterUser", fields: [inviterId], references: [id], onDelete: SetNull)
+  recipient   User?     @relation("RecipientUser", fields: [recipientId], references: [id], onDelete: SetNull)
+
+  @@index([email, status])
+  @@index([recipientId, status])
+  @@index([workspaceId, status])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // INVITE_RECEIVED | INVITE_ACCEPTED | MEMBER_JOINED | MEMBER_REMOVED | ROLE_UPDATED | DOCUMENT_SHARED
+  title     String
+  message   String
+  link      String?
+  read      Boolean  @default(false)
+  metadata  String?  @db.Text
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
 }
 
 model Document {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { getUserId } from '@/lib/auth/session';
 import { updateDocumentSchema } from '@/lib/api-validation';
+import { checkDocumentAccess } from '@/lib/auth/access-control';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,14 +14,19 @@ export async function GET(
     const { id } = await params;
     const userId = await getUserId();
 
-    const doc = await prisma.document.findUnique({ where: { id } });
+    const access = await checkDocumentAccess(id, userId);
 
-    // Guests / non-owners can only read documents that are explicitly public
-    if (!doc || doc.ownerId !== userId) {
-      if (!doc?.isPublic) {
-        return NextResponse.json({ error: 'Document not found' }, { status: 404 });
-      }
-      // Public read: return a sanitized payload (no owner/workspace internals)
+    if (!access.canRead) {
+      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
+    }
+
+    const doc = await prisma.document.findUnique({ where: { id } });
+    if (!doc) {
+      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
+    }
+
+    // Public / Viewer Read: Return sanitized document payload
+    if (!access.canWrite && access.role === 'PUBLIC_READ') {
       return NextResponse.json({
         document: {
           id: doc.id,
@@ -32,11 +38,12 @@ export async function GET(
           shareToken: doc.shareToken,
           createdAt: doc.createdAt,
           updatedAt: doc.updatedAt,
+          role: access.role,
         },
       });
     }
 
-    return NextResponse.json({ document: doc });
+    return NextResponse.json({ document: { ...doc, role: access.role } });
   } catch {
     return NextResponse.json({ error: 'Document not found' }, { status: 404 });
   }
@@ -50,12 +57,16 @@ export async function PATCH(
     const { id } = await params;
     const userId = await getUserId();
 
-    // Guests cannot modify cloud documents — acknowledge locally instead
     if (!userId) {
       return NextResponse.json(
         { message: 'Offline mode — not saved to cloud', mode: 'offline', saved: false },
         { status: 202 }
       );
+    }
+
+    const access = await checkDocumentAccess(id, userId);
+    if (!access.canWrite) {
+      return NextResponse.json({ error: 'Forbidden: View-only permissions' }, { status: 403 });
     }
 
     const body = await req.json().catch(() => ({}));
@@ -65,11 +76,6 @@ export async function PATCH(
         { error: 'Invalid request body', details: parsed.error.flatten().fieldErrors },
         { status: 400 }
       );
-    }
-
-    const existing = await prisma.document.findUnique({ where: { id } });
-    if (!existing || existing.ownerId !== userId) {
-      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
     }
 
     const dataToUpdate: Record<string, unknown> = {};
@@ -101,14 +107,13 @@ export async function DELETE(
     const { id } = await params;
     const userId = await getUserId();
 
-    // Guests cannot delete cloud documents
     if (!userId) {
       return NextResponse.json({ success: true, mode: 'offline' });
     }
 
-    const existing = await prisma.document.findUnique({ where: { id } });
-    if (!existing || existing.ownerId !== userId) {
-      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
+    const access = await checkDocumentAccess(id, userId);
+    if (!access.canAdmin && access.role !== 'OWNER') {
+      return NextResponse.json({ error: 'Forbidden: Insufficient privileges' }, { status: 403 });
     }
 
     await prisma.document.delete({ where: { id } });

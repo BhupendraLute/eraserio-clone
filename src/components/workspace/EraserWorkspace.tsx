@@ -16,10 +16,11 @@ import { usePipelineWorker } from '@/lib/hooks/usePipelineWorker';
 import { AiChatPanel } from '@/components/ai/AiChatPanel';
 import { AiDiagramPreviewModal } from '@/components/ai/AiDiagramPreviewModal';
 import { Button } from '@/components/ui/button';
-import { Sparkles, X, Code2, GripHorizontal, Layers } from 'lucide-react';
+import { Sparkles, X, Code2, GripHorizontal, Layers, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { useDiagramStore } from '@/lib/store/diagram-store';
+import { useDocumentStore } from '@/lib/store/document-store';
 import { convertDslToWhiteboardElements } from '@/lib/whiteboard/convert-dsl-to-whiteboard';
 import { toast } from 'sonner';
 
@@ -235,9 +236,26 @@ export function EraserWorkspace() {
     }
   };
 
+  const isDocumentLoading = useDocumentStore((s) => s.isLoading);
+  const activeDocumentTitle = useDocumentStore((s) => s.activeDocumentTitle);
+
   return (
     <div className="relative flex flex-1 overflow-hidden">
-      {renderActiveTab()}
+      {isDocumentLoading ? (
+        <div className="flex flex-1 flex-col items-center justify-center bg-background/80 backdrop-blur-md p-6 select-none animate-in fade-in duration-200">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600/10 text-blue-500 border border-blue-500/20 shadow-inner">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">{activeDocumentTitle || 'Loading Workspace...'}</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Hydrating canvas elements & diagram pipeline...</p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        renderActiveTab()
+      )}
 
       {/* Collapsible Architecta AI sidebar (available in all tabs) */}
       {aiChatOpen && <AiChatPanel />}

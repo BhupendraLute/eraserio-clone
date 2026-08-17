@@ -3,16 +3,8 @@ import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import GitHubProvider from 'next-auth/providers/github';
 import GoogleProvider from 'next-auth/providers/google';
 import { prisma } from '@/lib/db/prisma';
+import { ensurePersonalWorkspace } from '@/lib/workspace/service';
 
-/**
- * NextAuth.js (v4) configuration for Architecta.
- *
- * - JWT session strategy: stateless - no DB session lookup per request, ideal
- *   for serverless (Neon) deployments and lower latency.
- * - Prisma adapter persists User/Account rows so OAuth identities are linked.
- * - Providers are only registered when their env vars are present, so the UI
- *   (via `getProviders()`) automatically hides unconfigured providers.
- */
 const providers: NextAuthOptions['providers'] = [];
 
 if (process.env.GITHUB_ID && process.env.GITHUB_SECRET) {
@@ -45,6 +37,18 @@ export const authOptions: NextAuthOptions = {
     error: '/login',
   },
   providers,
+  events: {
+    async createUser({ user }) {
+      if (user.id) {
+        await ensurePersonalWorkspace(user.id);
+      }
+    },
+    async signIn({ user }) {
+      if (user.id) {
+        void ensurePersonalWorkspace(user.id);
+      }
+    },
+  },
   callbacks: {
     async jwt({ token, user, trigger }) {
       // Persist the DB user id into the JWT on sign-in

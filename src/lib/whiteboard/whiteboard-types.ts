@@ -100,6 +100,7 @@ export interface BaseElement {
   fillColor?: string;
   strokeWidth: number;
   groupId?: string;
+  isLocked?: boolean;
   label?: string;
   // Optional label / typography / style fields shared by every element kind.
   // Declared on the base so toolbars and renderers can read them generically
