@@ -125,15 +125,23 @@ export function useRealtimeCollaboration() {
           break;
 
         case 'WHITEBOARD_UPDATE':
-          if (Array.isArray(message.elements)) {
-            isRemoteWhiteboardUpdateRef.current = true;
+          isRemoteWhiteboardUpdateRef.current = true;
+          if (message.action === 'patch' && Array.isArray(message.patches)) {
+            const currentEls = useWhiteboardStore.getState().elements;
+            const patchMap = new Map(message.patches.map((p) => [p.id, p]));
+            const updated = currentEls.map((el) => {
+              const p = patchMap.get(el.id);
+              return p ? { ...el, ...p } : el;
+            });
+            useWhiteboardStore.setState({ elements: updated });
+          } else if (Array.isArray(message.elements)) {
             useWhiteboardStore.setState({
               elements: message.elements as WhiteboardElement[],
             });
-            setTimeout(() => {
-              isRemoteWhiteboardUpdateRef.current = false;
-            }, 30);
           }
+          setTimeout(() => {
+            isRemoteWhiteboardUpdateRef.current = false;
+          }, 30);
           break;
 
         case 'DIAGRAM_UPDATE':
@@ -263,27 +271,70 @@ export function useRealtimeCollaboration() {
     [activeDocumentId, updateLocalCursor, broadcastMessage]
   );
 
-  // Micro-batched Local Whiteboard Elements Publisher
+  // Micro-batched Local Whiteboard Elements Publisher (Delta Patch Optimized)
   useEffect(() => {
     if (isRemoteWhiteboardUpdateRef.current) {
       prevElementsRef.current = elements;
       return;
     }
 
-    if (elements !== prevElementsRef.current) {
+    const prevEls = prevElementsRef.current;
+    if (elements !== prevEls) {
       prevElementsRef.current = elements;
 
       const localUser = useCollaborationStore.getState().localUser;
       if (!localUser || !activeDocumentId) return;
 
-      const msg: CollaborationMessage = {
-        type: 'WHITEBOARD_UPDATE',
-        senderId: localUser.id,
-        documentId: activeDocumentId,
-        timestamp: Date.now(),
-        elements,
-        action: 'full',
-      };
+      // Delta patch optimization: if element count is identical, compute delta diffs
+      let msg: CollaborationMessage;
+      if (elements.length === prevEls.length && prevEls.length > 0) {
+        const prevMap = new Map(prevEls.map((e) => [e.id, e]));
+        const patches: Array<{ id: string; x?: number; y?: number; width?: number; height?: number; label?: string; isLocked?: boolean }> = [];
+
+        for (const el of elements) {
+          const prev = prevMap.get(el.id);
+          if (prev && prev !== el) {
+            patches.push({
+              id: el.id,
+              x: el.x,
+              y: el.y,
+              width: el.width,
+              height: el.height,
+              label: el.label,
+              isLocked: el.isLocked,
+            });
+          }
+        }
+
+        if (patches.length > 0 && patches.length <= 8) {
+          msg = {
+            type: 'WHITEBOARD_UPDATE',
+            senderId: localUser.id,
+            documentId: activeDocumentId,
+            timestamp: Date.now(),
+            action: 'patch',
+            patches,
+          };
+        } else {
+          msg = {
+            type: 'WHITEBOARD_UPDATE',
+            senderId: localUser.id,
+            documentId: activeDocumentId,
+            timestamp: Date.now(),
+            action: 'full',
+            elements,
+          };
+        }
+      } else {
+        msg = {
+          type: 'WHITEBOARD_UPDATE',
+          senderId: localUser.id,
+          documentId: activeDocumentId,
+          timestamp: Date.now(),
+          action: 'full',
+          elements,
+        };
+      }
 
       broadcastMessage(msg);
     }

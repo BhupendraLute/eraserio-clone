@@ -80,10 +80,24 @@ export interface SelectionChangeMessage extends BaseMessage {
   selectedElementIds: string[];
 }
 
+export interface ElementPatch {
+  id: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  strokeColor?: string;
+  fillColor?: string;
+  label?: string;
+  isLocked?: boolean;
+  [key: string]: unknown;
+}
+
 export interface WhiteboardUpdateMessage extends BaseMessage {
   type: 'WHITEBOARD_UPDATE';
-  elements: unknown[];
-  action?: 'add' | 'update' | 'delete' | 'full';
+  elements?: unknown[];
+  patches?: ElementPatch[];
+  action?: 'add' | 'update' | 'delete' | 'full' | 'patch';
 }
 
 export interface DiagramUpdateMessage extends BaseMessage {

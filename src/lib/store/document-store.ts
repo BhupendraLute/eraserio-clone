@@ -634,28 +634,50 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
       _saveDebounceTimer = null;
     }
 
-    // Always reset canvas elements, selection, and undo/redo stacks when switching documents
-    useWhiteboardStore.getState().resetCanvas();
-    set({ activeDocumentId: id, syncStatus: 'saving', isLoading: true });
+    // 1. Instant 0ms Cache Hydration: check if document exists in store state memory
+    const existingDoc = get().documents.find((d) => d.id === id);
+    if (existingDoc) {
+      const elements = existingDoc.whiteboardData
+        ? (typeof existingDoc.whiteboardData === 'string' ? JSON.parse(existingDoc.whiteboardData) : existingDoc.whiteboardData)
+        : [];
+      useWhiteboardStore.setState({ elements, selectedIds: [], history: [], future: [] });
 
+      const diagramSource = existingDoc.diagramSource || '';
+      const reg = useDiagramRegistry.getState();
+      reg.updateSource(reg.activeDiagramId || 'default', diagramSource);
+      useDiagramStore.getState().setSource(diagramSource);
+
+      set({
+        activeDocumentId: id,
+        activeDocumentTitle: existingDoc.title,
+        isPublic: existingDoc.isPublic ?? false,
+        shareToken: existingDoc.shareToken ?? null,
+        syncStatus: 'synced',
+        isLoading: false,
+      });
+    } else {
+      useWhiteboardStore.getState().resetCanvas();
+      set({ activeDocumentId: id, syncStatus: 'saving', isLoading: true });
+    }
+
+    // 2. Background Revalidation
     try {
       const res = await fetch(`/api/documents/${id}`);
       if (res.ok) {
         const { document: doc } = await res.json();
         if (doc) {
-          // Hydrate Whiteboard Elements for this specific document
           const elements = doc.whiteboardData
             ? (typeof doc.whiteboardData === 'string' ? JSON.parse(doc.whiteboardData) : doc.whiteboardData)
             : [];
           useWhiteboardStore.setState({ elements, selectedIds: [], history: [], future: [] });
 
-          // Hydrate Diagram Source for this specific document
           const diagramSource = doc.diagramSource || '';
           const reg = useDiagramRegistry.getState();
           reg.updateSource(reg.activeDiagramId || 'default', diagramSource);
           useDiagramStore.getState().setSource(diagramSource);
 
           set({
+            activeDocumentId: id,
             activeDocumentTitle: doc.title,
             isPublic: doc.isPublic,
             shareToken: doc.shareToken,

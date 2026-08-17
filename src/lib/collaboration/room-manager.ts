@@ -136,6 +136,13 @@ class DocumentRoom {
     for (const [cid, conn] of this.connections.entries()) {
       if (now - conn.user.lastActive > timeout) {
         this.removeClient(cid);
+      } else {
+        // Enqueue lightweight 2-byte SSE comment keep-alive ping (":\n\n")
+        try {
+          conn.controller.enqueue(conn.encoder.encode(':\n\n'));
+        } catch {
+          this.removeClient(cid);
+        }
       }
     }
   }
