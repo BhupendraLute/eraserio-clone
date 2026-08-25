@@ -23,6 +23,8 @@ import {
   CheckSquare,
   Scissors,
   Sparkles,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 
 interface ContextMenuProps {
@@ -42,6 +44,7 @@ export function ContextMenu({ x, y, onClose }: ContextMenuProps) {
   const canRedo = useWhiteboardStore((s) => s.canRedo);
 
   const deleteElements = useWhiteboardStore((s) => s.deleteElements);
+  const updateElement = useWhiteboardStore((s) => s.updateElement);
   const duplicateSelected = useWhiteboardStore((s) => s.duplicateSelected);
   const copyToClipboard = useWhiteboardStore((s) => s.copyToClipboard);
   const pasteFromClipboard = useWhiteboardStore((s) => s.pasteFromClipboard);
@@ -230,6 +233,33 @@ export function ContextMenu({ x, y, onClose }: ContextMenuProps) {
           <button className={menuItemClass} onClick={() => { sendToBack(); onClose(); }}>
             <ArrowDownToLine className="h-3.5 w-3.5 text-muted-foreground" />
             <span>Send to Back</span>
+          </button>
+
+          {/* Lock / Unlock */}
+          <div className="mx-2 my-1 h-px bg-border/50" />
+          <button
+            className={menuItemClass}
+            onClick={() => {
+              const selectedEls = elements.filter((el) => selectedIds.includes(el.id));
+              const isAnyLocked = selectedEls.some((el) => el.isLocked);
+              selectedIds.forEach((id) => {
+                updateElement(id, { isLocked: !isAnyLocked });
+              });
+              toast.success(isAnyLocked ? 'Elements unlocked' : 'Elements locked');
+              onClose();
+            }}
+          >
+            {elements.filter((el) => selectedIds.includes(el.id)).some((el) => el.isLocked) ? (
+              <>
+                <Unlock className="h-3.5 w-3.5 text-muted-foreground" />
+                <span>Unlock Element</span>
+              </>
+            ) : (
+              <>
+                <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                <span>Lock Element</span>
+              </>
+            )}
           </button>
 
           {/* Delete */}

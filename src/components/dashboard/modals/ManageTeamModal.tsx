@@ -2,11 +2,16 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { Users, UserPlus, Mail, Copy, Check, Shield, Trash2, Send, Loader2 } from 'lucide-react';
+import { Users, UserPlus, Mail, Copy, Check, Shield, Trash2, Send, Loader2, LogOut } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useSession } from 'next-auth/react';
 import { useDocumentStore } from '@/lib/store/document-store';
+import { RemoveMemberConfirmModal } from './RemoveMemberConfirmModal';
+import { ConfirmationModal } from '@/components/ui/confirmation-modal';
+
+import { useEffect } from 'react';
+import { toast } from 'sonner';
 
 interface ManageTeamModalProps {
   open: boolean;
@@ -34,12 +39,30 @@ export function ManageTeamModal({
   const currentWorkspaceId = workspaceId || storeWorkspaceId;
   const [activeTab, setActiveTab] = useState<'members' | 'invite'>('members');
 
+  // Permissions state
+  const [currentUserRole, setCurrentUserRole] = useState<string>('MEMBER');
+  const [canAdmin, setCanAdmin] = useState<boolean>(false);
+
   // Invite state
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'ADMIN' | 'MEMBER' | 'VIEWER'>('MEMBER');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<MockMember | null>(null);
+  const [leaveModalOpen, setLeaveModalOpen] = useState(false);
+
+  const handleLeaveWorkspace = async () => {
+    if (!currentWorkspaceId) return;
+    try {
+      await useDocumentStore.getState().leaveWorkspace(currentWorkspaceId);
+      toast.success(`You have left ${workspaceName || 'the workspace'}`);
+      onOpenChange(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to leave workspace';
+      toast.error(msg);
+    }
+  };
 
   // Members state
   const currentUserName = session?.user?.name || 'You';
@@ -54,19 +77,30 @@ export function ManageTeamModal({
       role: 'OWNER',
       avatar: currentUserImage,
     },
-    {
-      id: 'm-2',
-      name: 'Alex Rivera',
-      email: 'alex.rivera@company.internal',
-      role: 'MEMBER',
-    },
-    {
-      id: 'm-3',
-      name: 'Sarah Chen',
-      email: 'sarah.chen@company.internal',
-      role: 'VIEWER',
-    },
   ]);
+
+  useEffect(() => {
+    if (!open || !currentWorkspaceId) return;
+
+    fetch(`/api/workspaces/${currentWorkspaceId}/members`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.members) {
+          setMembers(
+            data.members.map((m: { id: string; role: 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER'; user: { name: string | null; email: string | null; image: string | null } }) => ({
+              id: m.id,
+              name: m.user.name || m.user.email || 'Member',
+              email: m.user.email || '',
+              role: m.role,
+              avatar: m.user.image || undefined,
+            }))
+          );
+          if (data.currentUserRole) setCurrentUserRole(data.currentUserRole);
+          setCanAdmin(data.canAdmin ?? (data.currentUserRole === 'OWNER' || data.currentUserRole === 'ADMIN'));
+        }
+      })
+      .catch(() => {});
+  }, [open, currentWorkspaceId]);
 
   const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,6 +118,7 @@ export function ManageTeamModal({
           const data = await res.json();
           if (data.inviteUrl) {
             setGeneratedLink(data.inviteUrl);
+            toast.success(`Invite sent to ${inviteEmail.trim()}`);
             return;
           }
         }
@@ -118,14 +153,50 @@ export function ManageTeamModal({
     }
   };
 
-  const handleRoleChange = (memberId: string, newRole: 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER') => {
+  const handleRoleChange = async (memberId: string, newRole: 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER') => {
+    if (currentWorkspaceId) {
+      try {
+        const res = await fetch(`/api/workspaces/${currentWorkspaceId}/members`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ memberId, role: newRole }),
+        });
+        if (res.ok) {
+          toast.success(`Role updated to ${newRole}`);
+        } else {
+          toast.error('Failed to update role');
+          return;
+        }
+      } catch {
+        toast.error('Network error');
+        return;
+      }
+    }
     setMembers((prev) =>
       prev.map((m) => (m.id === memberId ? { ...m, role: newRole } : m))
     );
   };
 
-  const handleRemoveMember = (memberId: string) => {
-    setMembers((prev) => prev.filter((m) => m.id !== memberId));
+  const handleConfirmRemoveMember = async () => {
+    if (!memberToRemove) return;
+    if (currentWorkspaceId) {
+      try {
+        const res = await fetch(`/api/workspaces/${currentWorkspaceId}/members?memberId=${memberToRemove.id}`, {
+          method: 'DELETE',
+        });
+        if (res.ok) {
+          toast.success(`${memberToRemove.name} removed from team`);
+        } else {
+          toast.error('Failed to remove member');
+          return;
+        }
+      } catch {
+        toast.error('Network error');
+        return;
+      }
+    }
+    setMembers((prev) => prev.filter((m) => m.id !== memberToRemove.id));
+    setMemberToRemove(null);
   };
 
   return (
@@ -158,17 +229,19 @@ export function ManageTeamModal({
             <Users className="h-3.5 w-3.5" />
             <span>Members ({members.length})</span>
           </button>
-          <button
-            onClick={() => setActiveTab('invite')}
-            className={`pb-2 text-xs font-bold transition-colors flex items-center gap-1.5 border-b-2 ${
-              activeTab === 'invite'
-                ? 'border-blue-500 text-white'
-                : 'border-transparent text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            <UserPlus className="h-3.5 w-3.5" />
-            <span>Invite Teammates</span>
-          </button>
+          {canAdmin && (
+            <button
+              onClick={() => setActiveTab('invite')}
+              className={`pb-2 text-xs font-bold transition-colors flex items-center gap-1.5 border-b-2 ${
+                activeTab === 'invite'
+                  ? 'border-blue-500 text-white'
+                  : 'border-transparent text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              <UserPlus className="h-3.5 w-3.5" />
+              <span>Invite Teammates</span>
+            </button>
+          )}
         </div>
 
         {/* Tab 1: Members List */}
@@ -213,25 +286,37 @@ export function ManageTeamModal({
                       <Shield className="h-3 w-3 text-amber-400" />
                       <span>Owner</span>
                     </span>
-                  ) : (
+                  ) : canAdmin ? (
                     <>
                       <select
                         value={member.role}
                         onChange={(e) => handleRoleChange(member.id, e.target.value as 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER')}
-                        className="h-7 px-2 rounded-lg bg-zinc-800 border border-zinc-700 text-[11px] text-zinc-200 focus:outline-none focus:border-blue-500"
+                        className="h-7 px-2 rounded-lg bg-zinc-800 border border-zinc-700 text-[11px] text-zinc-200 focus:outline-none focus:border-blue-500 cursor-pointer"
                       >
                         <option value="ADMIN">Admin</option>
                         <option value="MEMBER">Member</option>
                         <option value="VIEWER">Viewer</option>
                       </select>
                       <button
-                        onClick={() => handleRemoveMember(member.id)}
-                        className="p-1 rounded text-zinc-500 hover:text-red-400 hover:bg-zinc-800 transition-colors"
+                        onClick={() => setMemberToRemove(member)}
+                        className="p-1 rounded text-zinc-500 hover:text-red-400 hover:bg-zinc-800 transition-colors cursor-pointer"
                         title="Remove Member"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </>
+                  ) : (
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                        member.role === 'ADMIN'
+                          ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                          : member.role === 'MEMBER'
+                          ? 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+                          : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+                      }`}
+                    >
+                      {member.role}
+                    </span>
                   )}
                 </div>
               </div>
@@ -321,7 +406,21 @@ export function ManageTeamModal({
           </div>
         )}
 
-        <div className="flex items-center justify-end pt-2 border-t border-zinc-800">
+        <div className="flex items-center justify-between pt-2 border-t border-zinc-800">
+          {currentUserRole !== 'OWNER' ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setLeaveModalOpen(true)}
+              className="h-8 text-xs border-amber-500/30 bg-amber-500/5 text-amber-400 hover:bg-amber-500/15 hover:text-amber-300 gap-1.5 cursor-pointer rounded-xl"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              <span>Leave Workspace</span>
+            </Button>
+          ) : (
+            <div />
+          )}
           <Button
             type="button"
             variant="ghost"
@@ -331,6 +430,35 @@ export function ManageTeamModal({
             Close
           </Button>
         </div>
+
+        {/* Custom Shadcn UI Remove Member Confirmation Modal */}
+        <RemoveMemberConfirmModal
+          open={!!memberToRemove}
+          onOpenChange={(open) => !open && setMemberToRemove(null)}
+          memberName={memberToRemove?.name || memberToRemove?.email || 'Team Member'}
+          memberEmail={memberToRemove?.email}
+          memberRole={memberToRemove?.role}
+          memberImage={memberToRemove?.avatar}
+          workspaceName={workspaceName}
+          onConfirm={handleConfirmRemoveMember}
+        />
+
+        {/* Leave Workspace Confirmation Modal */}
+        <ConfirmationModal
+          open={leaveModalOpen}
+          onOpenChange={setLeaveModalOpen}
+          title="Leave Workspace Team?"
+          description={
+            <>
+              Are you sure you want to leave <strong className="text-zinc-200">&quot;{workspaceName || 'this workspace'}&quot;</strong>? You will lose access to all documents and whiteboards in this workspace until an admin invites you back.
+            </>
+          }
+          icon={<LogOut className="h-5 w-5 text-amber-400" />}
+          variant="warning"
+          confirmLabel="Leave Workspace"
+          confirmIcon={<LogOut className="h-3.5 w-3.5" />}
+          onConfirm={handleLeaveWorkspace}
+        />
       </DialogContent>
     </Dialog>
   );

@@ -75,6 +75,7 @@ interface DocumentStoreState {
   moveDocumentToFolder: (docId: string, folderId: string | null) => void;
   fetchWorkspaces: () => Promise<void>;
   createWorkspace: (name: string) => Promise<WorkspaceItem | null>;
+  leaveWorkspace: (workspaceId: string) => Promise<boolean>;
   setActiveWorkspace: (id: string) => void;
   saveCurrentDocumentState: (data: {
     whiteboardData?: unknown;
@@ -263,13 +264,37 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
       if (res.ok) {
         const data = await res.json();
         const wsList: WorkspaceItem[] = data.workspaces || [];
-        set({
-          workspaces: wsList,
-          activeWorkspaceId: wsList.length > 0 ? wsList[0].id : null,
+        set((state) => {
+          const currentActive = state.activeWorkspaceId;
+          const stillValid = wsList.some((w) => w.id === currentActive);
+          return {
+            workspaces: wsList,
+            activeWorkspaceId: stillValid
+              ? currentActive
+              : wsList.length > 0
+              ? wsList[0].id
+              : null,
+          };
         });
       }
     } catch {
-      // offline / unauthenticated
+      // offline / unauthenticated fallback
+      set((state) => {
+        if (state.workspaces.length === 0) {
+          const fallbackWs: WorkspaceItem = {
+            id: 'ws-personal',
+            name: 'Personal Workspace',
+            ownerId: 'local-user',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          return {
+            workspaces: [fallbackWs],
+            activeWorkspaceId: state.activeWorkspaceId || fallbackWs.id,
+          };
+        }
+        return state;
+      });
     }
   },
 
@@ -284,7 +309,10 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
       const data = await res.json();
       if (data.workspace) {
         set((state) => ({
-          workspaces: [data.workspace, ...state.workspaces],
+          workspaces: [
+            data.workspace,
+            ...state.workspaces.filter((w) => w.id !== data.workspace.id),
+          ],
           activeWorkspaceId: data.workspace.id,
         }));
         return data.workspace;
@@ -292,6 +320,23 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
       return null;
     } catch {
       return null;
+    }
+  },
+
+  leaveWorkspace: async (workspaceId: string) => {
+    try {
+      const res = await fetch(`/api/workspaces/${workspaceId}/leave`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to leave workspace');
+      }
+      await get().fetchWorkspaces();
+      await get().fetchDocuments();
+      return true;
+    } catch (err) {
+      throw err;
     }
   },
 
@@ -634,33 +679,56 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
       _saveDebounceTimer = null;
     }
 
-    // Always reset canvas elements, selection, and undo/redo stacks when switching documents
-    useWhiteboardStore.getState().resetCanvas();
-    set({ activeDocumentId: id, syncStatus: 'saving' });
+    // 1. Instant 0ms Cache Hydration: check if document exists in store state memory
+    const existingDoc = get().documents.find((d) => d.id === id);
+    if (existingDoc) {
+      const elements = existingDoc.whiteboardData
+        ? (typeof existingDoc.whiteboardData === 'string' ? JSON.parse(existingDoc.whiteboardData) : existingDoc.whiteboardData)
+        : [];
+      useWhiteboardStore.setState({ elements, selectedIds: [], history: [], future: [] });
 
+      const diagramSource = existingDoc.diagramSource || '';
+      const reg = useDiagramRegistry.getState();
+      reg.updateSource(reg.activeDiagramId || 'default', diagramSource);
+      useDiagramStore.getState().setSource(diagramSource);
+
+      set({
+        activeDocumentId: id,
+        activeDocumentTitle: existingDoc.title,
+        isPublic: existingDoc.isPublic ?? false,
+        shareToken: existingDoc.shareToken ?? null,
+        syncStatus: 'synced',
+        isLoading: false,
+      });
+    } else {
+      useWhiteboardStore.getState().resetCanvas();
+      set({ activeDocumentId: id, syncStatus: 'saving', isLoading: true });
+    }
+
+    // 2. Background Revalidation
     try {
       const res = await fetch(`/api/documents/${id}`);
       if (res.ok) {
         const { document: doc } = await res.json();
         if (doc) {
-          set({
-            activeDocumentTitle: doc.title,
-            isPublic: doc.isPublic,
-            shareToken: doc.shareToken,
-            syncStatus: 'synced',
-          });
-
-          // Hydrate Whiteboard Elements for this specific document
           const elements = doc.whiteboardData
             ? (typeof doc.whiteboardData === 'string' ? JSON.parse(doc.whiteboardData) : doc.whiteboardData)
             : [];
           useWhiteboardStore.setState({ elements, selectedIds: [], history: [], future: [] });
 
-          // Hydrate Diagram Source for this specific document
           const diagramSource = doc.diagramSource || '';
           const reg = useDiagramRegistry.getState();
           reg.updateSource(reg.activeDiagramId || 'default', diagramSource);
           useDiagramStore.getState().setSource(diagramSource);
+
+          set({
+            activeDocumentId: id,
+            activeDocumentTitle: doc.title,
+            isPublic: doc.isPublic,
+            shareToken: doc.shareToken,
+            syncStatus: 'synced',
+            isLoading: false,
+          });
           return;
         }
       }
@@ -672,8 +740,6 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
     const guestDocs = getStoredGuestDocs();
     const existing = guestDocs.find((d) => d.id === id) || get().documents.find((d) => d.id === id);
     if (existing) {
-      set({ activeDocumentTitle: existing.title, syncStatus: 'synced' });
-
       const elements = existing.whiteboardData
         ? (typeof existing.whiteboardData === 'string' ? JSON.parse(existing.whiteboardData) : existing.whiteboardData)
         : [];
@@ -683,6 +749,10 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
       const reg = useDiagramRegistry.getState();
       reg.updateSource(reg.activeDiagramId || 'default', diagramSource);
       useDiagramStore.getState().setSource(diagramSource);
+
+      set({ activeDocumentTitle: existing.title, syncStatus: 'synced', isLoading: false });
+    } else {
+      set({ isLoading: false });
     }
   },
 

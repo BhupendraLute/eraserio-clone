@@ -29,8 +29,9 @@ export default function RootLayout({
             publicSans.variable,
          )}
       >
+         <head />
          <body suppressHydrationWarning className="h-screen w-screen overflow-hidden flex flex-row bg-background text-foreground">
-            <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+            <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
                <AuthProvider>
                   <QueryProvider>
                      <main className="flex flex-1 flex-col h-full w-full overflow-hidden">

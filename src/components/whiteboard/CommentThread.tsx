@@ -4,15 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import type { CommentElement } from '@/lib/whiteboard/whiteboard-types';
 import { useWhiteboardStore } from '@/lib/store/whiteboard-store';
 import { useOnClickOutside } from '@/lib/hooks/useOnClickOutside';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import {
   MessageSquare,
   Send,
@@ -583,43 +575,20 @@ export function CommentThread({ element }: CommentThreadProps) {
         </div>
       )}
 
-      {/* Shadcn UI Delete Thread Confirmation Modal */}
-      <Dialog open={showConfirmDelete} onOpenChange={setShowConfirmDelete}>
-        <DialogContent className="sm:max-w-[380px] bg-[#16161a] border-[#333338] text-foreground p-5 rounded-2xl">
-          <DialogHeader className="gap-2 text-left">
-            <DialogTitle className="flex items-center gap-2.5 text-red-400 font-semibold text-base">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10 border border-red-500/20 shrink-0">
-                <Trash2 className="h-4 w-4 text-red-400" />
-              </div>
-              <span>Delete Comment Thread?</span>
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground leading-relaxed pt-1">
-              Are you sure you want to delete this comment thread and all its replies? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex items-center justify-end gap-2 pt-3 border-t border-[#26262b] sm:justify-end">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowConfirmDelete(false)}
-              className="text-xs font-medium text-muted-foreground hover:bg-[#26262c] hover:text-foreground cursor-pointer"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => {
-                deleteElements([element.id]);
-                setShowConfirmDelete(false);
-              }}
-              className="text-xs font-semibold bg-red-600 hover:bg-red-500 text-white cursor-pointer"
-            >
-              Delete Thread
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Reusable DRY Delete Thread Confirmation Modal */}
+      <ConfirmationModal
+        open={showConfirmDelete}
+        onOpenChange={setShowConfirmDelete}
+        title="Delete Comment Thread?"
+        description="Are you sure you want to delete this comment thread and all its replies? This action cannot be undone."
+        variant="destructive"
+        confirmLabel="Delete Thread"
+        confirmIcon={<Trash2 className="h-3.5 w-3.5" />}
+        onConfirm={() => {
+          deleteElements([element.id]);
+          setShowConfirmDelete(false);
+        }}
+      />
     </div>
   );
 }

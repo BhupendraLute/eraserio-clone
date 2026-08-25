@@ -15,6 +15,8 @@ import { DeleteFolderModal } from '@/components/dashboard/modals/DeleteFolderMod
 import { InviteTeamModal } from '@/components/dashboard/modals/InviteTeamModal';
 import { CreateWorkspaceModal } from '@/components/dashboard/modals/CreateWorkspaceModal';
 import { ManageTeamModal } from '@/components/dashboard/modals/ManageTeamModal';
+import { PendingInvitesBanner } from '@/components/dashboard/PendingInvitesBanner';
+import { TeamManagementHub } from '@/components/dashboard/TeamManagementHub';
 import { Button } from '@/components/ui/button';
 
 export default function DashboardTabPage() {
@@ -140,67 +142,76 @@ export default function DashboardTabPage() {
 
         {/* Content Container */}
         <div className="p-8 max-w-7xl w-full mx-auto space-y-6">
-          {/* Active Folder Header Banner (if viewing a folder) */}
-          {currentFolder && (
-            <div className="flex items-center justify-between p-4 rounded-2xl bg-[#161618] border border-zinc-800/80 shadow-md">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-blue-600/20 text-blue-400 flex items-center justify-center">
-                  <Folder className="h-5 w-5" />
+          {/* Pending Invitations Banner */}
+          <PendingInvitesBanner />
+
+          {tabParam === 'team' ? (
+            <TeamManagementHub />
+          ) : (
+            <>
+              {/* Active Folder Header Banner (if viewing a folder) */}
+              {currentFolder && (
+                <div className="flex items-center justify-between p-4 rounded-2xl bg-[#161618] border border-zinc-800/80 shadow-md">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-blue-600/20 text-blue-400 flex items-center justify-center">
+                      <Folder className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h1 className="text-base font-extrabold text-white flex items-center gap-2">
+                        <span>{currentFolder.name}</span>
+                        <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 text-[10px] font-mono">
+                          {folderDocCount} document{folderDocCount !== 1 ? 's' : ''}
+                        </span>
+                      </h1>
+                      <p className="text-xs text-zinc-400">Team Folder</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleOpenEditFolder(currentFolder)}
+                      className="h-8 text-xs text-zinc-300 hover:text-white hover:bg-zinc-800 gap-1.5 rounded-lg"
+                    >
+                      <Edit3 className="h-3.5 w-3.5 text-amber-400" />
+                      <span>Rename</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleOpenDeleteFolder(currentFolder)}
+                      className="h-8 text-xs text-red-400 hover:text-red-300 hover:bg-red-950/40 gap-1.5 rounded-lg"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span>Delete Folder</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleCreateDocumentInFolder}
+                      className="h-8 px-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs gap-1.5 rounded-lg shadow-sm"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      <span>New File in Folder</span>
+                    </Button>
+                  </div>
                 </div>
-                <div>
-                  <h1 className="text-base font-extrabold text-white flex items-center gap-2">
-                    <span>{currentFolder.name}</span>
-                    <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 text-[10px] font-mono">
-                      {folderDocCount} document{folderDocCount !== 1 ? 's' : ''}
-                    </span>
-                  </h1>
-                  <p className="text-xs text-zinc-400">Team Folder</p>
-                </div>
-              </div>
+              )}
 
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleOpenEditFolder(currentFolder)}
-                  className="h-8 text-xs text-zinc-300 hover:text-white hover:bg-zinc-800 gap-1.5 rounded-lg"
-                >
-                  <Edit3 className="h-3.5 w-3.5 text-amber-400" />
-                  <span>Rename</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleOpenDeleteFolder(currentFolder)}
-                  className="h-8 text-xs text-red-400 hover:text-red-300 hover:bg-red-950/40 gap-1.5 rounded-lg"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  <span>Delete Folder</span>
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleCreateDocumentInFolder}
-                  className="h-8 px-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs gap-1.5 rounded-lg shadow-sm"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>New File in Folder</span>
-                </Button>
-              </div>
-            </div>
+              {/* Action Cards Grid (only on main files view) */}
+              {!currentFolder && tabParam === 'all' && (
+                <ActionCardsGrid onOpenAIDiagramModal={() => setAiModalOpen(true)} />
+              )}
+
+              {/* Documents Table / Grid */}
+              <DocumentTable
+                documents={displayedDocs}
+                searchQuery={searchQuery}
+                viewMode={viewMode}
+                onOpenAIDiagramModal={() => setAiModalOpen(true)}
+              />
+            </>
           )}
-
-          {/* Action Cards Grid (only on main files view) */}
-          {!currentFolder && tabParam === 'all' && (
-            <ActionCardsGrid onOpenAIDiagramModal={() => setAiModalOpen(true)} />
-          )}
-
-          {/* Documents Table / Grid */}
-          <DocumentTable
-            documents={displayedDocs}
-            searchQuery={searchQuery}
-            viewMode={viewMode}
-            onOpenAIDiagramModal={() => setAiModalOpen(true)}
-          />
         </div>
       </main>
 

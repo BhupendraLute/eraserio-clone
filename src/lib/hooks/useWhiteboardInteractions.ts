@@ -903,7 +903,7 @@ export function useWhiteboardInteractions({
     }
     if (activeTool !== 'select') return;
     e.stopPropagation();
-    if (el.type === 'comment') return;
+    if (el.type === 'comment' || el.isLocked) return;
 
     const effectiveSelectedIds = selectedIds.includes(el.id)
       ? selectedIds
@@ -947,6 +947,8 @@ export function useWhiteboardInteractions({
       return;
     }
     e.stopPropagation();
+    const targetEl = elements.find((item) => item.id === targetId);
+    if (targetEl?.isLocked) return;
     const coords = getCanvasCoords(e);
     setResizeState({ isResizing: true, handle, targetId, lastPos: coords });
   };

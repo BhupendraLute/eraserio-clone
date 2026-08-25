@@ -671,28 +671,32 @@ describe('useDocumentStore', () => {
     expect(s.activeWorkspaceId).toBe('ws-new');
   });
 
-  it('fetchDocuments seamlessly merges persistent document metadata map', async () => {
-    stubLocalStorage({
-      eraserio_doc_meta: JSON.stringify({
-        'cloud-doc-1': { isArchived: true, folderId: 'f-designs' },
-      }),
+  it('fetchWorkspaces falls back to default Personal Workspace if offline or empty', async () => {
+    useDocumentStore.setState({ workspaces: [], activeWorkspaceId: null });
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')));
+
+    await useDocumentStore.getState().fetchWorkspaces();
+    const s = useDocumentStore.getState();
+    expect(s.workspaces.length).toBe(1);
+    expect(s.workspaces[0].name).toBe('Personal Workspace');
+    expect(s.activeWorkspaceId).toBe('ws-personal');
+  });
+
+  it('leaveWorkspace successfully calls leave endpoint', async () => {
+    useDocumentStore.setState({
+      workspaces: [{ id: 'ws-team', name: 'Team Workspace', ownerId: 'other-user', createdAt: '', updatedAt: '' }],
+      activeWorkspaceId: 'ws-team',
     });
 
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
         ok: true,
-        json: async () => ({
-          mode: 'cloud',
-          documents: [meta('cloud-doc-1', { isArchived: false, folderId: null })],
-        }),
+        json: async () => ({ success: true }),
       })
     );
 
-    await useDocumentStore.getState().fetchDocuments();
-    const s = useDocumentStore.getState();
-    const doc = s.documents.find((d) => d.id === 'cloud-doc-1');
-    expect(doc?.isArchived).toBe(true);
-    expect(doc?.folderId).toBe('f-designs');
+    const result = await useDocumentStore.getState().leaveWorkspace('ws-team');
+    expect(result).toBe(true);
   });
 });

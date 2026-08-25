@@ -16,6 +16,7 @@ import {
   Folder,
   Layers,
   MoreHorizontal,
+  Users,
 } from 'lucide-react';
 import { useDocumentStore, DashboardFolder } from '@/lib/store/document-store';
 import { SidebarFoldersSkeleton } from '@/components/dashboard/skeletons';
@@ -200,6 +201,23 @@ export function DashboardSidebar({
             </div>
             <span className="text-[10px] text-zinc-500 font-mono">
               {documents.filter((d) => d.isArchived).length}
+            </span>
+          </Link>
+
+          <Link
+            href="/dashboard/team"
+            className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
+              currentTab === 'team'
+                ? 'bg-zinc-800/80 text-white font-bold'
+                : 'hover:bg-zinc-800/40 text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Users className="h-4 w-4 text-purple-400" />
+              <span>Team & Members</span>
+            </div>
+            <span className="px-1.5 py-0.5 rounded bg-purple-950/60 border border-purple-500/40 text-[9px] text-purple-300 font-bold uppercase tracking-wider">
+              MANAGE
             </span>
           </Link>
         </nav>

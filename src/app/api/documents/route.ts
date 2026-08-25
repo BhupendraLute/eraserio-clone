@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { getUserId } from '@/lib/auth/session';
 import { createDocumentSchema } from '@/lib/api-validation';
+import { ensurePersonalWorkspace } from '@/lib/workspace/service';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,6 +45,9 @@ export async function GET() {
   if (!userId) {
     return NextResponse.json({ documents: [], mode: 'offline' });
   }
+
+  // Ensure user has default personal workspace
+  void ensurePersonalWorkspace(userId);
 
   try {
     const documents = await prisma.document.findMany({

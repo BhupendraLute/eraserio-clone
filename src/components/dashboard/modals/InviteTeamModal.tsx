@@ -6,6 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { useDocumentStore } from '@/lib/store/document-store';
 
+import { toast } from 'sonner';
+
 interface InviteTeamModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -14,10 +16,12 @@ interface InviteTeamModalProps {
 
 export function InviteTeamModal({ open, onOpenChange, workspaceId }: InviteTeamModalProps) {
   const storeWorkspaceId = useDocumentStore((s) => s.activeWorkspaceId);
-  const activeWorkspaceId = workspaceId || storeWorkspaceId;
+  const workspaces = useDocumentStore((s) => s.workspaces);
+  const activeWorkspaceId = workspaceId || storeWorkspaceId || workspaces[0]?.id;
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'MEMBER' | 'VIEWER' | 'ADMIN'>('MEMBER');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [sent, setSent] = useState(false);
@@ -27,29 +31,36 @@ export function InviteTeamModal({ open, onOpenChange, workspaceId }: InviteTeamM
     if (!email.trim() || isSubmitting) return;
 
     setIsSubmitting(true);
+    setErrorMessage(null);
     try {
-      if (activeWorkspaceId) {
-        const res = await fetch(`/api/workspaces/${activeWorkspaceId}/invites`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: email.trim(), role }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.inviteUrl) {
-            setGeneratedLink(data.inviteUrl);
-            setSent(true);
-            return;
-          }
-        }
+      if (!activeWorkspaceId) {
+        setErrorMessage('No active workspace found. Please select or create a workspace first.');
+        toast.error('No active workspace found');
+        return;
       }
 
-      // Offline / guest invite fallback URL
-      const mockToken = Math.random().toString(36).substring(2, 10);
-      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://architecta.app';
-      const fallbackUrl = `${origin}/invite/${mockToken}?email=${encodeURIComponent(email.trim())}&role=${role}`;
-      setGeneratedLink(fallbackUrl);
-      setSent(true);
+      const res = await fetch(`/api/workspaces/${activeWorkspaceId}/invites`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), role }),
+      });
+
+      const data = await res.json().catch(() => ({ error: 'Invalid response from server' }));
+
+      if (res.ok && data.inviteUrl) {
+        setGeneratedLink(data.inviteUrl);
+        setSent(true);
+        toast.success(data.message || `Invitation created for ${email.trim()}`);
+      } else {
+        const errorMsg = data.error || 'Failed to send invitation. Please try again.';
+        setErrorMessage(errorMsg);
+        toast.error(errorMsg);
+      }
+    } catch (err) {
+      console.error('[InviteTeamModal] Submit Error:', err);
+      const errorMsg = 'Network error occurred while sending invite';
+      setErrorMessage(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -162,6 +173,12 @@ export function InviteTeamModal({ open, onOpenChange, workspaceId }: InviteTeamM
                 <option value="ADMIN">Admin (Full workspace administration)</option>
               </select>
             </div>
+
+            {errorMessage && (
+              <div className="p-3 rounded-xl bg-red-950/40 border border-red-500/40 text-red-300 text-xs flex items-center gap-2">
+                <span>{errorMessage}</span>
+              </div>
+            )}
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <Button
